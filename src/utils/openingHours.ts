@@ -56,18 +56,20 @@ export function getPlaceOpenStatus(
     const closeIsNull = period.close === null;
     const closeIsUndefined = period.close === undefined;
     const closeIsFalsy = !period.close;
-    const closeHasNullDay = period.close?.day === null;
-    const closeHasNullTime = period.close?.time === null;
-    const closeMissingDay = period.close && period.close.day === undefined;
-    const closeMissingTime = period.close && period.close.time === undefined;
+    const closeHasNullDay = !!(period.close && period.close.day === null);
+    const closeHasNullTime = !!(period.close && period.close.time === null);
+    const closeMissingDay = !!(period.close && period.close.day === undefined);
+    const closeMissingTime = !!(period.close && period.close.time === undefined);
     
-    return closeIsNull || 
-           closeIsUndefined || 
-           closeIsFalsy ||
-           closeHasNullDay ||
-           closeHasNullTime ||
-           closeMissingDay ||
-           closeMissingTime;
+    return (
+      closeIsNull ||
+      closeIsUndefined ||
+      closeIsFalsy ||
+      closeHasNullDay ||
+      closeHasNullTime ||
+      closeMissingDay ||
+      closeMissingTime
+    );
   };
 
   // Check if ALL periods are 24/7 (place is open 24/7 every day)

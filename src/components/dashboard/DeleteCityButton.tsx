@@ -30,14 +30,9 @@ export function DeleteCityButton({
   const { toast } = useToast();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [deleteCity, { loading }] = useMutation(DELETE_CITY, {
-    refetchQueries: [
-      { query: GET_CITIES },
-      {
-        query: GET_PLACES_BY_CITY,
-        variables: { filters: { locationFilter: selectedCity } },
-        skip: true, // Skip refetch since city will be deleted
-      },
-    ],
+    // Refetch cities list after deletion; places for the deleted city
+    // will no longer be queried since the city is removed.
+    refetchQueries: [{ query: GET_CITIES }],
     awaitRefetchQueries: true,
   });
 
@@ -49,10 +44,12 @@ export function DeleteCityButton({
         variables: { city: selectedCity },
       });
 
-      if (result.data?.deleteCity?.success) {
+      const data = result.data as any;
+
+      if (data?.deleteCity?.success) {
         toast({
           title: 'City deleted successfully',
-          description: result.data.deleteCity.message,
+          description: data.deleteCity.message,
         });
         setShowConfirmDialog(false);
         onCityDeleted();
