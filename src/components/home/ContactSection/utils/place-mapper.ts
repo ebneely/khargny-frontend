@@ -13,19 +13,11 @@ export function mapPlaceDetailsToOuting(placeDetails: any): Outing {
   }
 
   // Extract images from photos array - backend now provides full photo URLs
+  // We rely ONLY on backend-generated photo_url (with key + encoding handled server-side)
+  // to avoid leaking API keys or constructing invalid URLs on the client.
   const images =
     placeDetails?.photos
-      ?.map((photo: any) => {
-        // Backend provides photo_url with API key already included
-        if (photo?.photo_url) {
-          return photo.photo_url;
-        }
-        // Fallback to constructing URL if photo_url not provided (shouldn't happen with new backend)
-        if (photo?.photo_reference) {
-          return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo.photo_reference}&key=`;
-        }
-        return null;
-      })
+      ?.map((photo: any) => (photo?.photo_url ? photo.photo_url : null))
       .filter(Boolean) || [];
 
   // Get primary image or fallback
