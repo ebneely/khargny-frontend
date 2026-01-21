@@ -39,10 +39,12 @@ export const GET_PLACES = gql`
 export const GET_PLACES_BY_CITY = gql`
   query GetPlacesByCity($filters: PlaceFilters) {
     places(filters: $filters) {
-      ...PlaceSummaryFields
+      ...PlaceBasicFields
+      ...PlaceExtendedFields
     }
   }
-  ${PLACE_SUMMARY_FIELDS}
+  ${PLACE_BASIC_FIELDS}
+  ${PLACE_EXTENDED_FIELDS}
 `;
 
 export const GET_PLACE = gql`
@@ -104,6 +106,56 @@ export const GOOGLE_PLACE_DETAILS = gql`
   ${GOOGLE_PLACE_PLUS_CODE_FIELDS}
 `;
 
+export const GOOGLE_PLACE_DETAILS_WITHOUT_PHOTOS = gql`
+  query GooglePlaceDetailsWithoutPhotos($placeId: String!) {
+    googlePlaceDetails(placeId: $placeId) {
+      ...GooglePlaceBasicFields
+      geometry {
+        ...GooglePlaceGeometryFields
+      }
+      opening_hours {
+        ...GooglePlaceOpeningHoursFields
+      }
+      reviews {
+        ...GooglePlaceReviewFields
+      }
+      address_components {
+        ...GooglePlaceAddressComponentsFields
+      }
+      plus_code {
+        ...GooglePlacePlusCodeFields
+      }
+    }
+  }
+  ${GOOGLE_PLACE_BASIC_FIELDS}
+  ${GOOGLE_PLACE_GEOMETRY_FIELDS}
+  ${GOOGLE_PLACE_OPENING_HOURS_FIELDS}
+  ${GOOGLE_PLACE_REVIEW_FIELDS}
+  ${GOOGLE_PLACE_ADDRESS_COMPONENTS_FIELDS}
+  ${GOOGLE_PLACE_PLUS_CODE_FIELDS}
+`;
+
+export const GOOGLE_PLACE_PHOTOS = gql`
+  query GooglePlacePhotos($placeId: String!) {
+    googlePlaceDetails(placeId: $placeId) {
+      place_id
+      photos {
+        ...GooglePlacePhotoFields
+      }
+    }
+  }
+  ${GOOGLE_PLACE_PHOTO_FIELDS}
+`;
+
+export const GOOGLE_PLACE_THUMBNAIL = gql`
+  query GooglePlaceThumbnail($placeId: String!) {
+    googlePlaceThumbnail(placeId: $placeId) {
+      ...GooglePlacePhotoFields
+    }
+  }
+  ${GOOGLE_PLACE_PHOTO_FIELDS}
+`;
+
 export const GOOGLE_FIND_PLACE = gql`
   query GoogleFindPlace($searchQuery: String!) {
     googleFindPlace(searchQuery: $searchQuery) {
@@ -122,6 +174,23 @@ export const GOOGLE_FIND_PLACE = gql`
 export const GET_CITIES = gql`
   query GetCities {
     cities
+  }
+`;
+
+export const GET_DYNAMIC_CATEGORIES = gql`
+  query GetDynamicCategories($location: String) {
+    dynamicCategories(location: $location) {
+      categories {
+        key
+        name
+        icon
+        count
+        googleTypes
+        priority
+      }
+      totalPlaces
+      lastUpdated
+    }
   }
 `;
 

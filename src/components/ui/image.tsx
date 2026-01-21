@@ -35,7 +35,11 @@ export function CustomImage({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  if (hasError) {
+  // Handle empty string or invalid src - don't render image
+  const imageSrc = (src && src.trim() !== "") ? src : null;
+
+  // If no valid src or image failed to load, show error message
+  if (!imageSrc || hasError) {
     return (
       <div
         className={cn(
@@ -58,7 +62,7 @@ export function CustomImage({
         />
       )}
       <Image
-        src={src}
+        src={imageSrc}
         alt={alt}
         width={fill ? undefined : width}
         height={fill ? undefined : height}

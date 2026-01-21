@@ -19,8 +19,8 @@ export const OutingCard: React.FC<OutingCardProps> = ({ outing, onClick }) => {
       transition={{ duration: 0.2, ease: "easeOut" }}
       onClick={() => onClick(outing)}
     >
-      <Card className="group w-full cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary">
-        <div className="relative h-40 sm:h-48 w-full overflow-hidden">
+      <Card className="group w-full cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary h-full flex flex-col">
+        <div className="relative h-40 sm:h-48 w-full overflow-hidden flex-shrink-0">
           <CustomImage
             alt={outing.title}
             className="h-full w-full transition-transform duration-500 group-hover:scale-110"
@@ -29,7 +29,7 @@ export const OutingCard: React.FC<OutingCardProps> = ({ outing, onClick }) => {
             objectFit="cover"
           />
         </div>
-        <CardContent className="p-3 sm:p-4">
+        <CardContent className="p-3 sm:p-4 flex-1 flex flex-col">
           <div className="flex items-center justify-between">
             <h3 className="line-clamp-1 text-base sm:text-lg font-semibold">
               {outing.title}
@@ -42,15 +42,15 @@ export const OutingCard: React.FC<OutingCardProps> = ({ outing, onClick }) => {
               </span>
             </div>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground line-clamp-1">
             {outing.area}, {outing.location}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground line-clamp-1">
             Category: {outing.category}
           </p>
-          <p className="mt-2 line-clamp-2 text-sm text-foreground">{outing.description}</p>
+          <p className="mt-2 line-clamp-2 text-sm text-foreground flex-1">{outing.description}</p>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2 bg-muted/50 p-2 sm:p-3">
+        <CardFooter className="flex flex-col gap-2 bg-muted/50 p-2 sm:p-3 flex-shrink-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-2 sm:gap-0">
             <Badge
               variant={outing.open_now ? "default" : "secondary"}

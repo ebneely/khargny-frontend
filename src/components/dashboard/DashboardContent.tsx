@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { Place, PendingOperation } from '@/types';
 import { CitySelector } from '@/components/dashboard/CitySelector';
+import { DeleteCityButton } from '@/components/dashboard/DeleteCityButton';
+import { AddCityButton } from '@/components/dashboard/AddCityButton';
 import { PlacesTable } from '@/components/dashboard/PlacesTable';
 import { AddPlaceModal } from '@/components/dashboard/AddPlaceModal';
 import { EditPlaceModal } from '@/components/dashboard/EditPlaceModal';
@@ -31,7 +33,7 @@ export function DashboardContent() {
   const [isBulkEdit, setIsBulkEdit] = useState(false);
 
   // GraphQL queries
-  const { data: citiesData } = useQuery<{ cities: string[] }>(GET_CITIES);
+  const { data: citiesData, refetch: refetchCities } = useQuery<{ cities: string[] }>(GET_CITIES);
   const {
     data: placesData,
     loading: placesLoading,
@@ -57,6 +59,12 @@ export function DashboardContent() {
   const handleCitySelect = (city: string) => {
     setSelectedCity(city);
     setSelectedIds([]);
+  };
+
+  const handleCityDeleted = () => {
+    setSelectedCity(null);
+    setSelectedIds([]);
+    refetchCities();
   };
 
   const handleAddToQueue = (place: Partial<Place>) => {
@@ -173,24 +181,45 @@ export function DashboardContent() {
               ],
             });
           } else if (operation.type === 'edit') {
+            // Build update input - include all fields from operation.data
+            // Convert empty strings to null for proper MongoDB updates
+            const updateInput: any = {};
+            
+            // Helper to normalize values (empty string -> null, but keep 0 and false)
+            const normalize = (val: any) => {
+              if (val === '' || val === undefined) return null;
+              if (typeof val === 'string' && val.trim() === '') return null;
+              return val;
+            };
+
+            // Include all updatable fields from operation.data
+            const fields: (keyof Place)[] = [
+              'name', 'city', 'placeId', 'phone', 'address', 'description',
+              'age', 'price', 'rating', 'area', 'map'
+            ];
+
+            fields.forEach((field) => {
+              // Include field if it exists in operation.data (meaning it was in the form)
+              if (field in operation.data) {
+                updateInput[field] = normalize(operation.data[field]);
+              }
+            });
+
+            // Ensure we have at least some fields to update
+            if (Object.keys(updateInput).length === 0) {
+              console.warn('No fields to update for place:', operation.data.id);
+              // Still proceed but log a warning
+            }
+
             await updatePlace({
               variables: {
                 id: operation.data.id,
-                input: {
-                  name: operation.data.name,
-                  phone: operation.data.phone,
-                  address: operation.data.address,
-                  description: operation.data.description,
-                  age: operation.data.age,
-                  price: operation.data.price,
-                  rating: operation.data.rating,
-                  area: operation.data.area,
-                  map: operation.data.map,
-                },
+                input: updateInput,
               },
               // Refetch queries to update cache
               refetchQueries: [
-                { query: GET_PLACES_BY_CITY, variables: { filters: { locationFilter: selectedCity } } },
+                { query: GET_PLACES_BY_CITY, variables: { filters: { locationFilter: selectedCity || operation.data.city } } },
+                { query: GET_CITIES },
                 { query: GET_PLACE, variables: { id: operation.data.id } },
               ],
             });
@@ -301,6 +330,12 @@ export function DashboardContent() {
             <CitySelector
               onCitySelect={handleCitySelect}
               selectedCity={selectedCity}
+            />
+            <AddCityButton />
+            <DeleteCityButton
+              selectedCity={selectedCity}
+              placesCount={places.length}
+              onCityDeleted={handleCityDeleted}
             />
             <Button
               size="sm"

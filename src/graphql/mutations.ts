@@ -83,6 +83,22 @@ export const SUBMIT_CONTACT = gql`
 `;
 
 /**
+ * Delete City Mutation
+ * 
+ * Deletes an entire city and all its associated places.
+ * Returns the count of deleted places.
+ */
+export const DELETE_CITY = gql`
+  mutation DeleteCity($city: String!) {
+    deleteCity(city: $city) {
+      success
+      deletedPlacesCount
+      message
+    }
+  }
+`;
+
+/**
  * IMPORTANT: Authentication is REST-only via Better Auth
  * 
  * Do NOT use GraphQL mutations for authentication (login/register).

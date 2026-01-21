@@ -21,7 +21,10 @@ import type { ApolloQueryResult, FetchResult } from '@apollo/client';
 import { 
   GET_PLACES, 
   GET_PLACE_BY_PLACE_ID, 
-  GOOGLE_PLACE_DETAILS, 
+  GOOGLE_PLACE_DETAILS,
+  GOOGLE_PLACE_DETAILS_WITHOUT_PHOTOS,
+  GOOGLE_PLACE_PHOTOS,
+  GOOGLE_PLACE_THUMBNAIL,
   GOOGLE_FIND_PLACE,
   GET_CITIES,
 } from '@/graphql/queries';
@@ -41,6 +44,29 @@ interface GetPlaceByPlaceIdResponse {
 
 interface GooglePlaceDetailsResponse {
   googlePlaceDetails: any; // Google Places API response structure
+}
+
+interface GooglePlacePhotosResponse {
+  googlePlaceDetails: {
+    place_id: string;
+    photos: Array<{
+      photo_reference: string;
+      height?: number;
+      width?: number;
+      photo_url?: string;
+      html_attributions?: string[];
+    }>;
+  };
+}
+
+interface GooglePlaceThumbnailResponse {
+  googlePlaceThumbnail: {
+    photo_reference: string;
+    height?: number;
+    width?: number;
+    photo_url?: string;
+    html_attributions?: string[];
+  } | null;
 }
 
 interface GoogleFindPlaceResponse {
@@ -87,16 +113,22 @@ export const clientApi = {
   places: {
     /**
      * Search places with filters (read-only)
+     * REQUIRES locationFilter - cannot fetch all places
      */
     search: async (filters: {
       nameSearch?: string;
       addressSearch?: string;
       idSearch?: string;
       placeIdSearch?: string;
-      locationFilter?: string;
+      locationFilter: string; // Required - cannot fetch all places
       areaFilter?: string;
       price?: number;
+      onlyWithPlaceId?: boolean;
     }): Promise<Place[]> => {
+      if (!filters.locationFilter) {
+        throw new Error('locationFilter is required. Cannot fetch all places.');
+      }
+      
       try {
         const result = await client.query<GetPlacesResponse>({
           query: GET_PLACES,
@@ -117,7 +149,7 @@ export const clientApi = {
     },
 
     /**
-     * Get place details from Google Places API
+     * Get place details from Google Places API (includes photos)
      */
     getDetails: async (placeId: string): Promise<any> => {
       try {
@@ -135,6 +167,79 @@ export const clientApi = {
         return result.data?.googlePlaceDetails || null;
       } catch (error) {
         handleGraphQLError(error, 'places.getDetails');
+      }
+    },
+
+    /**
+     * Get place details from Google Places API (without photos for performance)
+     */
+    getDetailsWithoutPhotos: async (placeId: string): Promise<any> => {
+      try {
+        const result = await client.query<GooglePlaceDetailsResponse>({
+          query: GOOGLE_PLACE_DETAILS_WITHOUT_PHOTOS,
+          variables: { placeId },
+          errorPolicy: 'all',
+        });
+
+        const errors = (result as ApolloQueryResult<GooglePlaceDetailsResponse> & { errors?: Array<{ message: string }> }).errors;
+        if (errors && errors.length > 0) {
+          console.warn('GraphQL warnings in getDetailsWithoutPhotos:', errors);
+        }
+
+        return result.data?.googlePlaceDetails || null;
+      } catch (error) {
+        handleGraphQLError(error, 'places.getDetailsWithoutPhotos');
+      }
+    },
+
+    /**
+     * Get photos for a place (fetches photos separately to avoid bulk loading)
+     */
+    getPhotos: async (placeId: string): Promise<any[]> => {
+      try {
+        const result = await client.query<GooglePlacePhotosResponse>({
+          query: GOOGLE_PLACE_PHOTOS,
+          variables: { placeId },
+          errorPolicy: 'all',
+        });
+
+        const errors = (result as ApolloQueryResult<GooglePlacePhotosResponse> & { errors?: Array<{ message: string }> }).errors;
+        if (errors && errors.length > 0) {
+          console.warn('GraphQL warnings in getPhotos:', errors);
+        }
+
+        return result.data?.googlePlaceDetails?.photos || [];
+      } catch (error) {
+        handleGraphQLError(error, 'places.getPhotos');
+      }
+    },
+
+    /**
+     * Get a single thumbnail photo for a place (for card thumbnails)
+     * Returns the first photo URL or null if no photos available
+     * Uses optimized query that only fetches one photo instead of all photos
+     */
+    getThumbnail: async (placeId: string): Promise<string | null> => {
+      try {
+        const result = await client.query<GooglePlaceThumbnailResponse>({
+          query: GOOGLE_PLACE_THUMBNAIL,
+          variables: { placeId },
+          errorPolicy: 'all',
+        });
+
+        const errors = (result as ApolloQueryResult<GooglePlaceThumbnailResponse> & { errors?: Array<{ message: string }> }).errors;
+        if (errors && errors.length > 0) {
+          console.warn('GraphQL warnings in getThumbnail:', errors);
+        }
+
+        const thumbnail = result.data?.googlePlaceThumbnail;
+        if (thumbnail?.photo_url) {
+          return thumbnail.photo_url;
+        }
+        return null;
+      } catch (error) {
+        console.error(`Error fetching thumbnail for ${placeId}:`, error);
+        return null;
       }
     },
 

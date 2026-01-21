@@ -14,6 +14,7 @@ import {
 import { Label } from "@/components/ui/label";
 
 import { FilterOptions } from "@/types";
+import type { DynamicCategory } from "@/hooks/useDynamicCategories";
 
 interface FilterModalProps {
   isOpen: boolean;
@@ -24,6 +25,8 @@ interface FilterModalProps {
   handleCategoryChange: (category: string) => void;
   handleReset: () => void;
   filteredAreas: string[];
+  categories: DynamicCategory[];
+  categoriesLoading?: boolean;
 }
 
 export const FilterModal: React.FC<FilterModalProps> = ({
@@ -35,6 +38,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({
   handleCategoryChange,
   handleReset,
   filteredAreas,
+  categories,
+  categoriesLoading = false,
 }) => {
   const modalContentRef = React.useRef<HTMLDivElement>(null);
 
@@ -47,28 +52,6 @@ export const FilterModal: React.FC<FilterModalProps> = ({
   const handleApplyFilters = () => {
     closeFilterModal();
   };
-
-  // Sample categories
-  const categories = [
-    {
-      key: "restaurant",
-      label: "Restaurants",
-      icon: "lucide:utensils",
-    },
-    { key: "cafe", label: "Cafes", icon: "lucide:coffee" },
-    { key: "bar", label: "Bars", icon: "lucide:glass-water" },
-    {
-      key: "attraction",
-      label: "Attractions",
-      icon: "lucide:landmark",
-    },
-    {
-      key: "shopping",
-      label: "Shopping",
-      icon: "lucide:shopping-bag",
-    },
-    { key: "hotel", label: "Hotels", icon: "lucide:hotel" },
-  ];
 
 
   return (
@@ -91,24 +74,39 @@ export const FilterModal: React.FC<FilterModalProps> = ({
             <Card>
               <CardContent className="p-2 sm:p-4">
                 <h3 className="mb-1.5 sm:mb-3 text-xs sm:text-base font-semibold">Categories</h3>
-                <div className="flex flex-wrap gap-1 sm:gap-3">
-                  {categories.map((category) => (
-                    <Button
-                      key={category.key}
-                      variant={
-                      filters.category.includes(category.key)
-                        ? "default"
-                        : "outline"
-                    }
-                    size="sm"
-                    className="rounded-full text-xs h-7 sm:text-sm sm:h-auto"
-                    onClick={() => handleCategoryChange(category.key)}
-                  >
-                      <Icon icon={category.icon} className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      {category.label}
-                    </Button>
-                  ))}
-                </div>
+                {categoriesLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="text-xs sm:text-sm text-muted-foreground">Loading categories...</div>
+                  </div>
+                ) : categories.length === 0 ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="text-xs sm:text-sm text-muted-foreground">No categories available. Please select a location first.</div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1 sm:gap-3">
+                    {[...categories]
+                      .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+                      .map((category) => (
+                        <Button
+                          key={category.key}
+                          variant={
+                            filters.category.includes(category.key)
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          className="rounded-full text-xs h-7 sm:text-sm sm:h-auto"
+                          onClick={() => handleCategoryChange(category.key)}
+                        >
+                          <Icon icon={category.icon} className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                          {category.name}
+                          {category.count > 0 && (
+                            <span className="ml-1 text-xs opacity-70">({category.count})</span>
+                          )}
+                        </Button>
+                      ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

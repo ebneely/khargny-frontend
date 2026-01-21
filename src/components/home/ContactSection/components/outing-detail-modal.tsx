@@ -5,14 +5,12 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icon } from "@iconify/react";
-import { MapPin, Star, Clock, X, DollarSign } from "lucide-react";
+import { Star, Clock, X, DollarSign } from "lucide-react";
 import { Outing, TabKey } from "@/types";
 import { InfoTab } from "./detail-tabs/info-tab";
 import { HoursTab } from "./detail-tabs/hours-tab";
@@ -34,6 +32,13 @@ export const OutingDetailModal: React.FC<OutingDetailModalProps> = ({
 }) => {
   const [selectedTab, setSelectedTab] = React.useState<TabKey>("info");
 
+  // Reset tab to "info" when modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setSelectedTab("info");
+    }
+  }, [isOpen]);
+
   if (!selectedOuting) return null;
 
   return (
@@ -47,7 +52,9 @@ export const OutingDetailModal: React.FC<OutingDetailModalProps> = ({
           <SheetHeader>
             <SheetTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-3 pr-8">
               <div className="flex items-start justify-between w-full sm:w-auto gap-2">
-                <span className="text-lg sm:text-xl font-bold line-clamp-2 flex-1">{selectedOuting.title}</span>
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-lg sm:text-xl font-bold line-clamp-2 flex-1">{selectedOuting.title}</span>
+                </div>
                 <div className="flex items-center gap-1 flex-shrink-0 sm:hidden">
                   <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                   <span className="font-semibold text-sm">{selectedOuting.rating}</span>
@@ -140,7 +147,7 @@ export const OutingDetailModal: React.FC<OutingDetailModalProps> = ({
           </TabsContent>
           <TabsContent value="photos" className="h-full">
             <ScrollArea className="h-full">
-              <PhotosTab outing={selectedOuting} />
+              {selectedTab === "photos" && <PhotosTab outing={selectedOuting} />}
             </ScrollArea>
           </TabsContent>
         </div>

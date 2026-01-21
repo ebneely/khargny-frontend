@@ -230,9 +230,9 @@ export const dashboardApi = {
               } 
             },
             errorPolicy: 'all',
-            // Refetch queries to update cache
+            // Refetch queries to update cache (with locationFilter required)
             refetchQueries: [
-              { query: GET_PLACES },
+              { query: GET_PLACES, variables: { filters: { locationFilter: location } } },
               { query: GET_CITIES },
             ],
             // Optimistic update for instant UI feedback
@@ -285,9 +285,9 @@ export const dashboardApi = {
             mutation: UPDATE_PLACE,
             variables: { id, input },
             errorPolicy: 'all',
-            // Refetch queries to update cache
+            // Refetch queries to update cache (with locationFilter required)
             refetchQueries: [
-              { query: GET_PLACES },
+              { query: GET_PLACES, variables: { filters: { locationFilter: location } } },
               { query: GET_PLACE, variables: { id } },
             ],
             // Optimistic update for instant UI feedback
@@ -326,9 +326,9 @@ export const dashboardApi = {
             mutation: DELETE_PLACE,
             variables: { id: place.id },
             errorPolicy: 'all',
-            // Refetch queries to update cache
+            // Refetch queries to update cache (with locationFilter required)
             refetchQueries: [
-              { query: GET_PLACES },
+              { query: GET_PLACES, variables: { filters: { locationFilter: location } } },
               { query: GET_CITIES },
             ],
             // Update cache to remove deleted place

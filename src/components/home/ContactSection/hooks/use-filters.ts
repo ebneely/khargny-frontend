@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React from "react";
 import type { FilterOptions, Outing } from "@/types";
+import type { DynamicCategory } from "@/hooks/useDynamicCategories";
 
-export const useFilters = (outings: Outing[] = []) => {
+export const useFilters = (outings: Outing[] = [], categories: DynamicCategory[] = []) => {
   // Default filter state
   const defaultFilters: FilterOptions = {
     location: "",
@@ -96,37 +97,36 @@ export const useFilters = (outings: Outing[] = []) => {
         return false;
       }
 
-      // Category filter - check if any selected category matches any of the outing's types
+      // Category filter - match Google types like Expo app does
       if (filters.category.length > 0) {
-        // If outing has types array, check if any match
-        if (outing.types && outing.types.length > 0) {
-          const outingCategories = outing.types.map((type) =>
-            type.name.toLowerCase(),
-          );
+        // Use raw Google types array (like Expo app) - this is the primary source
+        const placeCategories = outing.googleTypes || [];
+        
+        // Fallback to mapped types if googleTypes not available
+        const fallbackTypes = outing.types?.map((type) => type.name.toLowerCase()) || [];
+        const allPlaceCategories = [
+          ...placeCategories.map(cat => cat.toLowerCase()),
+          ...fallbackTypes
+        ];
 
-          // Also check the main category
-          if (outing.category) {
-            outingCategories.push(outing.category.toLowerCase());
-          }
+        // Check if any selected category matches any Google type
+        // Categories from Google are types (strings), filter categories are keys
+        // This matches the Expo app logic exactly
+        const hasMatchingCategory = placeCategories.some((placeCategory) => {
+          // Find matching category by checking if the place category matches any googleTypes
+          return filters.category.some((filterKey) => {
+            const category = categories.find((c) => c.key === filterKey);
+            if (!category) return false;
+            
+            // Check if any Google type matches any of the category's googleTypes
+            return category.googleTypes?.some((type) => 
+              placeCategory.toLowerCase().includes(type.toLowerCase()) ||
+              type.toLowerCase().includes(placeCategory.toLowerCase())
+            );
+          });
+        });
 
-          // Check if any of the selected categories match
-          const hasMatchingCategory = filters.category.some((category) =>
-            outingCategories.some((outingCategory) =>
-              outingCategory.includes(category.toLowerCase()),
-            ),
-          );
-
-          if (!hasMatchingCategory) return false;
-        }
-        // If no types array, fall back to just the main category
-        else if (
-          outing.category &&
-          !filters.category.some((cat) =>
-            outing.category.toLowerCase().includes(cat.toLowerCase()),
-          )
-        ) {
-          return false;
-        }
+        if (!hasMatchingCategory) return false;
       }
 
       // Price range filter
@@ -156,7 +156,7 @@ export const useFilters = (outings: Outing[] = []) => {
 
       return true;
     });
-  }, [outings, filters]);
+  }, [outings, filters, categories]);
 
 
   // Return all the values and functions needed

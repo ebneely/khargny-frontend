@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Outing } from "@/types";
+import { calculatePlaceOpenStatus } from "@/utils/openingHours";
 
 /**
  * Maps Google Places API response to the Outing type for compatibility with components
@@ -156,6 +157,23 @@ export function mapPlaceDetailsToOuting(placeDetails: any): Outing {
       `A popular ${placeType} in ${area} ${featuresText} ${ratingText}.`.trim();
   }
 
+  // Calculate open status from periods data (frontend calculation)
+  // This ensures we always have accurate status even if backend data is stale
+  const calculatedOpenStatus = calculatePlaceOpenStatus(placeDetails.opening_hours);
+  
+  // Priority order:
+  // 1. Frontend calculated status (most accurate, always fresh)
+  // 2. Backend calculated openStatus (fallback)
+  // 3. Backend isOpenNow (legacy fallback)
+  // 4. Google's open_now (should not exist anymore, but keep as last resort)
+  const isOpenNow = 
+    calculatedOpenStatus?.isOpen ?? // Frontend calculation from periods
+    placeDetails.openStatus?.isOpen ?? // Backend calculated openStatus
+    placeDetails.isOpenNow ?? // Backend isOpenNow
+    placeDetails.opening_hours?.open_now ??
+    placeDetails.current_opening_hours?.open_now ??
+    false;
+
   return {
     title: placeDetails.name || "Place",
     image: primaryImage,
@@ -169,13 +187,11 @@ export function mapPlaceDetailsToOuting(placeDetails: any): Outing {
     location,
     category: mappedTypes[0]?.name || "Place",
     description,
-    open_now:
-      placeDetails.opening_hours?.open_now ||
-      placeDetails.current_opening_hours?.open_now ||
-      false,
+    open_now: isOpenNow,
     vicinity: placeDetails.vicinity || placeDetails.formatted_address,
     address: placeDetails.formatted_address || placeDetails.vicinity,
-    types: mappedTypes,
+    types: mappedTypes, // Mapped types with name and icon (for display)
+    googleTypes: placeDetails.types || [], // Raw Google types array (for filtering, like Expo app)
     mapLink: placeDetails.url || "",
     periods,
     weekday_text:

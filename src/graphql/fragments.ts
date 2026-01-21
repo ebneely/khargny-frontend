@@ -107,7 +107,6 @@ export const GOOGLE_PLACE_GEOMETRY_FIELDS = gql`
  */
 export const GOOGLE_PLACE_OPENING_HOURS_FIELDS = gql`
   fragment GooglePlaceOpeningHoursFields on GooglePlaceOpeningHours {
-    open_now
     periods {
       open {
         day
@@ -178,6 +177,15 @@ export const GOOGLE_PLACE_BASIC_FIELDS = gql`
     icon
     icon_background_color
     icon_mask_base_uri
+    isOpenNow
+    openStatus {
+      isOpen
+      closesAt
+      opensAt {
+        day
+        time
+      }
+    }
   }
 `;
 

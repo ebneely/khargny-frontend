@@ -74,7 +74,8 @@ export interface Outing {
   open_now: boolean;
   vicinity?: string;
   address?: string;
-  types?: PlaceType[];
+  types?: PlaceType[]; // Mapped types with name and icon (for display)
+  googleTypes?: string[]; // Raw Google types array (for filtering, like Expo app)
   mapLink?: string;
   periods?: Period[];
   weekday_text?: string[];

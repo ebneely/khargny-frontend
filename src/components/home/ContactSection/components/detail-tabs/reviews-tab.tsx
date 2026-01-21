@@ -1,5 +1,6 @@
 import React from "react";
 import { Icon } from "@iconify/react";
+import { Star } from "lucide-react";
 import { CustomImage } from "@/components/ui/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Outing } from "@/types";
@@ -32,18 +33,15 @@ export const ReviewsTab: React.FC<ReviewsTabProps> = ({ outing }) => {
                       {review.time}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center">
+                  <div className="mt-1 flex items-center gap-0.5">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Icon
+                      <Star
                         key={i}
-                        icon="lucide:star"
                         className={
                           i < review.rating
-                            ? "text-yellow-500 fill-yellow-500"
-                            : "text-muted-foreground"
+                            ? "h-4 w-4 text-yellow-500 fill-yellow-500"
+                            : "h-4 w-4 text-muted-foreground"
                         }
-                        width={16}
-                        height={16}
                       />
                     ))}
                   </div>

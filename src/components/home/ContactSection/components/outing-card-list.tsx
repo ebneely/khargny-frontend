@@ -20,8 +20,8 @@ export const OutingCardList: React.FC<OutingCardListProps> = ({ outing, onClick 
       onClick={() => onClick(outing)}
       className="w-full"
     >
-      <Card className="group w-full cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary">
-        <div className="flex gap-2 p-2 sm:gap-4 sm:p-2.5">
+      <Card className="group w-full cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary h-full flex">
+        <div className="flex gap-2 p-2 sm:gap-4 sm:p-2.5 w-full h-full">
           {/* Image - smaller and on the left */}
           <div className="relative h-28 w-28 sm:h-36 sm:w-36 flex-shrink-0 overflow-hidden rounded-lg">
             <CustomImage

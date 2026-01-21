@@ -1,7 +1,6 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { CustomImage } from "@/components/ui/image";
-import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -16,6 +15,40 @@ export const PhotosTab: React.FC<PhotosTabProps> = ({ outing }) => {
   const [selectedImageIndex, setSelectedImageIndex] = React.useState<
     number | null
   >(null);
+  const [visiblePhotoCount, setVisiblePhotoCount] = React.useState(6); // Initial load: 6 photos
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+
+  // Reset visible count when outing changes
+  React.useEffect(() => {
+    setVisiblePhotoCount(6);
+  }, [outing.placeId]);
+
+  // Load more photos when sentinel element comes into view (Intersection Observer)
+  React.useEffect(() => {
+    if (!outing.images || outing.images.length <= visiblePhotoCount || !sentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisiblePhotoCount((prev) => 
+            Math.min(prev + 6, outing.images!.length)
+          );
+        }
+      },
+      {
+        rootMargin: '100px', // Start loading 100px before reaching the sentinel
+      }
+    );
+
+    observer.observe(sentinelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [visiblePhotoCount, outing.images]);
+
+  const visibleImages = outing.images?.slice(0, visiblePhotoCount) || [];
+  const hasMore = outing.images && outing.images.length > visiblePhotoCount;
 
   // Get the selected image URL if an image is selected
   const selectedImage =
@@ -37,32 +70,44 @@ export const PhotosTab: React.FC<PhotosTabProps> = ({ outing }) => {
     <div className="relative p-4 sm:p-6 md:p-8">
       {/* Photo gallery with grid layout */}
       {outing.images && outing.images.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-          {outing.images.map((image, index) => (
-            <div
-              key={index}
-              onClick={() => handlePhotoClick(index)}
-              className="group relative cursor-pointer overflow-hidden rounded-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <div className="relative aspect-[4/3]">
-                <CustomImage
-                  src={image}
-                  alt={`${outing.title} photo ${index + 1}`}
-                  className="h-full w-full"
-                  fill
-                  objectFit="cover"
-                />
-                {/* Overlay on hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 transition-opacity group-hover:opacity-100" />
-                <div className="absolute bottom-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div className="rounded-full bg-white/90 p-1.5 backdrop-blur-sm">
-                    <Icon icon="lucide:zoom-in" width={16} height={16} className="text-gray-800" />
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            {visibleImages.map((image, index) => (
+              <div
+                key={index}
+                onClick={() => handlePhotoClick(index)}
+                className="group relative cursor-pointer overflow-hidden rounded-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <div className="relative aspect-[4/3]">
+                  <CustomImage
+                    src={image}
+                    alt={`${outing.title} photo ${index + 1}`}
+                    className="h-full w-full"
+                    fill
+                    objectFit="cover"
+                    priority={index < 3} // Only prioritize first 3 images
+                  />
+                  {/* Overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <div className="absolute bottom-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="rounded-full bg-white/90 p-1.5 backdrop-blur-sm">
+                      <Icon icon="lucide:zoom-in" width={16} height={16} className="text-gray-800" />
+                    </div>
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+          
+          {/* Sentinel element for Intersection Observer - triggers loading more photos */}
+          {hasMore && (
+            <div ref={sentinelRef} className="mt-4 flex justify-center py-4">
+              <div className="text-sm text-muted-foreground">
+                Loading more photos...
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       ) : (
         <div className="flex h-[300px] flex-col items-center justify-center text-center">
           <div className="rounded-full bg-gradient-to-br from-gray-100 to-gray-200 p-4 mb-3">
