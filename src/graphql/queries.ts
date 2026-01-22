@@ -37,10 +37,18 @@ export const GET_PLACES = gql`
 `;
 
 export const GET_PLACES_BY_CITY = gql`
-  query GetPlacesByCity($filters: PlaceFilters) {
-    places(filters: $filters) {
+  query GetPlacesByCity($city: String!) {
+    placesByCity(city: $city) {
       ...PlaceBasicFields
       ...PlaceExtendedFields
+      details {
+        placeId
+        isOpen
+        rating
+        thumbnail {
+          photo_url
+        }
+      }
     }
   }
   ${PLACE_BASIC_FIELDS}

@@ -18,7 +18,6 @@ import { OutingDetailModal } from "./components/outing-detail-modal";
 import { FilterModal } from "./components/filter-modal";
 import { ViewModeModal } from "./components/view-mode-modal";
 import { LocationSelector } from "./components/location-selector";
-import { mapPlaceDetailsToOuting } from "./utils/place-mapper";
 import Navbar from "@/components/ui/Navbar";
 
 // Types
@@ -45,233 +44,82 @@ export default function ContactSection() {
     isLoading: categoriesLoading,
   } = useDynamicCategories(selectedLocation || null);
 
-  // Fetch all outings from the backend - based on selectedLocation instead of filters.location
+  // Fetch all outings from the backend - based on selectedLocation
   const {
-    data: tablefilter = [],
-    isLoading: tableloading,
+    data: outingsData = [],
+    isLoading,
     error: placesError,
   } = useQuery<Outing[]>({
     queryKey: [
-      "tablefilter",
-      selectedLocation || "no-location", // Use selectedLocation, or "no-location" to prevent empty string issues
+      "outings",
+      selectedLocation || "no-location",
     ],
     queryFn: async (): Promise<Outing[]> => {
-      if (!selectedLocation) {
+      if (!selectedLocation || selectedLocation.trim() === '') {
         return [];
       }
       
       try {
-        // Ensure we're only fetching places for the selected city
-        if (!selectedLocation || selectedLocation.trim() === '') {
-          console.warn('[Explorer] No location selected, returning empty array');
-          return [];
-        }
+        console.log(`[Explorer] Fetching places for city: "${selectedLocation}"`);
+        // Single request fetch (Phase 4 optimization)
+        const places = await clientApi.places.getByCity(selectedLocation.trim());
 
-        console.log(`[Explorer] Fetching places for location: "${selectedLocation}"`);
-        const places = await clientApi.places.search({
-          locationFilter: selectedLocation.trim(),
-          onlyWithPlaceId: true, // Only fetch places with placeIds
-        });
-
-        console.log(`[Explorer] Fetched ${places?.length || 0} places for location: "${selectedLocation}"`, places);
+        console.log(`[Explorer] Fetched ${places?.length || 0} places for: "${selectedLocation}"`);
 
         // Transform Place[] to Outing[]
-        // Store backend photos - they will be used as fallback thumbnails after Google Place Details enrichment
-        return (places || []).map((place): Outing => ({
-          title: place.name || '',
-          image: place.photos?.[0]?.url || '', // Backend photo for thumbnail (will be used after enrichment)
-          images: place.photos?.map(p => p.url).filter((url): url is string => Boolean(url)) || [], // Backend photos array
-          rating: place.rating || 0,
-          reviewCount: 0, // Place doesn't have reviewCount
-          user_ratings_total: place.rating ? Math.floor(place.rating * 10) : 0,
-          price: place.price || '$',
-          price_level: place.price ? place.price.length : 1,
-          area: place.area || place.city || '',
-          location: place.address || '',
-          category: place.age || 'Restaurant', // Use age as category fallback
-          open_now: true, // Assume open
-          placeId: place.placeId || '',
-          description: place.description || '',
-        }));
+        return (places || []).map((place: any): Outing => {
+            const details = place.details || {};
+            
+            // Image priority: Google Thumbnail > Backend Photo > Fallback
+            const primaryImage = details.thumbnail?.photo_url || 
+                               place.photos?.[0]?.url || 
+                               "https://img.heroui.chat/image/places?w=800&h=600&u=restaurant-default";
+
+            return {
+                title: place.name || '',
+                image: primaryImage,
+                images: place.photos?.map((p: any) => p.url).filter(Boolean) || [],
+                
+                // Rating priority: Google > Backend 
+                rating: details.rating || place.rating || 0,
+                reviewCount: place.user_ratings_total || 0,
+                user_ratings_total: place.user_ratings_total || 0,
+                
+                price: place.price || '$',
+                price_level: place.price ? place.price.length : 1,
+                area: place.area || place.city || '',
+                location: place.address || '',
+                category: place.age || 'Restaurant', 
+                
+                // Open status from details (calculated server-side)
+                open_now: details.isOpen ?? false, 
+                
+                placeId: place.placeId || '',
+                description: place.description || '',
+                
+                // Fields required by Outing interface but not present in summary
+                types: [],
+                googleTypes: [],
+                vicinity: place.address || '',
+                address: place.address || '',
+                mapLink: '',
+                periods: [],
+                weekday_text: [],
+                reviews: [],
+            };
+        });
       } catch (error) {
         console.error("Error fetching places:", error);
         return [];
       }
     },
-    enabled: Boolean(selectedLocation), // Use selectedLocation instead
+    enabled: Boolean(selectedLocation),
     refetchOnWindowFocus: false,
-    staleTime: 0, // Don't use cached data
-    gcTime: 0, // Clear from cache immediately
+    staleTime: 5 * 60 * 1000, // Cache on client for 5 mins
   });
 
-  // Extract placeIds from backend data - only places with placeId
-  const placeIds = React.useMemo(() => {
-    if (!tablefilter || tablefilter.length === 0) {
-      return [];
-    }
-    return tablefilter
-      .map((place) => place.placeId)
-      .filter((id): id is string => Boolean(id && id.trim() !== ''));
-  }, [tablefilter]);
-
-  // Bulk fetch Google Place Details for all placeIds when location is selected
-  const { data: placeDetailsMap, isLoading: isLoadingPlaceDetails } = useQuery({
-    queryKey: ["PLACE_DETAILS_BULK", placeIds],
-    queryFn: async () => {
-      if (!placeIds || placeIds.length === 0) {
-        return {};
-      }
-      
-      // Fetch all place details in parallel (without photos for performance)
-      const detailsPromises = placeIds.map(async (placeId) => {
-        try {
-          const details = await clientApi.places.getDetailsWithoutPhotos(placeId);
-          return { placeId, details };
-        } catch (error) {
-          console.error(`Error fetching details for ${placeId}:`, error);
-          return { placeId, details: null };
-        }
-      });
-      
-      const results = await Promise.all(detailsPromises);
-      
-      // Create a map: placeId -> placeDetails
-      const map: Record<string, any> = {};
-      results.forEach(({ placeId, details }) => {
-        if (details) {
-          map[placeId] = details;
-        }
-      });
-      
-      return map;
-    },
-    enabled: placeIds.length > 0 && !tableloading,
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-  });
-
-  // Fetch thumbnails (single photo) for each placeId when location is selected
-  const { data: thumbnailsMap, isLoading: isLoadingThumbnails } = useQuery({
-    queryKey: ["PLACE_THUMBNAILS_BULK", placeIds],
-    queryFn: async () => {
-      if (!placeIds || placeIds.length === 0) {
-        return {};
-      }
-      
-      // Fetch thumbnails in parallel for all placeIds
-      const thumbnailPromises = placeIds.map(async (placeId) => {
-        try {
-          const thumbnail = await clientApi.places.getThumbnail(placeId);
-          return { placeId, thumbnail };
-        } catch (error) {
-          console.error(`Error fetching thumbnail for ${placeId}:`, error);
-          return { placeId, thumbnail: null };
-        }
-      });
-      
-      const results = await Promise.all(thumbnailPromises);
-      
-      // Create a map: placeId -> thumbnail URL
-      const map: Record<string, string> = {};
-      results.forEach(({ placeId, thumbnail }) => {
-        if (thumbnail) {
-          map[placeId] = thumbnail;
-        }
-      });
-      
-      return map;
-    },
-    enabled: placeIds.length > 0 && !tableloading && !isLoadingPlaceDetails,
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-  });
-
-  // Enriched outingsData - merge backend data with Google Place Details and thumbnails
-  const enrichedOutingsData = React.useMemo(() => {
-    if (!selectedLocation || tableloading) {
-      return [];
-    }
-    
-    // Only process places with placeId
-    const placesWithPlaceId = (tablefilter || []).filter(
-      (place) => place.placeId && place.placeId.trim() !== ''
-    );
-    
-    if (!placeDetailsMap || Object.keys(placeDetailsMap).length === 0) {
-      // If place details not yet loaded, return empty array (show loading)
-      return [];
-    }
-    
-    // Type guard: placeDetailsMap is guaranteed to be defined here
-    const detailsMap = placeDetailsMap as Record<string, any>;
-    const thumbnails = (thumbnailsMap || {}) as Record<string, string>;
-    
-    // Merge backend data with enriched place details
-    return placesWithPlaceId.map((backendPlace) => {
-      const placeId = backendPlace.placeId;
-      if (!placeId) {
-        return backendPlace;
-      }
-      
-      const placeDetails = detailsMap[placeId];
-      
-      if (placeDetails) {
-        // Map Google Place Details to Outing format
-        const enriched = mapPlaceDetailsToOuting(placeDetails);
-        
-        // Store backend photos before merging (since enriched won't have photos - we're not fetching them in bulk)
-        const backendImage = backendPlace.image || '';
-        const backendImages = backendPlace.images || [];
-        
-        // Get thumbnail from Google API (fetched separately)
-        const googleThumbnail = thumbnails[placeId] || null;
-        
-        // Merge backend data with enriched data, prioritizing enriched data
-        const mergedOuting = {
-          ...backendPlace,
-          ...enriched,
-          placeId: placeDetails.place_id || placeDetails.placeId || placeId,
-        };
-        
-        // Prioritize thumbnail sources: Google thumbnail > backend photo > enriched fallback
-        if (googleThumbnail) {
-          mergedOuting.image = googleThumbnail;
-        } else if (backendImage && backendImage.trim() !== '') {
-          mergedOuting.image = backendImage;
-        } else {
-          // Use enriched image as last resort (might be fallback)
-          const fallbackImageUrl = "https://img.heroui.chat/image/places?w=800&h=600&u=restaurant-default";
-          if (enriched.image && enriched.image !== fallbackImageUrl) {
-            mergedOuting.image = enriched.image;
-          }
-        }
-        
-        // Keep backend images array if available
-        if (backendImages.length > 0) {
-          mergedOuting.images = backendImages;
-        }
-        
-        return mergedOuting;
-      }
-      
-      // If place details failed to load, still return backend data with images
-      // Try to use Google thumbnail if available
-      const googleThumbnail = thumbnails[placeId] || null;
-      if (googleThumbnail) {
-        return {
-          ...backendPlace,
-          image: googleThumbnail,
-        };
-      }
-      
-      return backendPlace;
-    });
-  }, [tablefilter, tableloading, selectedLocation, placeDetailsMap, thumbnailsMap]);
-
-  // Combined loading state
-  const isLoading = tableloading || isLoadingPlaceDetails || isLoadingThumbnails;
+  // Derived state for filters
+  const enrichedOutingsData = outingsData;
 
   // Filters and filtering logic - now using enrichedOutingsData
   const {

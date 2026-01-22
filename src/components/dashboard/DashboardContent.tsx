@@ -38,11 +38,9 @@ export function DashboardContent() {
     data: placesData,
     loading: placesLoading,
     refetch: refetchPlaces,
-  } = useQuery<{ places: Place[] }>(GET_PLACES_BY_CITY, {
+  } = useQuery<{ placesByCity: Place[] }>(GET_PLACES_BY_CITY, {
     variables: {
-      filters: {
-        locationFilter: selectedCity,
-      },
+      city: selectedCity,
     },
     skip: !selectedCity,
   });
@@ -52,9 +50,9 @@ export function DashboardContent() {
   const [updatePlace] = useMutation(UPDATE_PLACE);
   const [deletePlace] = useMutation(DELETE_PLACE);
 
-  const places: Place[] = placesData?.places || [];
+  const places: Place[] = placesData?.placesByCity || [];
   const cities: string[] = citiesData?.cities || [];
-
+  
   // Handlers
   const handleCitySelect = (city: string) => {
     setSelectedCity(city);
@@ -176,7 +174,7 @@ export function DashboardContent() {
               },
               // Refetch queries to update cache
               refetchQueries: [
-                { query: GET_PLACES_BY_CITY, variables: { filters: { locationFilter: selectedCity } } },
+                { query: GET_PLACES_BY_CITY, variables: { city: selectedCity } },
                 { query: GET_CITIES },
               ],
             });
@@ -218,7 +216,7 @@ export function DashboardContent() {
               },
               // Refetch queries to update cache
               refetchQueries: [
-                { query: GET_PLACES_BY_CITY, variables: { filters: { locationFilter: selectedCity || operation.data.city } } },
+                { query: GET_PLACES_BY_CITY, variables: { city: selectedCity || operation.data.city } },
                 { query: GET_CITIES },
                 { query: GET_PLACE, variables: { id: operation.data.id } },
               ],
@@ -230,7 +228,7 @@ export function DashboardContent() {
               },
               // Refetch queries to update cache
               refetchQueries: [
-                { query: GET_PLACES_BY_CITY, variables: { filters: { locationFilter: selectedCity } } },
+                { query: GET_PLACES_BY_CITY, variables: { city: selectedCity } },
                 { query: GET_CITIES },
               ],
               // Update cache to remove deleted place

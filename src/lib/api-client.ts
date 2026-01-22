@@ -27,6 +27,7 @@ import {
   GOOGLE_PLACE_THUMBNAIL,
   GOOGLE_FIND_PLACE,
   GET_CITIES,
+  GET_PLACES_BY_CITY,
 } from '@/graphql/queries';
 import { SUBMIT_CONTACT as SUBMIT_CONTACT_MUTATION } from '@/graphql/mutations';
 import { Place } from '@/types';
@@ -38,9 +39,23 @@ interface GetPlacesResponse {
   places: Place[];
 }
 
+interface GetPlacesByCityResponse {
+  placesByCity: Array<Place & {
+    details?: {
+      placeId: string;
+      isOpen: boolean;
+      rating: number;
+      thumbnail?: {
+        photo_url: string;
+      };
+    };
+  }>;
+}
+
 interface GetPlaceByPlaceIdResponse {
   placeByPlaceId: Place;
 }
+
 
 interface GooglePlaceDetailsResponse {
   googlePlaceDetails: any; // Google Places API response structure
@@ -145,6 +160,30 @@ export const clientApi = {
         return result.data?.places || [];
       } catch (error) {
         handleGraphQLError(error, 'places.search');
+      }
+    },
+
+    /**
+     * Get places by city with details (SINGLE REQUEST)
+     * Optimized for explorer page
+     */
+    getByCity: async (city: string): Promise<GetPlacesByCityResponse['placesByCity']> => {
+      try {
+        const result = await client.query<GetPlacesByCityResponse>({
+          query: GET_PLACES_BY_CITY,
+          variables: { city },
+          fetchPolicy: 'network-only',
+          errorPolicy: 'all',
+        });
+
+        const errors = (result as ApolloQueryResult<GetPlacesByCityResponse> & { errors?: Array<{ message: string }> }).errors;
+        if (errors && errors.length > 0) {
+          console.warn('GraphQL warnings in places.getByCity:', errors);
+        }
+
+        return result.data?.placesByCity || [];
+      } catch (error) {
+        handleGraphQLError(error, 'places.getByCity');
       }
     },
 
