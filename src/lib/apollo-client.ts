@@ -97,7 +97,7 @@ const createApolloClient = () => {
     cache: new InMemoryCache({
       typePolicies: {
         // Place type policy for cache normalization
-        Place: {
+        KhargnyPlace: {
           keyFields: ['id'], // Use 'id' as unique identifier
           fields: {
             // Photos array - replace on update
@@ -118,13 +118,13 @@ const createApolloClient = () => {
         Query: {
           fields: {
             // Places array - replace on refetch
-            places: {
+            khargnyPlaces: {
               merge(existing = [], incoming) {
                 return incoming;
               },
             },
             // Cities array - replace on refetch
-            cities: {
+            getCityNames: {
               merge(existing = [], incoming) {
                 return incoming;
               },

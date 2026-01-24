@@ -12,7 +12,7 @@ import { gql } from "@apollo/client";
  * Common fields used across multiple place queries
  */
 export const PLACE_BASIC_FIELDS = gql`
-  fragment PlaceBasicFields on Place {
+  fragment PlaceBasicFields on KhargnyPlace {
     id
     name
     placeId
@@ -31,7 +31,7 @@ export const PLACE_BASIC_FIELDS = gql`
  * Photos and videos for places
  */
 export const PLACE_MEDIA_FIELDS = gql`
-  fragment PlaceMediaFields on Place {
+  fragment PlaceMediaFields on KhargnyPlace {
     photos {
       url
       public_id
@@ -48,7 +48,7 @@ export const PLACE_MEDIA_FIELDS = gql`
  * Additional metadata fields
  */
 export const PLACE_EXTENDED_FIELDS = gql`
-  fragment PlaceExtendedFields on Place {
+  fragment PlaceExtendedFields on KhargnyPlace {
     age
     map
     user_ratings_total
