@@ -118,8 +118,10 @@ export default function ContactSection() {
     staleTime: 5 * 60 * 1000, // Cache on client for 5 mins
   });
 
-  // Derived state for filters
-  const enrichedOutingsData = outingsData;
+  // Derived state for filters - filter out outings without placeId
+  const enrichedOutingsData = React.useMemo(() => {
+    return outingsData.filter((outing) => outing.placeId && outing.placeId.trim() !== '');
+  }, [outingsData]);
 
   // Filters and filtering logic - now using enrichedOutingsData
   const {
