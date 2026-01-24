@@ -21,7 +21,6 @@ import { client } from './apollo-client';
 import { 
   GET_PLACES, 
   GET_PLACE,
-  GOOGLE_PLACE_DETAILS, 
   GOOGLE_FIND_PLACE,
   GET_CITIES,
 } from '@/graphql/queries';
@@ -104,18 +103,14 @@ export const dashboardApi = {
      */
     search: async (filters: any): Promise<Place[]> => {
       try {
-        const result = await client.query<GetPlacesResponse>({
+        const result = await client.query({
           query: GET_PLACES,
-          variables: { filters },
+          variables: { filter: filters },
           fetchPolicy: 'network-only',
           errorPolicy: 'all',
         });
 
-        if (result.error) {
-          console.warn('GraphQL warnings in places.search:', result.error);
-        }
-
-        return result.data?.places || [];
+        return (result.data as any)?.khargnyPlaces || [];
       } catch (error) {
         handleGraphQLError(error, 'places.search');
       }
@@ -126,19 +121,14 @@ export const dashboardApi = {
      */
     getDetails: async (placeId: string): Promise<Place | null> => {
       try {
-        const result = await client.query<GetPlaceResponse>({
+        const result = await client.query({
           query: GET_PLACE,
           variables: { id: placeId },
           errorPolicy: 'all',
         });
 
-        if (result.error) {
-          console.warn('GraphQL warnings in places.getDetails:', result.error);
-        }
-
-        return result.data?.place || null;
+        return (result.data as any)?.khargnyPlace || null;
       } catch (error) {
-        // Return null instead of throwing for getDetails (graceful degradation)
         console.error('Error fetching place details:', error);
         return null;
       }
@@ -147,19 +137,15 @@ export const dashboardApi = {
     /**
      * Find place by text search
      */
-    findPlace: async (searchQuery: string): Promise<GoogleFindPlaceResponse['googleFindPlace']> => {
+    findPlace: async (searchQuery: string): Promise<any[]> => {
       try {
-        const result = await client.query<GoogleFindPlaceResponse>({
+        const result = await client.query({
           query: GOOGLE_FIND_PLACE,
           variables: { searchQuery },
           errorPolicy: 'all',
         });
 
-        if (result.error) {
-          console.warn('GraphQL warnings in places.findPlace:', result.error);
-        }
-
-        return result.data?.googleFindPlace || [];
+        return (result.data as any)?.googleFindPlace || [];
       } catch (error) {
         handleGraphQLError(error, 'places.findPlace');
       }
@@ -170,16 +156,12 @@ export const dashboardApi = {
      */
     getLocations: async (): Promise<string[]> => {
       try {
-        const result = await client.query<GetCitiesResponse>({
+        const result = await client.query({
           query: GET_CITIES,
           errorPolicy: 'all',
         });
 
-        if (result.error) {
-          console.warn('GraphQL warnings in places.getLocations:', result.error);
-        }
-
-        return result.data?.cities || [];
+        return (result.data as any)?.getCityNames || [];
       } catch (error) {
         console.error("Error fetching cities:", error);
         return [];
@@ -191,17 +173,13 @@ export const dashboardApi = {
      */
     getAreas: async (location: string): Promise<string[]> => {
       try {
-        const result = await client.query<GetPlacesResponse>({
+        const result = await client.query({
           query: GET_PLACES,
-          variables: { filters: { locationFilter: location } },
+          variables: { filter: { city: location } },
           errorPolicy: 'all',
         });
 
-        if (result.error) {
-          console.warn('GraphQL warnings in places.getAreas:', result.error);
-        }
-
-        const places = result.data?.places || [];
+        const places = (result.data as any)?.khargnyPlaces || [];
         const areas = Array.from(
           new Set(places.map((p: Place) => p.area).filter(Boolean))
         ) as string[];

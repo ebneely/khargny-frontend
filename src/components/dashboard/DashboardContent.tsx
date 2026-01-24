@@ -14,7 +14,7 @@ import { PlaceIdLookup } from '@/components/dashboard/PlaceIdLookup';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Darkmode from '@/components/ui/Darkmode';
-import { GET_CITIES, GET_PLACES_BY_CITY, GET_PLACE } from '@/graphql/queries';
+import { GET_CITIES, GET_PLACES, GET_PLACE } from '@/graphql/queries';
 import { CREATE_PLACE, UPDATE_PLACE, DELETE_PLACE } from '@/graphql/mutations';
 import { generateId } from '@/lib/dashboard-utils';
 import { Plus, LogOut, RefreshCw, Edit } from 'lucide-react';
@@ -33,14 +33,14 @@ export function DashboardContent() {
   const [isBulkEdit, setIsBulkEdit] = useState(false);
 
   // GraphQL queries
-  const { data: citiesData, refetch: refetchCities } = useQuery<{ cities: string[] }>(GET_CITIES);
+  const { data: citiesData, refetch: refetchCities } = useQuery<{ getCityNames: string[] }>(GET_CITIES);
   const {
     data: placesData,
     loading: placesLoading,
     refetch: refetchPlaces,
-  } = useQuery<{ placesByCity: Place[] }>(GET_PLACES_BY_CITY, {
+  } = useQuery<{ khargnyPlaces: Place[] }>(GET_PLACES, {
     variables: {
-      city: selectedCity,
+      filter: { city: selectedCity },
     },
     skip: !selectedCity,
   });
@@ -50,8 +50,8 @@ export function DashboardContent() {
   const [updatePlace] = useMutation(UPDATE_PLACE);
   const [deletePlace] = useMutation(DELETE_PLACE);
 
-  const places: Place[] = placesData?.placesByCity || [];
-  const cities: string[] = citiesData?.cities || [];
+  const places: Place[] = placesData?.khargnyPlaces || [];
+  const cities: string[] = citiesData?.getCityNames || [];
   
   // Handlers
   const handleCitySelect = (city: string) => {
@@ -174,7 +174,7 @@ export function DashboardContent() {
               },
               // Refetch queries to update cache
               refetchQueries: [
-                { query: GET_PLACES_BY_CITY, variables: { city: selectedCity } },
+                { query: GET_PLACES, variables: { filter: { city: selectedCity } } },
                 { query: GET_CITIES },
               ],
             });
@@ -216,7 +216,7 @@ export function DashboardContent() {
               },
               // Refetch queries to update cache
               refetchQueries: [
-                { query: GET_PLACES_BY_CITY, variables: { city: selectedCity || operation.data.city } },
+                { query: GET_PLACES, variables: { filter: { city: selectedCity || operation.data.city } } },
                 { query: GET_CITIES },
                 { query: GET_PLACE, variables: { id: operation.data.id } },
               ],
@@ -228,7 +228,7 @@ export function DashboardContent() {
               },
               // Refetch queries to update cache
               refetchQueries: [
-                { query: GET_PLACES_BY_CITY, variables: { city: selectedCity } },
+                { query: GET_PLACES, variables: { filter: { city: selectedCity } } },
                 { query: GET_CITIES },
               ],
               // Update cache to remove deleted place

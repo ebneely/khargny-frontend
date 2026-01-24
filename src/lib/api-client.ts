@@ -1,103 +1,17 @@
 /**
  * Public Client API - Business Logic Only
- * 
- * ARCHITECTURE RULE:
- * This client uses GraphQL for ALL business logic operations.
- * 
- * - Business Logic: Use this client (GraphQL path: /api/graphql)
- * - Authentication: Use Better Auth REST client from './auth-client' (REST path: /api/auth/*)
- * 
- * This client handles:
- * - Places queries and mutations
- * - Contact form submissions
- * - All other business logic operations
- * 
- * DO NOT use this client for authentication operations.
- * Use authClient from './auth-client' for authentication.
  */
 
 import { client } from './apollo-client';
-import type { ApolloQueryResult, FetchResult } from '@apollo/client';
 import { 
-  GET_PLACES, 
-  GET_PLACE_BY_PLACE_ID, 
-  GOOGLE_PLACE_DETAILS,
-  GOOGLE_PLACE_DETAILS_WITHOUT_PHOTOS,
-  GOOGLE_PLACE_PHOTOS,
-  GOOGLE_PLACE_THUMBNAIL,
-  GOOGLE_FIND_PLACE,
-  GET_CITIES,
-  GET_PLACES_BY_CITY,
+  GET_PLACE_DETAILS,
+  GET_CITY_NAMES,
 } from '@/graphql/queries';
 import { SUBMIT_CONTACT as SUBMIT_CONTACT_MUTATION } from '@/graphql/mutations';
-import { Place } from '@/types';
 
 /**
  * GraphQL Response Types
  */
-interface GetPlacesResponse {
-  places: Place[];
-}
-
-interface GetPlacesByCityResponse {
-  placesByCity: Array<Place & {
-    details?: {
-      placeId: string;
-      isOpen: boolean;
-      rating: number;
-      thumbnail?: {
-        photo_url: string;
-      };
-    };
-  }>;
-}
-
-interface GetPlaceByPlaceIdResponse {
-  placeByPlaceId: Place;
-}
-
-
-interface GooglePlaceDetailsResponse {
-  googlePlaceDetails: any; // Google Places API response structure
-}
-
-interface GooglePlacePhotosResponse {
-  googlePlaceDetails: {
-    place_id: string;
-    photos: Array<{
-      photo_reference: string;
-      height?: number;
-      width?: number;
-      photo_url?: string;
-      html_attributions?: string[];
-    }>;
-  };
-}
-
-interface GooglePlaceThumbnailResponse {
-  googlePlaceThumbnail: {
-    photo_reference: string;
-    height?: number;
-    width?: number;
-    photo_url?: string;
-    html_attributions?: string[];
-  } | null;
-}
-
-interface GoogleFindPlaceResponse {
-  googleFindPlace: Array<{
-    id: string;
-    name: string;
-    placeId: string;
-    address: string;
-    rating: number;
-  }>;
-}
-
-interface GetCitiesResponse {
-  cities: string[];
-}
-
 interface SubmitContactResponse {
   submitContact: {
     id: string;
@@ -127,227 +41,34 @@ function handleGraphQLError(error: any, operation: string): never {
 export const clientApi = {
   places: {
     /**
-     * Search places with filters (read-only)
-     * REQUIRES locationFilter - cannot fetch all places
+     * [REFACTORED] Get all city names from khargny_places
      */
-    search: async (filters: {
-      nameSearch?: string;
-      addressSearch?: string;
-      idSearch?: string;
-      placeIdSearch?: string;
-      locationFilter: string; // Required - cannot fetch all places
-      areaFilter?: string;
-      price?: number;
-      onlyWithPlaceId?: boolean;
-    }): Promise<Place[]> => {
-      if (!filters.locationFilter) {
-        throw new Error('locationFilter is required. Cannot fetch all places.');
-      }
-      
+    getCityNamesSimple: async (): Promise<string[]> => {
       try {
-        const result = await client.query<GetPlacesResponse>({
-          query: GET_PLACES,
-          variables: { filters },
-          fetchPolicy: 'network-only', // Ensure fresh data for search
-          errorPolicy: 'all', // Return partial data even if errors
+        const result = await client.query({
+          query: GET_CITY_NAMES,
+          fetchPolicy: 'network-only',
         });
-
-        const errors = (result as ApolloQueryResult<GetPlacesResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in places search:', errors);
-        }
-
-        return result.data?.places || [];
+        return (result.data as any)?.getCityNames || [];
       } catch (error) {
-        handleGraphQLError(error, 'places.search');
+        console.error("Error fetching city names:", error);
+        return [];
       }
     },
 
     /**
-     * Get places by city with details (SINGLE REQUEST)
-     * Optimized for explorer page
+     * [REFACTORED] Get full place details for all places in a city
      */
-    getByCity: async (city: string): Promise<GetPlacesByCityResponse['placesByCity']> => {
+    getPlaceDetailsSimple: async (city: string): Promise<any[]> => {
       try {
-        const result = await client.query<GetPlacesByCityResponse>({
-          query: GET_PLACES_BY_CITY,
+        const result = await client.query({
+          query: GET_PLACE_DETAILS,
           variables: { city },
           fetchPolicy: 'network-only',
-          errorPolicy: 'all',
         });
-
-        const errors = (result as ApolloQueryResult<GetPlacesByCityResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in places.getByCity:', errors);
-        }
-
-        return result.data?.placesByCity || [];
+        return (result.data as any)?.getPlaceDetails || [];
       } catch (error) {
-        handleGraphQLError(error, 'places.getByCity');
-      }
-    },
-
-    /**
-     * Get place details from Google Places API (includes photos)
-     */
-    getDetails: async (placeId: string): Promise<any> => {
-      try {
-        const result = await client.query<GooglePlaceDetailsResponse>({
-          query: GOOGLE_PLACE_DETAILS,
-          variables: { placeId },
-          errorPolicy: 'all',
-        });
-
-        const errors = (result as ApolloQueryResult<GooglePlaceDetailsResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in getDetails:', errors);
-        }
-
-        return result.data?.googlePlaceDetails || null;
-      } catch (error) {
-        handleGraphQLError(error, 'places.getDetails');
-      }
-    },
-
-    /**
-     * Get place details from Google Places API (without photos for performance)
-     */
-    getDetailsWithoutPhotos: async (placeId: string): Promise<any> => {
-      try {
-        const result = await client.query<GooglePlaceDetailsResponse>({
-          query: GOOGLE_PLACE_DETAILS_WITHOUT_PHOTOS,
-          variables: { placeId },
-          errorPolicy: 'all',
-        });
-
-        const errors = (result as ApolloQueryResult<GooglePlaceDetailsResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in getDetailsWithoutPhotos:', errors);
-        }
-
-        return result.data?.googlePlaceDetails || null;
-      } catch (error) {
-        handleGraphQLError(error, 'places.getDetailsWithoutPhotos');
-      }
-    },
-
-    /**
-     * Get photos for a place (fetches photos separately to avoid bulk loading)
-     */
-    getPhotos: async (placeId: string): Promise<any[]> => {
-      try {
-        const result = await client.query<GooglePlacePhotosResponse>({
-          query: GOOGLE_PLACE_PHOTOS,
-          variables: { placeId },
-          errorPolicy: 'all',
-        });
-
-        const errors = (result as ApolloQueryResult<GooglePlacePhotosResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in getPhotos:', errors);
-        }
-
-        return result.data?.googlePlaceDetails?.photos || [];
-      } catch (error) {
-        handleGraphQLError(error, 'places.getPhotos');
-      }
-    },
-
-    /**
-     * Get a single thumbnail photo for a place (for card thumbnails)
-     * Returns the first photo URL or null if no photos available
-     * Uses optimized query that only fetches one photo instead of all photos
-     */
-    getThumbnail: async (placeId: string): Promise<string | null> => {
-      try {
-        const result = await client.query<GooglePlaceThumbnailResponse>({
-          query: GOOGLE_PLACE_THUMBNAIL,
-          variables: { placeId },
-          errorPolicy: 'all',
-        });
-
-        const errors = (result as ApolloQueryResult<GooglePlaceThumbnailResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in getThumbnail:', errors);
-        }
-
-        const thumbnail = result.data?.googlePlaceThumbnail;
-        if (thumbnail?.photo_url) {
-          return thumbnail.photo_url;
-        }
-        return null;
-      } catch (error) {
-        console.error(`Error fetching thumbnail for ${placeId}:`, error);
-        return null;
-      }
-    },
-
-    /**
-     * Find place by text search
-     */
-    findPlace: async (searchQuery: string): Promise<GoogleFindPlaceResponse['googleFindPlace']> => {
-      try {
-        const result = await client.query<GoogleFindPlaceResponse>({
-          query: GOOGLE_FIND_PLACE,
-          variables: { searchQuery },
-          errorPolicy: 'all',
-        });
-
-        const errors = (result as ApolloQueryResult<GoogleFindPlaceResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in findPlace:', errors);
-        }
-
-        return result.data?.googleFindPlace || [];
-      } catch (error) {
-        handleGraphQLError(error, 'places.findPlace');
-      }
-    },
-
-    /**
-     * Get all locations (distinct city names)
-     */
-    getLocations: async (): Promise<string[]> => {
-      const result = await client.query<GetCitiesResponse>({
-        query: GET_CITIES,
-        errorPolicy: 'all',
-      });
-
-      const errors = (result as ApolloQueryResult<GetCitiesResponse> & { errors?: Array<{ message: string }> }).errors;
-      if (errors && errors.length > 0) {
-        throw new Error(errors.map((e) => e.message).join(', '));
-      }
-
-      if (!result.data?.cities) {
-        throw new Error('Invalid response: cities data missing');
-      }
-
-      return result.data.cities;
-    },
-
-    /**
-     * Get areas (collections) for a location
-     */
-    getAreas: async (location: string): Promise<string[]> => {
-      try {
-        const result = await client.query<GetPlacesResponse>({
-          query: GET_PLACES,
-          variables: { filters: { locationFilter: location } },
-          errorPolicy: 'all',
-        });
-
-        const errors = (result as ApolloQueryResult<GetPlacesResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in getAreas:', errors);
-        }
-
-        const places = result.data?.places || [];
-        const areas = Array.from(
-          new Set(places.map((p) => p.area).filter(Boolean))
-        ) as string[];
-        return areas;
-      } catch (error) {
-        console.error("Error fetching areas:", error);
+        console.error("Error fetching place details for city:", error);
         return [];
       }
     },
@@ -377,11 +98,6 @@ export const clientApi = {
           },
         });
 
-        const errors = (result as FetchResult<SubmitContactResponse> & { errors?: Array<{ message: string }> }).errors;
-        if (errors && errors.length > 0) {
-          console.warn('GraphQL warnings in contact.submit:', errors);
-        }
-
         if (!result.data?.submitContact) {
           throw new Error('Failed to submit contact form');
         }
@@ -394,5 +110,4 @@ export const clientApi = {
   },
 };
 
-// Export default for convenience
 export default clientApi;

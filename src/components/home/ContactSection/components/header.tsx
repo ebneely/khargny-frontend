@@ -1,9 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@iconify/react";
-import { LayoutGrid, Map, Filter, X, List, Grid, Eye, Menu } from "lucide-react";
+import { LayoutGrid, Map, List, Grid, Eye, Menu } from "lucide-react";
 import { LocationSelector } from "./location-selector";
 
 interface HeaderProps {
@@ -11,12 +10,8 @@ interface HeaderProps {
   setViewMode: (mode: "list" | "map") => void;
   cardLayout: "grid" | "list";
   setCardLayout: (layout: "grid" | "list") => void;
-  onOpenFilterModal: () => void;
   onOpenViewModeModal: () => void;
   onOpenNavbar: () => void;
-  activeFiltersCount: number;
-  resetTrigger: number;
-  handleReset: () => void;
   selectedLocation: string;
   onLocationChange: (location: string) => void;
   onClearAll: () => void;
@@ -29,11 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   setViewMode,
   cardLayout,
   setCardLayout,
-  onOpenFilterModal,
   onOpenViewModeModal,
   onOpenNavbar,
-  activeFiltersCount,
-  handleReset,
   selectedLocation,
   onLocationChange,
   onClearAll,
@@ -76,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
-        {/* Right section - Desktop toggles, Filter and Navbar */}
+        {/* Right section - Desktop toggles and Navbar */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Card layout toggle - desktop only */}
           <div className="hidden sm:flex items-center rounded-lg border p-1">
@@ -145,28 +137,6 @@ export const Header: React.FC<HeaderProps> = ({
               </Tooltip>
             </TooltipProvider>
           </div>
-
-          {/* Filter button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-[44px] w-[44px] p-0 relative"
-                  onClick={onOpenFilterModal}
-                >
-                  <Filter className="h-4 w-4" />
-                  {activeFiltersCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="hidden sm:block">Filter Options</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
 
           {/* Navbar button - mobile only */}
           <Button

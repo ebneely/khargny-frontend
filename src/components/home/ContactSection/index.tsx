@@ -5,9 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useGlobalStore } from "@/store/useGlobalStore";
 
 // Custom hooks
-import { useFilters } from "./hooks/use-filters";
 import { useViewMode } from "./hooks/use-view-mode";
-import { useDynamicCategories } from "@/hooks/useDynamicCategories";
 
 // Components
 import { Header } from "./components/header";
@@ -15,7 +13,6 @@ import { OutingCard } from "./components/outing-card";
 import { OutingCardList } from "./components/outing-card-list";
 import { EmptyMapView } from "./components/empty-map-view";
 import { OutingDetailModal } from "./components/outing-detail-modal";
-import { FilterModal } from "./components/filter-modal";
 import { ViewModeModal } from "./components/view-mode-modal";
 import { LocationSelector } from "./components/location-selector";
 import Navbar from "@/components/ui/Navbar";
@@ -38,11 +35,7 @@ export default function ContactSection() {
   // Keep location in component state separate from filters
   const [selectedLocation, setSelectedLocation] = React.useState<string>("");
 
-  // Fetch dynamic categories for the selected location (like Expo app)
-  const {
-    data: categoriesData,
-    isLoading: categoriesLoading,
-  } = useDynamicCategories(selectedLocation || null);
+
 
   // Fetch all outings from the backend - based on selectedLocation
   const {
@@ -50,105 +43,71 @@ export default function ContactSection() {
     isLoading,
     error: placesError,
   } = useQuery<Outing[]>({
-    queryKey: [
-      "outings",
-      selectedLocation || "no-location",
-    ],
+    queryKey: ["outings", selectedLocation || "no-location"],
     queryFn: async (): Promise<Outing[]> => {
       if (!selectedLocation || selectedLocation.trim() === '') {
         return [];
       }
       
       try {
-        console.log(`[Explorer] Fetching places for city: "${selectedLocation}"`);
-        // Single request fetch (Phase 4 optimization)
-        const places = await clientApi.places.getByCity(selectedLocation.trim());
+        const places = await clientApi.places.getPlaceDetailsSimple(selectedLocation.trim());
 
-        console.log(`[Explorer] Fetched ${places?.length || 0} places for: "${selectedLocation}"`);
-
-        // Transform Place[] to Outing[]
+        // Transform simplified Google results to Outing[]
         return (places || []).map((place: any): Outing => {
-            const details = place.details || {};
-            
-            // Image priority: Google Thumbnail > Backend Photo > Fallback
-            const primaryImage = details.thumbnail?.photo_url || 
-                               place.photos?.[0]?.url || 
+            const photos = place.photos || [];
+            const primaryImage = photos[0]?.photo_url || 
                                "https://img.heroui.chat/image/places?w=800&h=600&u=restaurant-default";
 
             return {
                 title: place.name || '',
                 image: primaryImage,
-                images: place.photos?.map((p: any) => p.url).filter(Boolean) || [],
-                
-                // Rating priority: Google > Backend 
-                rating: details.rating || place.rating || 0,
-                reviewCount: place.user_ratings_total || 0,
+                images: photos.map((p: any) => p.photo_url).filter(Boolean),
+                rating: place.rating || 0,
                 user_ratings_total: place.user_ratings_total || 0,
-                
-                price: place.price || '$',
-                price_level: place.price ? place.price.length : 1,
-                area: place.area || place.city || '',
-                location: place.address || '',
-                category: place.age || 'Restaurant', 
-                
-                // Open status from details (calculated server-side)
-                open_now: details.isOpen ?? false, 
-                
-                placeId: place.placeId || '',
-                description: place.description || '',
-                
-                // Fields required by Outing interface but not present in summary
-                types: [],
-                googleTypes: [],
-                vicinity: place.address || '',
-                address: place.address || '',
-                mapLink: '',
-                periods: [],
-                weekday_text: [],
-                reviews: [],
-            };
+                reviewCount: place.user_ratings_total || 0,
+                price: place.price_level ? "$".repeat(place.price_level) : "$",
+                price_level: place.price_level || 1,
+                area: selectedLocation,
+                location: place.formatted_address || '',
+                category: place.types?.[0] || 'Place',
+                description: place.editorial_summary?.overview || '',
+                open_now: place.opening_hours?.open_now ?? false,
+                placeId: place.place_id || '',
+                vicinity: place.vicinity || '',
+                address: place.formatted_address || '',
+                website: place.website || '',
+                url: place.url || '',
+                formatted_phone_number: place.formatted_phone_number || '',
+                international_phone_number: place.international_phone_number || '',
+                weekday_text: place.opening_hours?.weekday_text || [],
+                reviews: (place.reviews || []).map((r: any) => ({
+                    author: r.author_name,
+                    rating: r.rating,
+                    text: r.text,
+                    time: r.relative_time_description,
+                    profilePhoto: r.profile_photo_url
+                })),
+                geometry: place.geometry, // Keep for map if needed
+            } as any;
         });
       } catch (error) {
-        console.error("Error fetching places:", error);
+        console.error("Error fetching simplified places:", error);
         return [];
       }
     },
     enabled: Boolean(selectedLocation),
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // Cache on client for 5 mins
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Derived state for filters
-  const enrichedOutingsData = outingsData;
-
-  // Filters and filtering logic - now using enrichedOutingsData
-  const {
-    filters,
-    setFilters,
-    filteredAreas,
-    filteredOutings,
-    activeFiltersCount,
-    resetTrigger,
-    handleReset,
-    handleCategoryChange,
-    defaultFilters, // Make sure this is destructured from the hook
-  } = useFilters(enrichedOutingsData);
-
-  // Handle location selection separately from filters
+  // Handle location selection
   const handleLocationChange = (location: string) => {
     setSelectedLocation(location);
-
-    // Update location in filters too (for compatibility with existing code)
-    setFilters((prev) => ({
-      ...prev,
-      location,
-    }));
   };
 
-  // Clear all filters and location
+  // Clear location
   const handleClearAll = () => {
     setSelectedLocation("");
-    setFilters({ ...defaultFilters });
   };
 
 
@@ -157,7 +116,6 @@ export default function ContactSection() {
     null,
   );
   const detailModal = useModal();
-  const filterModal = useModal();
   const viewModeModal = useModal();
 
   // Location dropdown state control
@@ -201,47 +159,6 @@ export default function ContactSection() {
     setSelectedOuting(null);
   };
 
-  // Fetch photos only when a card modal is opened
-  const { data: placePhotos, isLoading: isLoadingPhotos } = useQuery({
-    queryKey: ["PLACE_PHOTOS", selectedOuting?.placeId],
-    queryFn: async () => {
-      if (!selectedOuting?.placeId) {
-        return [];
-      }
-      try {
-        const photos = await clientApi.places.getPhotos(selectedOuting.placeId);
-        return photos;
-      } catch (error) {
-        console.error(`Error fetching photos for ${selectedOuting.placeId}:`, error);
-        return [];
-      }
-    },
-    enabled: detailModal.isOpen && Boolean(selectedOuting?.placeId),
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-  });
-
-  // Merge photos into selectedOuting when available
-  const enrichedOutingWithPhotos = React.useMemo(() => {
-    if (!selectedOuting) return null;
-    
-    if (placePhotos && placePhotos.length > 0) {
-      // Map photos to images array format
-      const photoUrls = placePhotos
-        .map((photo: any) => photo.photo_url)
-        .filter((url): url is string => Boolean(url));
-      
-      return {
-        ...selectedOuting,
-        images: photoUrls,
-        image: photoUrls[0] || selectedOuting.image, // Update primary image
-      };
-    }
-    
-    return selectedOuting;
-  }, [selectedOuting, placePhotos]);
-
   return (
     <div className="flex h-dvh flex-col">
       {/* Header with view toggles and filter button */}
@@ -250,15 +167,11 @@ export default function ContactSection() {
         setViewMode={setViewMode}
         cardLayout={cardLayout}
         setCardLayout={setCardLayout}
-        onOpenFilterModal={filterModal.onOpen}
         onOpenViewModeModal={viewModeModal.onOpen}
         onOpenNavbar={() => {
           console.log('Navbar button clicked');
           setisActive(true);
         }}
-        activeFiltersCount={activeFiltersCount}
-        resetTrigger={resetTrigger ? 1 : 0}
-        handleReset={handleReset}
         selectedLocation={selectedLocation}
         onLocationChange={handleLocationChange}
         onClearAll={handleClearAll}
@@ -299,41 +212,15 @@ export default function ContactSection() {
                     </div>
                   )}
 
-                  {/* Display all outings when no filters are applied apart from location */}
-                  {!isLoading &&
-                    activeFiltersCount === 0 &&
-                    enrichedOutingsData.length > 0 && (
-                      <div className={cardLayout === "grid" 
-                        ? "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" 
-                        : "flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-3"
-                      }>
-                        {enrichedOutingsData.map((outing, index) => (
-                          cardLayout === "grid" ? (
-                            <OutingCard
-                              key={index}
-                              outing={outing}
-                              onClick={() => handleCardClick(outing)}
-                            />
-                          ) : (
-                            <OutingCardList
-                              key={index}
-                              outing={outing}
-                              onClick={() => handleCardClick(outing)}
-                            />
-                          )
-                        ))}
-                      </div>
-                    )}
 
-                  {/* Display filtered outings when filters are applied */}
+                  {/* Display all outings directly from backend */}
                   {!isLoading &&
-                    activeFiltersCount > 0 &&
-                    filteredOutings.length > 0 && (
+                    outingsData.length > 0 && (
                       <div className={cardLayout === "grid" 
                         ? "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" 
                         : "flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-3"
                       }>
-                        {filteredOutings.map((outing, index) => (
+                        {outingsData.map((outing, index) => (
                           cardLayout === "grid" ? (
                             <OutingCard
                               key={index}
@@ -353,7 +240,7 @@ export default function ContactSection() {
 
                   {/* No results state - only show when not loading and location is selected */}
                   {!isLoading &&
-                    enrichedOutingsData.length === 0 && (
+                    outingsData.length === 0 && (
                       <div className="flex flex-col items-center justify-center p-10 text-center">
                         <div className="mb-4 text-5xl">🔍</div>
                         <h3 className="mb-2 text-xl font-semibold">
@@ -378,22 +265,10 @@ export default function ContactSection() {
         isOpen={detailModal.isOpen}
         onOpenChange={detailModal.onOpenChange}
         onClose={handleDetailModalClose}
-        selectedOuting={enrichedOutingWithPhotos}
+        selectedOuting={selectedOuting}
       />
 
-      {/* Filter modal (now without location filter) */}
-      <FilterModal
-        isOpen={filterModal.isOpen}
-        onOpenChange={filterModal.onOpenChange}
-        onClose={filterModal.onClose}
-        filters={filters}
-        setFilters={setFilters}
-        handleCategoryChange={handleCategoryChange}
-        handleReset={handleReset}
-        filteredAreas={filteredAreas}
-        categories={categoriesData?.categories || []}
-        categoriesLoading={categoriesLoading}
-      />
+
 
       {/* View & Mode modal */}
       <ViewModeModal

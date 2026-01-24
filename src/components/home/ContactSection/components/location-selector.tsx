@@ -69,9 +69,9 @@ export const LocationSelector = React.forwardRef<
       isLoading: locationsLoading, 
       error: locationsError 
     } = useQuery<string[]>({
-      queryKey: ["LOCATIONS"],
+      queryKey: ["CITY_NAMES"],
       queryFn: async (): Promise<string[]> => {
-        return await clientApi.places.getLocations();
+        return await clientApi.places.getCityNamesSimple();
       },
       refetchOnWindowFocus: false,
       retry: 1,

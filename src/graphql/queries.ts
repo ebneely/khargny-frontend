@@ -4,28 +4,17 @@ import {
   PLACE_BASIC_FIELDS,
   PLACE_MEDIA_FIELDS,
   PLACE_EXTENDED_FIELDS,
-  PLACE_SUMMARY_FIELDS,
   // Google Places Fragments
-  GOOGLE_PLACE_BASIC_FIELDS,
-  GOOGLE_PLACE_PHOTO_FIELDS,
-  GOOGLE_PLACE_GEOMETRY_FIELDS,
-  GOOGLE_PLACE_OPENING_HOURS_FIELDS,
-  GOOGLE_PLACE_REVIEW_FIELDS,
-  GOOGLE_PLACE_ADDRESS_COMPONENTS_FIELDS,
-  GOOGLE_PLACE_PLUS_CODE_FIELDS,
   GOOGLE_FIND_PLACE_FIELDS,
-  // User Fragments
-  USER_BASIC_FIELDS,
-  // System Fragments
-  HEALTH_CHECK_FIELDS,
-  HEALTH_CHECK_PORT_FIELDS,
-  HEALTH_CHECK_MEMORY_FIELDS,
-  LOGS_RESPONSE_FIELDS,
 } from "./fragments";
 
+/**
+ * Dashboard Queries
+ */
+
 export const GET_PLACES = gql`
-  query GetPlaces($filters: PlaceFilters) {
-    places(filters: $filters) {
+  query GetPlaces($filter: KhargnyPlaceFilter) {
+    khargnyPlaces(filter: $filter) {
       ...PlaceBasicFields
       ...PlaceExtendedFields
       ...PlaceMediaFields
@@ -34,30 +23,11 @@ export const GET_PLACES = gql`
   ${PLACE_BASIC_FIELDS}
   ${PLACE_EXTENDED_FIELDS}
   ${PLACE_MEDIA_FIELDS}
-`;
-
-export const GET_PLACES_BY_CITY = gql`
-  query GetPlacesByCity($city: String!) {
-    placesByCity(city: $city) {
-      ...PlaceBasicFields
-      ...PlaceExtendedFields
-      details {
-        placeId
-        isOpen
-        rating
-        thumbnail {
-          photo_url
-        }
-      }
-    }
-  }
-  ${PLACE_BASIC_FIELDS}
-  ${PLACE_EXTENDED_FIELDS}
 `;
 
 export const GET_PLACE = gql`
   query GetPlace($id: ID!) {
-    place(id: $id) {
+    khargnyPlace(id: $id) {
       ...PlaceBasicFields
       ...PlaceExtendedFields
       ...PlaceMediaFields
@@ -66,102 +36,6 @@ export const GET_PLACE = gql`
   ${PLACE_BASIC_FIELDS}
   ${PLACE_EXTENDED_FIELDS}
   ${PLACE_MEDIA_FIELDS}
-`;
-
-export const GET_PLACE_BY_PLACE_ID = gql`
-  query GetPlaceByPlaceId($placeId: String!) {
-    placeByPlaceId(placeId: $placeId) {
-      ...PlaceBasicFields
-      ...PlaceExtendedFields
-      ...PlaceMediaFields
-    }
-  }
-  ${PLACE_BASIC_FIELDS}
-  ${PLACE_EXTENDED_FIELDS}
-  ${PLACE_MEDIA_FIELDS}
-`;
-
-export const GOOGLE_PLACE_DETAILS = gql`
-  query GooglePlaceDetails($placeId: String!) {
-    googlePlaceDetails(placeId: $placeId) {
-      ...GooglePlaceBasicFields
-      photos {
-        ...GooglePlacePhotoFields
-      }
-      geometry {
-        ...GooglePlaceGeometryFields
-      }
-      opening_hours {
-        ...GooglePlaceOpeningHoursFields
-      }
-      reviews {
-        ...GooglePlaceReviewFields
-      }
-      address_components {
-        ...GooglePlaceAddressComponentsFields
-      }
-      plus_code {
-        ...GooglePlacePlusCodeFields
-      }
-    }
-  }
-  ${GOOGLE_PLACE_BASIC_FIELDS}
-  ${GOOGLE_PLACE_PHOTO_FIELDS}
-  ${GOOGLE_PLACE_GEOMETRY_FIELDS}
-  ${GOOGLE_PLACE_OPENING_HOURS_FIELDS}
-  ${GOOGLE_PLACE_REVIEW_FIELDS}
-  ${GOOGLE_PLACE_ADDRESS_COMPONENTS_FIELDS}
-  ${GOOGLE_PLACE_PLUS_CODE_FIELDS}
-`;
-
-export const GOOGLE_PLACE_DETAILS_WITHOUT_PHOTOS = gql`
-  query GooglePlaceDetailsWithoutPhotos($placeId: String!) {
-    googlePlaceDetails(placeId: $placeId) {
-      ...GooglePlaceBasicFields
-      geometry {
-        ...GooglePlaceGeometryFields
-      }
-      opening_hours {
-        ...GooglePlaceOpeningHoursFields
-      }
-      reviews {
-        ...GooglePlaceReviewFields
-      }
-      address_components {
-        ...GooglePlaceAddressComponentsFields
-      }
-      plus_code {
-        ...GooglePlacePlusCodeFields
-      }
-    }
-  }
-  ${GOOGLE_PLACE_BASIC_FIELDS}
-  ${GOOGLE_PLACE_GEOMETRY_FIELDS}
-  ${GOOGLE_PLACE_OPENING_HOURS_FIELDS}
-  ${GOOGLE_PLACE_REVIEW_FIELDS}
-  ${GOOGLE_PLACE_ADDRESS_COMPONENTS_FIELDS}
-  ${GOOGLE_PLACE_PLUS_CODE_FIELDS}
-`;
-
-export const GOOGLE_PLACE_PHOTOS = gql`
-  query GooglePlacePhotos($placeId: String!) {
-    googlePlaceDetails(placeId: $placeId) {
-      place_id
-      photos {
-        ...GooglePlacePhotoFields
-      }
-    }
-  }
-  ${GOOGLE_PLACE_PHOTO_FIELDS}
-`;
-
-export const GOOGLE_PLACE_THUMBNAIL = gql`
-  query GooglePlaceThumbnail($placeId: String!) {
-    googlePlaceThumbnail(placeId: $placeId) {
-      ...GooglePlacePhotoFields
-    }
-  }
-  ${GOOGLE_PLACE_PHOTO_FIELDS}
 `;
 
 export const GOOGLE_FIND_PLACE = gql`
@@ -173,85 +47,24 @@ export const GOOGLE_FIND_PLACE = gql`
   ${GOOGLE_FIND_PLACE_FIELDS}
 `;
 
-/**
- * Cities Query
- * 
- * Get all distinct city names.
- * Note: Returns array of strings, no fragment needed for scalar types.
- */
 export const GET_CITIES = gql`
   query GetCities {
-    cities
+    getCityNames
   }
-`;
-
-export const GET_DYNAMIC_CATEGORIES = gql`
-  query GetDynamicCategories($location: String) {
-    dynamicCategories(location: $location) {
-      categories {
-        key
-        name
-        icon
-        count
-        googleTypes
-        priority
-      }
-      totalPlaces
-      lastUpdated
-    }
-  }
-`;
-
-export const GET_ME = gql`
-  query GetMe {
-    me {
-      ...UserBasicFields
-    }
-  }
-  ${USER_BASIC_FIELDS}
 `;
 
 /**
- * Health Check Query
- * 
- * Get system health status including memory usage and server info.
- * 
- * NOTE: Currently not actively used in the application.
- * Keep for future system monitoring features.
+ * Public/Explorer Queries
  */
-export const HEALTH_CHECK = gql`
-  query HealthCheck {
-    health {
-      ...HealthCheckFields
-    }
+
+export const GET_PLACE_DETAILS = gql`
+  query GetPlaceDetails($city: String!) {
+    getPlaceDetails(city: $city)
   }
-  ${HEALTH_CHECK_FIELDS}
-  ${HEALTH_CHECK_PORT_FIELDS}
-  ${HEALTH_CHECK_MEMORY_FIELDS}
 `;
 
-/**
- * Logs Query
- * 
- * Get logs with optional filtering by time period and limit.
- * 
- * NOTE: Currently not actively used in the application.
- * Keep for future system monitoring features.
- */
-export const GET_LOGS = gql`
-  query GetLogs($filter: String, $limit: Int) {
-    logs(filter: $filter, limit: $limit) {
-      ...LogsResponseFields
-    }
+export const GET_CITY_NAMES = gql`
+  query GetCityNames {
+    getCityNames
   }
-  ${LOGS_RESPONSE_FIELDS}
 `;
-
-/**
- * Get Current User Query
- * 
- * Get authenticated user information.
- * 
- * NOTE: Currently not actively used in the application.
- * User session is managed via Better Auth REST API.
- */
