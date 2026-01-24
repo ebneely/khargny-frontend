@@ -87,6 +87,11 @@ export const useFilters = (outings: Outing[] = [], categories: DynamicCategory[]
     if (!outings?.length) return [];
 
     return outings.filter((outing) => {
+      // Always filter out outings without placeId
+      if (!outing.placeId || outing.placeId.trim() === '') {
+        return false;
+      }
+
       // Skip location filter - we handle this separately now
       // if (filters.location && outing.location !== filters.location) {
       //   return false;
