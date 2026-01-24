@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/apollo-client";
-import { GET_DYNAMIC_CATEGORIES } from "@/graphql/queries";
 
 interface DynamicCategory {
   key: string;
@@ -9,14 +8,6 @@ interface DynamicCategory {
   count: number;
   googleTypes: string[];
   priority: number;
-}
-
-interface GetDynamicCategoriesResponse {
-  dynamicCategories: {
-    categories: DynamicCategory[];
-    totalPlaces: number;
-    lastUpdated: string;
-  };
 }
 
 /**
@@ -28,14 +19,9 @@ export function useDynamicCategories(location: string | null) {
   return useQuery({
     queryKey: ["dynamicCategories", location],
     queryFn: async () => {
-      const result = await client.query<GetDynamicCategoriesResponse>({
-        query: GET_DYNAMIC_CATEGORIES,
-        variables: location ? { location } : {},
-        errorPolicy: "all",
-      });
-
-      return result.data?.dynamicCategories || {
-        categories: [],
+      // Temporary return empty data since GET_DYNAMIC_CATEGORIES is removed
+      return {
+        categories: [] as DynamicCategory[],
         totalPlaces: 0,
         lastUpdated: "",
       };

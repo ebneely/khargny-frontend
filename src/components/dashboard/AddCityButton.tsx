@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { CREATE_PLACE } from '@/graphql/mutations';
-import { GET_CITIES, GET_PLACES_BY_CITY } from '@/graphql/queries';
+import { GET_CITIES } from '@/graphql/queries';
 import { Plus } from 'lucide-react';
 
 export function AddCityButton() {

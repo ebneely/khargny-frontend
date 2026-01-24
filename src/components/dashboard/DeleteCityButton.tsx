@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { DELETE_CITY } from '@/graphql/mutations';
-import { GET_CITIES, GET_PLACES_BY_CITY } from '@/graphql/queries';
+import { GET_CITIES } from '@/graphql/queries';
 import { Trash2, AlertTriangle } from 'lucide-react';
 
 interface DeleteCityButtonProps {
