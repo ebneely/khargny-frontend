@@ -216,10 +216,17 @@ const Features = React.forwardRef<HTMLDivElement>((props, ref) => {
                 <Button
                   variant="default"
                   size="lg"
+                  asChild
                   className="w-full sm:w-auto bg-white text-gray-900 hover:bg-gray-100"
                 >
-                  <Icon icon="logos:apple" width={20} height={20} className="mr-2" />
-                  App Store
+                  <a
+                    href="https://apps.apple.com/eg/app/5argny/id6752574374"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon icon="logos:apple" width={20} height={20} className="mr-2" />
+                    App Store
+                  </a>
                 </Button>
                 <Button
                   variant="default"
