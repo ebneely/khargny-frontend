@@ -8,7 +8,8 @@ import { Suspense } from 'react';
  *
  * ARCHITECTURE:
  * - Server component that checks session server-side
- * - If authenticated, redirects to /dashboard
+ * - If authenticated, redirects home (the admin dashboard now lives in the
+ *   separate khargny-dashboard app, not in this repo)
  * - If not authenticated, renders login form
  * - Uses Better Auth backend API for session validation
  */
@@ -16,9 +17,10 @@ export default async function LoginPage() {
   // Check if user is already authenticated by calling backend directly
   const session = await getServerSession();
 
-  // If authenticated, redirect to dashboard
+  // If authenticated, redirect home. The admin dashboard route was removed
+  // from this app (Phase 0c) — it now lives in khargny-dashboard.
   if (session?.user) {
-    redirect('/dashboard');
+    redirect('/');
   }
 
   // Render login form for unauthenticated users

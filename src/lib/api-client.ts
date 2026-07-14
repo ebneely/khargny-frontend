@@ -1,111 +1,59 @@
 /**
- * Public Client API - Business Logic Only
+ * Legacy explorer client API — kept only so the pre-existing prototype explorer
+ * components (src/components/home/ContactSection/*) keep compiling after the
+ * GraphQL layer was removed (Phase 0c). The old GraphQL backend cached raw
+ * Google Places data (photos, opening_hours, reviews, ...) which has no
+ * equivalent in the real REST contract (khargny-obsidian/Modules/places,
+ * cities, categories, search) — that data was never real. A full rebuild of
+ * this surface against the REST hooks in src/lib/api/hooks/* is a later
+ * implement phase, not this one (Phase 0c only removes the dead GraphQL
+ * wiring and stands up the REST client).
+ *
+ * `getCityNamesSimple` is wired to the real GET /v1/cities endpoint since the
+ * shapes align (a list of city names). `getPlaceDetailsSimple` has no REST
+ * equivalent today (it expected raw Google Places fields) so it returns an
+ * empty list rather than fabricating data. `contact.submit` has no REST
+ * contact endpoint in scope for this module set, so it is a stub.
  */
-
-import { client } from './apollo-client';
-import { 
-  GET_PLACE_DETAILS,
-  GET_CITY_NAMES,
-} from '@/graphql/queries';
-import { SUBMIT_CONTACT as SUBMIT_CONTACT_MUTATION } from '@/graphql/mutations';
-
-/**
- * GraphQL Response Types
- */
-interface SubmitContactResponse {
-  submitContact: {
-    id: string;
-    createdAt: string;
-  };
-}
-
-/**
- * GraphQL Error Handler
- */
-function handleGraphQLError(error: any, operation: string): never {
-  if (error.graphQLErrors && error.graphQLErrors.length > 0) {
-    const graphQLError = error.graphQLErrors[0];
-    console.error(`GraphQL Error in ${operation}:`, graphQLError.message);
-    throw new Error(graphQLError.message || `GraphQL error in ${operation}`);
-  }
-  
-  if (error.networkError) {
-    console.error(`Network Error in ${operation}:`, error.networkError);
-    throw new Error(`Network error: ${error.networkError.message || 'Failed to connect to server'}`);
-  }
-  
-  console.error(`Unknown Error in ${operation}:`, error);
-  throw new Error(`An unexpected error occurred in ${operation}`);
-}
+import { apiRequest } from '@/lib/api/client';
+import type { CityWithAreas } from '@/lib/api/types';
 
 export const clientApi = {
   places: {
-    /**
-     * [REFACTORED] Get all city names from khargny_places
-     */
+    /** Backed by the real GET /v1/cities endpoint. */
     getCityNamesSimple: async (): Promise<string[]> => {
       try {
-        const result = await client.query({
-          query: GET_CITY_NAMES,
-          fetchPolicy: 'network-only',
-        });
-        return (result.data as any)?.getCityNames || [];
+        const cities = await apiRequest<CityWithAreas[]>('GET', '/v1/cities');
+        return cities.map((city) => city.name);
       } catch (error) {
-        console.error("Error fetching city names:", error);
+        console.error('Error fetching city names:', error);
         return [];
       }
     },
 
     /**
-     * [REFACTORED] Get full place details for all places in a city
+     * No REST equivalent exists for the old Google-Places-shaped payload this
+     * used to return. Returns an empty list until the explorer surface is
+     * rebuilt against the real Place/PlaceDetail contract.
      */
-    getPlaceDetailsSimple: async (city: string): Promise<any[]> => {
-      try {
-        const result = await client.query({
-          query: GET_PLACE_DETAILS,
-          variables: { city },
-          fetchPolicy: 'network-only',
-        });
-        return (result.data as any)?.getPlaceDetails || [];
-      } catch (error) {
-        console.error("Error fetching place details for city:", error);
-        return [];
-      }
+    getPlaceDetailsSimple: async (_city: string): Promise<any[]> => {
+      return [];
     },
   },
 
   contact: {
     /**
-     * Submit contact form (public)
+     * No REST contact endpoint exists in the modules this app owns
+     * (cities/categories/places/search). Stubbed until one is specced.
      */
-    submit: async (data: {
+    submit: async (_data: {
       name: string;
       email: string;
       message: string;
       subject?: string;
-    }): Promise<SubmitContactResponse['submitContact']> => {
-      try {
-        const result = await client.mutate<SubmitContactResponse>({
-          mutation: SUBMIT_CONTACT_MUTATION,
-          variables: { input: data },
-          errorPolicy: 'all',
-          // Optimistic update for instant feedback
-          optimisticResponse: {
-            submitContact: {
-              id: `temp-${Date.now()}`,
-              createdAt: new Date().toISOString(),
-            },
-          },
-        });
-
-        if (!result.data?.submitContact) {
-          throw new Error('Failed to submit contact form');
-        }
-
-        return result.data.submitContact;
-      } catch (error) {
-        handleGraphQLError(error, 'contact.submit');
-      }
+    }): Promise<{ id: string; createdAt: string }> => {
+      console.warn('clientApi.contact.submit: no REST contact endpoint wired yet — no-op.');
+      return { id: `temp-${Date.now()}`, createdAt: new Date().toISOString() };
     },
   },
 };

@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { client } from "@/lib/apollo-client";
 
 interface DynamicCategory {
   key: string;

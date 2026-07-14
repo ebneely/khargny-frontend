@@ -18,7 +18,8 @@ import { Shield, Loader2 } from 'lucide-react';
  * - Calls backend sign-in endpoint directly
  * - Backend sets HttpOnly cookie automatically
  * - Does NOT validate session client-side (SSR handles this)
- * - Redirects to dashboard - SSR will validate and redirect if needed
+ * - Redirects home - the admin dashboard now lives in the separate
+ *   khargny-dashboard app, not in this repo
  */
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -64,9 +65,10 @@ export function LoginForm() {
       // Wait briefly for cookie to be stored in browser
       // SSR will validate session server-side
       await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Hard redirect - SSR will validate session server-side
-      window.location.replace('/dashboard');
+
+      // Hard redirect home - the admin dashboard now lives in the separate
+      // khargny-dashboard app, not in this repo
+      window.location.replace('/');
     } catch (err: any) {
       const errorMessage = err.message || 'An error occurred';
       toast({
