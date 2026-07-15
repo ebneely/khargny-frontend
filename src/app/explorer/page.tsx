@@ -1,18 +1,21 @@
-'use client';
-
-import { ExplorerHeader } from '@/components/explorer/ExplorerHeader';
-import { CityGrid } from '@/components/explorer/CityGrid';
-import { SearchBar } from '@/components/explorer/SearchBar';
-import { LoadingSkeleton } from '@/components/explorer/LoadingSkeleton';
-import { ErrorState } from '@/components/explorer/ErrorState';
-import { useCities } from '@/lib/api/hooks/use-cities';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+"use client";
+/**
+ * Explorer home — `/explorer` (city picker).
+ * Restyled against the Khargny Design System (TASK-0008).
+ * See `UI_UX/explorer/structure/explorer-home/wireframe.md` for the layout spec.
+ */
+import * as React from "react";
+import { useState } from "react";
+import { ExplorerHeader } from "@/components/explorer/ExplorerHeader";
+import { CityGrid } from "@/components/explorer/CityGrid";
+import { SearchBar } from "@/components/explorer/SearchBar";
+import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
+import { ErrorState } from "@/components/explorer/ErrorState";
+import { useCities } from "@/lib/api/hooks/use-cities";
 
 export default function ExplorerPage() {
   const { data: cities, isLoading, isError, refetch } = useCities();
-  const [search, setSearch] = useState('');
-  const router = useRouter();
+  const [search, setSearch] = useState("");
 
   const filtered = cities?.filter(
     (c) =>
@@ -21,30 +24,94 @@ export default function ExplorerPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#FCFAF7]">
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "var(--surface-app)",
+        fontFamily: "var(--font-body)",
+      }}
+    >
       <ExplorerHeader cities={cities || []} />
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Khargny</h1>
-          <p className="text-lg text-muted-foreground">Discover the best places in Egypt</p>
+      <main
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "var(--space-8) var(--space-4)",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: "var(--space-10)" }}>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "var(--text-4xl)",
+              fontWeight: 700,
+              lineHeight: 1.15,
+              color: "var(--text-primary)",
+              margin: "0 0 var(--space-2)",
+            }}
+          >
+            Khargny
+          </h1>
+          <p
+            style={{
+              fontSize: "var(--text-lg)",
+              color: "var(--text-tertiary)",
+              margin: 0,
+            }}
+          >
+            Find your next outing in Egypt.
+          </p>
         </div>
 
-        <div className="max-w-md mx-auto mb-8">
+        <div
+          style={{
+            maxWidth: 480,
+            margin: "0 auto var(--space-8)",
+          }}
+        >
           <SearchBar value={search} onChange={setSearch} placeholder="Search cities..." />
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "var(--space-4)",
+              padding: "0 var(--space-4)",
+            }}
+          >
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-32 rounded-xl bg-muted animate-pulse" />
+              <div
+                key={i}
+                style={{
+                  height: 128,
+                  borderRadius: "var(--radius-lg)",
+                  background: "var(--gray-100)",
+                  animation: "khargny-pulse 1.5s ease-in-out infinite",
+                }}
+              />
             ))}
+            <style>{`@keyframes khargny-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
           </div>
         ) : isError ? (
           <ErrorState message="Failed to load cities" onRetry={() => refetch()} />
         ) : (
           <>
-            <h2 className="text-xl font-semibold mb-4">Pick a city</h2>
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "var(--text-xl)",
+                fontWeight: 600,
+                lineHeight: 1.3,
+                color: "var(--text-primary)",
+                padding: "0 var(--space-4)",
+                margin: "0 0 var(--space-4)",
+              }}
+            >
+              Pick a city
+            </h2>
             <CityGrid cities={filtered || []} />
           </>
         )}

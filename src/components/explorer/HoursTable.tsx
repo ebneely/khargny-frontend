@@ -1,44 +1,72 @@
-'use client';
+"use client";
+/**
+ * HoursTable — restyled against the Khargny Design System (TASK-0008).
+ * Renders the place's opening hours as a 7-row table. Empty-state renders a "—" in
+ * each cell when the hours array is empty (per `Modules/places/decisions.md` — the
+ * real backend's `GET /v1/places/{slug}` does NOT return hours today; this is a
+ * known gap carried forward, not fixed in TASK-0008).
+ */
+import * as React from "react";
 
-interface HoursEntry {
+type HoursRow = {
   day: string;
   open: string;
   close: string;
-}
+  closed?: boolean;
+};
 
-interface HoursTableProps {
-  hours: HoursEntry[];
-}
+type HoursTableProps = {
+  hours: HoursRow[];
+};
 
-const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DEFAULT_DAYS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
 export function HoursTable({ hours }: HoursTableProps) {
-  if (hours.length === 0) return null;
-
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-
-  const sorted = [...hours].sort(
-    (a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day),
-  );
+  const rows: HoursRow[] = DEFAULT_DAYS.map((day) => {
+    const found = hours.find((h) => h.day === day);
+    return (
+      found ?? { day, open: "—", close: "—" }
+    );
+  });
 
   return (
-    <div className="space-y-1">
-      {sorted.map((entry) => {
-        const isToday = entry.day === today;
-        return (
-          <div
-            key={entry.day}
-            className={`flex justify-between py-1 px-2 rounded ${
-              isToday ? 'bg-orange-50 font-medium' : ''
-            }`}
+    <table
+      style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        fontFamily: "var(--font-body)",
+        fontSize: "var(--text-sm)",
+      }}
+    >
+      <tbody>
+        {rows.map((r) => (
+          <tr
+            key={r.day}
+            style={{
+              borderBottom: "1px solid var(--border-default)",
+            }}
           >
-            <span className="text-sm text-foreground">{entry.day}</span>
-            <span className="text-sm text-muted-foreground">
-              {entry.open} – {entry.close}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+            <td
+              style={{
+                padding: "12px 0",
+                color: "var(--text-primary)",
+                fontWeight: 500,
+              }}
+            >
+              {r.day}
+            </td>
+            <td
+              style={{
+                padding: "12px 0",
+                textAlign: "end",
+                color: r.closed ? "var(--text-tertiary)" : "var(--text-secondary)",
+              }}
+            >
+              {r.closed ? "Closed" : r.open === "—" ? "—" : `${r.open} – ${r.close}`}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

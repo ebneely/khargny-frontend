@@ -1,37 +1,93 @@
-'use client';
+"use client";
+/**
+ * CityGrid — restyled against the Khargny Design System (TASK-0008).
+ * 2/3/4-column responsive grid of city cards, each a `<Link>` to `/explorer/{slug}`.
+ * Visual tokens cited from `UI_UX/explorer/styling.md` + `beauty/city-grid/spec.md`.
+ */
+import * as React from "react";
+import Link from "next/link";
+import type { City } from "@/lib/api/types";
 
-import Link from 'next/link';
-import type { City } from '@/lib/api/types';
-
-interface CityGridProps {
+type CityGridProps = {
   cities: City[];
-}
+};
 
 export function CityGrid({ cities }: CityGridProps) {
   if (cities.length === 0) {
     return (
-      <div className="text-center py-16">
-        <p className="text-muted-foreground text-lg">No cities available yet</p>
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          padding: "var(--space-12) var(--space-4)",
+          textAlign: "center",
+          fontFamily: "var(--font-body)",
+        }}
+      >
+        <p
+          style={{
+            fontSize: "var(--text-base)",
+            lineHeight: 1.5,
+            color: "var(--text-tertiary)",
+            margin: 0,
+          }}
+        >
+          No cities available yet
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(2, 1fr)",
+        gap: "var(--space-4)",
+        padding: "0 var(--space-4)",
+      }}
+    >
       {cities.map((city) => (
         <Link
           key={city.id}
           href={`/explorer/${city.slug}`}
-          className="group block p-6 rounded-xl bg-card border border-border hover:shadow-md hover:-translate-y-0.5 transition-all duration-250 ease-[cubic-bezier(0.2,0,0,1)]"
+          className="khargny-city-card"
+          style={{
+            display: "block",
+            padding: "var(--space-6)",
+            borderRadius: "var(--radius-lg)",
+            background: "var(--white)",
+            border: "1px solid var(--border-default)",
+            textDecoration: "none",
+            transition: "var(--motion-shadow), var(--motion-transform)",
+            fontFamily: "var(--font-body)",
+          }}
         >
-          <h3 className="font-semibold text-lg text-foreground group-hover:text-orange-600 transition-colors">
+          <h3
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "var(--text-xl)",
+              fontWeight: 600,
+              lineHeight: 1.3,
+              color: "var(--text-primary)",
+              margin: 0,
+            }}
+          >
             {city.name}
           </h3>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p
+            style={{
+              fontSize: "var(--text-xs)",
+              lineHeight: 1.5,
+              color: "var(--text-tertiary)",
+              margin: "var(--space-1) 0 0",
+            }}
+          >
             Explore places
           </p>
         </Link>
       ))}
+      <style>{`.khargny-city-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }`}</style>
     </div>
   );
 }

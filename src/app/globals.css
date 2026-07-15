@@ -2,9 +2,153 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Khargny Design System tokens — sourced verbatim from
+   design/builds/Khargny Design System/tokens/{colors,spacing,typography}.css.
+   See UI_UX/*/styling.md for per-feature citation. */
+
+/* Color tokens (tokens/colors.css) */
+:root {
+  --brand-900: #7A2C0A;
+  --brand-800: #96370D;
+  --brand-700: #B4410F;
+  --brand-600: #D9622A;
+  --brand-500: #EE6F1B;
+  --brand-400: #FF6100;
+  --brand-100: #FFE4D2;
+  --brand-50: #FFF3EA;
+
+  --gray-900: #241C16;
+  --gray-700: #4A3F37;
+  --gray-500: #8A7C71;
+  --gray-300: #D8CFC5;
+  --gray-200: #EAE3DA;
+  --gray-100: #F7F2EC;
+  --gray-50: #FCFAF7;
+
+  --white: #FFFFFF;
+  --black: #000000;
+
+  --success: #1B7A4B;
+  --success-bg: #EAF6EF;
+  --warning: #C97A1D;
+  --warning-bg: #FDF3E4;
+  --error: #C1391A;
+  --error-bg: #FDEEE9;
+  --info: #2E6E8E;
+  --info-bg: #EAF4F8;
+
+  --gradient-sunset: linear-gradient(120deg, #FF6100 0%, #D9622A 55%, #B4410F 100%);
+  --gradient-sunset-radial: radial-gradient(circle at 30% 20%, #FF6100 0%, #EE6F1B 45%, #B4410F 100%);
+
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-tertiary: var(--gray-500);
+  --text-on-brand: var(--white);
+  --text-link: var(--brand-600);
+
+  --surface-app: var(--gray-50);
+  --surface-card: var(--white);
+  --surface-sunken: var(--gray-100);
+  --surface-brand: var(--brand-600);
+  --surface-brand-tint: var(--brand-50);
+
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-focus: var(--brand-600);
+}
+
+/* Spacing / radius / elevation / motion (tokens/spacing.css) */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --tap-target-min: 44px;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+  --radius-full: 999px;
+
+  --shadow-sm: 0 1px 3px rgba(74, 44, 20, 0.10), 0 0 0 1px rgba(74, 44, 20, 0.03);
+  --shadow-md: 0 6px 16px rgba(74, 44, 20, 0.14), 0 0 0 1px rgba(74, 44, 20, 0.03);
+  --shadow-lg: 0 10px 28px rgba(74, 44, 20, 0.20), 0 0 0 1px rgba(74, 44, 20, 0.04);
+  --shadow-xl: 0 20px 48px rgba(74, 44, 20, 0.28), 0 0 0 1px rgba(74, 44, 20, 0.04);
+  --shadow-inset-border: inset 0 0 0 1px var(--gray-200, #EAE3DA);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-linear: cubic-bezier(0, 0, 1, 1);
+  --ease-spring: linear(0 0%, 0.254842 12.5%, 0.643484 25%, 0.906174 37.5%, 1.0208 50%, 1.04375 62.5%, 1.0303 75%, 1.01197 87.5%, 1 100%);
+
+  --duration-instant: 100ms;
+  --duration-fast: 200ms;
+  --duration-base: 250ms;
+  --duration-slow: 300ms;
+  --duration-spring: 450ms;
+
+  --motion-tap: transform var(--duration-instant) var(--ease-standard);
+  --motion-transform: transform var(--duration-base) var(--ease-standard);
+  --motion-color: background-color var(--duration-slow) var(--ease-standard), color var(--duration-slow) var(--ease-standard);
+  --motion-shadow: box-shadow var(--duration-fast) var(--ease-standard);
+  --motion-sheet: transform var(--duration-spring) var(--ease-spring);
+}
+
+/* Typography tokens (tokens/typography.css) */
+:root {
+  --font-display: 'Cairo', 'IBM Plex Sans Arabic', -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'IBM Plex Sans Arabic', 'Cairo', -apple-system, 'Segoe UI', sans-serif;
+
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 34px;
+  --text-5xl: 42px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 800;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --type-display-lg: var(--weight-bold) var(--text-5xl)/var(--leading-tight) var(--font-display);
+  --type-display-md: var(--weight-bold) var(--text-4xl)/var(--leading-tight) var(--font-display);
+  --type-heading-lg: var(--weight-semibold) var(--text-3xl)/var(--leading-snug) var(--font-display);
+  --type-heading-md: var(--weight-semibold) var(--text-2xl)/var(--leading-snug) var(--font-display);
+  --type-heading-sm: var(--weight-semibold) var(--text-xl)/var(--leading-snug) var(--font-display);
+  --type-body-lg: var(--weight-regular) var(--text-md)/var(--leading-normal) var(--font-body);
+  --type-body: var(--weight-regular) var(--text-base)/var(--leading-normal) var(--font-body);
+  --type-body-medium: var(--weight-medium) var(--text-base)/var(--leading-normal) var(--font-body);
+  --type-caption: var(--weight-regular) var(--text-xs)/var(--leading-normal) var(--font-body);
+  --type-mono-label: var(--weight-medium) var(--text-2xs)/var(--leading-normal) var(--font-body);
+}
 
 @layer base {
   :root {
+    /* Existing shadcn HSL aliases — kept so the legacy UI primitives (button, input,
+       card, etc.) continue to compile and render. New Khargny DS surfaces above
+       override these. */
     --background: 36 45% 98%;
     --foreground: 26 24% 11%;
     --card: 0 0% 100%;
@@ -29,47 +173,17 @@
     --chart-3: 18 85% 38%;
     --chart-4: 32 75% 45%;
     --chart-5: 150 64% 29%;
-    --radius: 1.25rem}
-  .dark {
-    --background: 24 22% 9%;
-    --foreground: 33 41% 95%;
-    --card: 26 24% 11%;
-    --card-foreground: 33 41% 95%;
-    --popover: 26 24% 11%;
-    --popover-foreground: 33 41% 95%;
-    --primary: 24 86% 52%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 27 18% 19%;
-    --secondary-foreground: 33 41% 95%;
-    --muted: 27 18% 19%;
-    --muted-foreground: 33 20% 81%;
-    --accent: 18 85% 26%;
-    --accent-foreground: 24 100% 91%;
-    --destructive: 11 76% 31%;
-    --destructive-foreground: 33 41% 95%;
-    --border: 25 15% 25%;
-    --input: 25 15% 25%;
-    --ring: 24 86% 52%;
-    --chart-1: 24 86% 52%;
-    --chart-2: 19 70% 51%;
-    --chart-3: 18 85% 38%;
-    --chart-4: 32 75% 45%;
-    --chart-5: 150 64% 29%}
+    --radius: 1.25rem;
+  }
+  /* .dark tokens intentionally removed — Khargny is single light theme. */
 }
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-@keyframes gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
+    font-family: var(--font-body, 'IBM Plex Sans Arabic', sans-serif);
   }
 }

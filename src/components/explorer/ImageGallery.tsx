@@ -1,57 +1,58 @@
-'use client';
+"use client";
+/**
+ * ImageGallery — restyled against the Khargny Design System (TASK-0008).
+ * Renders a 2-column grid of place images; falls back to the gradient placeholder when
+ * no images are supplied (per the design system readme §Imagery — no real photography).
+ */
+import * as React from "react";
+import { ImageOff } from "lucide-react";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import { ImageOff } from 'lucide-react';
-
-interface GalleryImage {
-  url: string;
-  alt?: string;
-}
-
-interface ImageGalleryProps {
-  images: GalleryImage[];
-}
+type ImageGalleryProps = {
+  images: { url: string; alt?: string }[];
+};
 
 export function ImageGallery({ images }: ImageGalleryProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  if (images.length === 0) return null;
-
-  const active = images[activeIndex];
-
-  return (
-    <div className="space-y-3">
-      <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
-        <Image
-          src={active.url}
-          alt={active.alt || 'Place image'}
-          fill
-          className="object-cover"
-          priority
-        />
+  if (images.length === 0) {
+    return (
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "4 / 3",
+          borderRadius: "var(--radius-xl)",
+          background: "var(--gradient-sunset-radial)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "rgba(255,255,255,0.7)",
+        }}
+      >
+        <ImageOff size={48} strokeWidth={1.5} />
       </div>
-      {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {images.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveIndex(i)}
-              className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 transition-colors ${
-                i === activeIndex ? 'border-orange-500' : 'border-transparent'
-              }`}
-            >
-              <Image
-                src={img.url}
-                alt={img.alt || ''}
-                fill
-                className="object-cover"
-                sizes="64px"
-              />
-            </button>
-          ))}
-        </div>
-      )}
+    );
+  }
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: images.length === 1 ? "1fr" : "repeat(2, 1fr)",
+        gap: "var(--space-2)",
+      }}
+    >
+      {images.map((img, i) => (
+        <div
+          key={i}
+          style={{
+            position: "relative",
+            aspectRatio: "4 / 3",
+            borderRadius: "var(--radius-lg)",
+            overflow: "hidden",
+            background: `center/cover no-repeat url(${img.url})`,
+          }}
+          aria-label={img.alt || `Image ${i + 1}`}
+          role="img"
+        />
+      ))}
     </div>
   );
 }

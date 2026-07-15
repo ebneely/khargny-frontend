@@ -1,58 +1,221 @@
-  /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useInView } from "framer-motion";
-import Hero from "@/components/home/Hero";
-import Features from "@/components/home/Features";
-import HeaderNavigation from "@/components/home/HeaderNavigation";
+/**
+ * HomeScreen — full rebuild against `design/builds/Khargny Design System/ui_kits/marketing-home/HomeScreen.jsx`.
+ * See `UI_UX/home/structure/home-marketing/wireframe.md` for the layout spec and
+ * `UI_UX/home/structure/home-marketing/functional.md` for the state model.
+ *
+ * Renders:
+ *  - HomeHeader (wordmark + language IconButton)
+ *  - SearchBar (compact mode; opens the "Where to?" Sheet)
+ *  - CategoryChip rail (5 chips: beach / historic / nature / desert / dining)
+ *  - 2 PlaceCard rails ("Popular near Cairo", "Weekend getaways") with placeholder data
+ *  - BottomNav (Discover tab active)
+ *  - Where-to Sheet (region picker, routes to /explorer/{citySlug})
+ *  - Toast (reserved for TASK-0009 — PlaceCard heart save feedback)
+ *
+ * TASK-0007 / SPRINT-2.
+ */
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { IconButton } from "@/components/ds/IconButton";
+import { SearchBar } from "@/components/ds/SearchBar";
+import { CategoryChip } from "@/components/ds/CategoryChip";
+import { PlaceCard } from "@/components/ds/PlaceCard";
+import { BottomNav } from "@/components/ds/BottomNav";
+import { Sheet } from "@/components/ds/Sheet";
+import { Toast } from "@/components/ds/Toast";
+import { REGIONS, getRegionToCitySlug, type RegionName } from "@/lib/regions";
 
-import { useGlobalStore } from "@/store/useGlobalStore";
-import Navbar from "@/components/ui/Navbar";
-import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+const CATEGORIES: { key: string; label: string; icon: string }[] = [
+  { key: "beach", label: "Beach", icon: "waves" },
+  { key: "historic", label: "Historic", icon: "landmark" },
+  { key: "nature", label: "Nature", icon: "trees" },
+  { key: "desert", label: "Desert", icon: "mountain" },
+  { key: "dining", label: "Dining", icon: "utensils" },
+];
 
-export default function Home() {
-  const { marquebut, setmarquebut, isActive, setisActive } = useGlobalStore();
+const RAILS = [
+  {
+    title: "Popular near Cairo",
+    places: [
+      { title: "Wadi Degla Protectorate", area: "Maadi, Cairo", rating: "4.9", badge: "Guest favorite" },
+      { title: "Al-Azhar Park", area: "Islamic Cairo", rating: "4.8" },
+      { title: "Zamalek Nile Corniche", area: "Zamalek, Cairo", rating: "4.7" },
+    ],
+  },
+  {
+    title: "Weekend getaways",
+    places: [
+      { title: "Siwa Oasis Camp", area: "Siwa", rating: "4.9", badge: "Curated" },
+      { title: "Ain Sokhna Beach House", area: "Ain Sokhna", rating: "4.6" },
+      { title: "Fayoum Lakeside", area: "Fayoum", rating: "4.8" },
+    ],
+  },
+];
 
-  const ctaRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ctaRef, { margin: "0px 0px -100% 0px" });
+export default function HomeScreen() {
+  const router = useRouter();
+  const [cat, setCat] = React.useState("beach");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [toast, setToast] = React.useState<{ message: string; tone: "success" | "error" } | null>(null);
 
-  useEffect(() => {
-    if (marquebut) {
-      if (ctaRef.current) {
-        ctaRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      setmarquebut(false);
-    }
-  }, [marquebut, setmarquebut]);
+  const onRegionSelect = (label: RegionName) => {
+    setFiltersOpen(false);
+    const slug = getRegionToCitySlug(label);
+    router.push(`/explorer/${slug}`);
+  };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="relative lg:space-y-14">
-        <div className="flex items-center justify-between px-4 lg:px-0">
-          <div className="lg:px-14">
-            <HeaderNavigation />
-          </div>
-        </div>
-
-        <div>
-          <Hero />
-          <Features ref={ctaRef} />
-        </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        background: "var(--surface-app)",
+        position: "relative",
+        fontFamily: "var(--font-body)",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 16px 8px",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-xl)",
+            fontWeight: 600,
+            lineHeight: 1.3,
+            color: "var(--brand-700)",
+          }}
+        >
+          Khargny
+        </span>
+        <IconButton
+          ariaLabel="Language"
+          icon={
+            <img
+              src="https://unpkg.com/lucide-static@0.462.0/icons/globe.svg"
+              width={16}
+              height={16}
+              alt=""
+            />
+          }
+        />
       </div>
 
-      {/* Mobile Navbar Button - Fixed Bottom Right */}
-      <Button
-        onClick={() => setisActive(true)}
-        size="icon"
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-black text-white dark:bg-white dark:text-black shadow-lg transition-all hover:scale-105 hover:shadow-xl sm:hidden"
-      >
-        <Menu className="h-6 w-6" />
-      </Button>
+      {/* Search */}
+      <div style={{ padding: "0 16px 12px" }}>
+        <SearchBar area="Anywhere in Egypt" onOpen={() => setFiltersOpen(true)} />
+      </div>
 
-      {/* Navbar Sheet */}
-      <Navbar />
+      {/* Category rail */}
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          padding: "0 12px 10px",
+          overflowX: "auto",
+        }}
+      >
+        {CATEGORIES.map((c) => (
+          <CategoryChip
+            key={c.key}
+            label={c.label}
+            active={cat === c.key}
+            onClick={() => setCat(c.key)}
+            icon={
+              <img
+                src={`https://unpkg.com/lucide-static@0.462.0/icons/${c.icon}.svg`}
+                width={22}
+                height={22}
+                alt=""
+              />
+            }
+          />
+        ))}
+      </div>
+
+      {/* Rails */}
+      <main style={{ flex: 1, overflowY: "auto", paddingBottom: 8 }}>
+        {RAILS.map((rail) => (
+          <section key={rail.title} style={{ marginBottom: 20 }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "var(--text-xl)",
+                fontWeight: 600,
+                lineHeight: 1.3,
+                color: "var(--text-primary)",
+                padding: "4px 16px 10px",
+                margin: 0,
+              }}
+            >
+              {rail.title}
+            </h2>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                overflowX: "auto",
+                padding: "0 16px",
+              }}
+            >
+              {rail.places.map((p) => (
+                <PlaceCard
+                  key={p.title}
+                  size="sm"
+                  title={p.title}
+                  area={p.area}
+                  rating={p.rating}
+                  badge={p.badge}
+                  favorite={false}
+                  // Heart tap is a no-op on the homepage this pass — TASK-0009 wires
+                  // it to the saved-places backend (POST/DELETE /v1/saved-places).
+                  onToggleFavorite={() =>
+                    setToast({ message: `Added ${p.title} to your plan`, tone: "success" })
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </main>
+
+      <BottomNav active="discover" />
+
+      <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Where to?">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {REGIONS.map((r) => (
+            <button
+              key={r.label}
+              type="button"
+              onClick={() => onRegionSelect(r.label)}
+              style={{
+                textAlign: "start",
+                padding: "14px 16px",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--gray-200)",
+                background: "var(--white)",
+                fontFamily: "var(--font-body)",
+                fontSize: "var(--text-base)",
+                color: "var(--text-primary)",
+                cursor: "pointer",
+                transition: "var(--motion-color), var(--motion-shadow)",
+              }}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </Sheet>
+
+      {toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

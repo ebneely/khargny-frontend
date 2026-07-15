@@ -1,24 +1,27 @@
-'use client';
+"use client";
+/**
+ * FilterPanel — restyled against the Khargny Design System (TASK-0008).
+ * A side-rail Sheet that opens when the visitor taps "Filters".
+ * Visual tokens from `UI_UX/explorer/beauty/filter-panel/spec.md`.
+ */
+import * as React from "react";
+import { Sheet } from "@/components/ds/Sheet";
 
-import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-
-export interface ActiveFilters {
+export type ActiveFilters = {
   priceRange?: string[];
   featured?: boolean;
   amenityIds?: string[];
   tagIds?: string[];
-}
+};
 
-interface FilterPanelProps {
+type FilterPanelProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   activeFilters: ActiveFilters;
   onFilterChange: (filters: ActiveFilters) => void;
   onClear: () => void;
   children?: React.ReactNode;
-}
+};
 
 export function FilterPanel({
   isOpen,
@@ -33,28 +36,71 @@ export function FilterPanel({
   );
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="rounded-full relative">
-          Filters
-          {hasFilters && (
-            <span className="ml-1 w-2 h-2 rounded-full bg-orange-500" />
-          )}
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[300px] sm:w-[350px]">
-        <SheetHeader>
-          <SheetTitle>Filters</SheetTitle>
-        </SheetHeader>
-        <div className="mt-6 space-y-6">
+    <>
+      <button
+        type="button"
+        onClick={() => onOpenChange(true)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          height: 36,
+          padding: "0 16px",
+          background: "var(--white)",
+          color: "var(--text-primary)",
+          border: "1px solid var(--border-strong)",
+          borderRadius: "var(--radius-full)",
+          fontFamily: "var(--font-body)",
+          fontSize: "var(--text-sm)",
+          fontWeight: 500,
+          cursor: "pointer",
+          transition: "var(--motion-color)",
+          position: "relative",
+        }}
+      >
+        <img
+          src="https://unpkg.com/lucide-static@0.462.0/icons/sliders-horizontal.svg"
+          width={16}
+          height={16}
+          alt=""
+        />
+        Filters
+        {hasFilters && (
+          <span
+            aria-label="Active filters"
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "var(--brand-500)",
+            }}
+          />
+        )}
+      </button>
+      <Sheet open={isOpen} onClose={() => onOpenChange(false)} title="Filters">
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
           {children}
           {hasFilters && (
-            <Button variant="ghost" onClick={onClear} className="text-sm text-muted-foreground">
+            <button
+              type="button"
+              onClick={onClear}
+              style={{
+                alignSelf: "flex-start",
+                background: "transparent",
+                border: "none",
+                color: "var(--text-tertiary)",
+                fontFamily: "var(--font-body)",
+                fontSize: "var(--text-sm)",
+                cursor: "pointer",
+                padding: 0,
+                textDecoration: "underline",
+              }}
+            >
               Clear all filters
-            </Button>
+            </button>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </Sheet>
+    </>
   );
 }

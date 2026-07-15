@@ -1,16 +1,27 @@
-'use client';
-
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, Phone, Globe, Instagram, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ImageGallery } from '@/components/explorer/ImageGallery';
-import { HoursTable } from '@/components/explorer/HoursTable';
-import { SimilarPlaces } from '@/components/explorer/SimilarPlaces';
-import { LoadingSkeleton } from '@/components/explorer/LoadingSkeleton';
-import { ErrorState } from '@/components/explorer/ErrorState';
-import { NotFoundState } from '@/components/explorer/NotFoundState';
-import { usePlace, useSimilarPlaces } from '@/lib/api/hooks/use-places';
-import { useCities } from '@/lib/api/hooks/use-cities';
+"use client";
+/**
+ * Place detail — `/explorer/{citySlug}/{placeSlug}`.
+ * Restyled against the Khargny Design System (TASK-0008).
+ * See `UI_UX/explorer/structure/explorer-detail/wireframe.md` for the layout spec.
+ *
+ * The `{placeSlug}` dynamic segment is resolved by the backend (slug-aware endpoint
+ * `GET /v1/places/{placeSlug}`) — see the §33 cell named in
+ * `UI_UX/explorer/page-tree.md`. The hours/amenities/tags gap is a known carry-forward
+ * (see `UI_UX/explorer/drift.md`).
+ */
+import * as React from "react";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Star, Share, Navigation, Heart, Check } from "lucide-react";
+import Link from "next/link";
+import { ImageGallery } from "@/components/explorer/ImageGallery";
+import { HoursTable } from "@/components/explorer/HoursTable";
+import { SimilarPlaces } from "@/components/explorer/SimilarPlaces";
+import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
+import { ErrorState } from "@/components/explorer/ErrorState";
+import { NotFoundState } from "@/components/explorer/NotFoundState";
+import { usePlace, useSimilarPlaces } from "@/lib/api/hooks/use-places";
+import { useCities } from "@/lib/api/hooks/use-cities";
+import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 
 function PlaceDetailPage() {
   const params = useParams();
@@ -24,27 +35,35 @@ function PlaceDetailPage() {
 
   const currentCity = cities?.find((c) => c.slug === citySlug);
 
+  // Heart is wired to the saved-places backend (TASK-0009).
+  // No login required — guest cookie auth (khargny_guest_id, HttpOnly, set by backend
+  // middleware on first request). Backend POST /v1/saved-places is idempotent on
+  // (guestId, placeId); the heart toggle is therefore safe to re-tap.
+  const { saved: placeSaved, toggle: toggleSaved, isPending: isSavingPending } = useSaveToggle(
+    place?.id ?? null,
+  );
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FCFAF7]">
+      <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
         <LoadingSkeleton variant="detail" />
       </div>
     );
   }
 
   if (isError) {
-    if (error && 'status' in error && (error as { status: number }).status === 404) {
+    if (error && "status" in error && (error as { status: number }).status === 404) {
       return (
-        <div className="min-h-screen bg-[#FCFAF7]">
+        <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
           <NotFoundState
             backHref={`/explorer/${citySlug}`}
-            backLabel={`Back to ${currentCity?.name || 'places'}`}
+            backLabel={`Back to ${currentCity?.name || "places"}`}
           />
         </div>
       );
     }
     return (
-      <div className="min-h-screen bg-[#FCFAF7]">
+      <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
         <ErrorState message="Failed to load place" onRetry={() => refetch()} />
       </div>
     );
@@ -52,105 +71,314 @@ function PlaceDetailPage() {
 
   if (!place) return null;
 
-  const hasContact =
-    place.address || place.phone || place.website || place.instagram || place.facebook;
-  const priceSymbols = place.priceRange ? '₹'.repeat(Math.min(place.priceRange, 5)) : null;
+  const priceSymbols = place.priceRange ? "₹".repeat(Math.min(place.priceRange, 5)) : null;
 
   return (
-    <div className="min-h-screen bg-[#FCFAF7]">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-card border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <nav className="text-sm text-muted-foreground flex items-center gap-2">
-            <button onClick={() => router.push('/explorer')} className="hover:text-foreground">
-              Home
-            </button>
-            <span>/</span>
-            <button
-              onClick={() => router.push(`/explorer/${citySlug}`)}
-              className="hover:text-foreground"
-            >
-              {currentCity?.name || citySlug}
-            </button>
-          </nav>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "var(--surface-app)",
+        fontFamily: "var(--font-body)",
+      }}
+    >
+      {/* Hero image */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "4 / 3",
+          background: "var(--gradient-sunset-radial)",
+        }}
+      >
+        <div style={{ position: "absolute", top: 14, left: 14 }}>
+          <button
+            type="button"
+            aria-label="Back"
+            onClick={() => router.back()}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "var(--white)",
+              border: "1px solid var(--border-default)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <ArrowLeft size={18} color="var(--gray-900)" />
+          </button>
         </div>
-      </header>
+        <div
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            display: "flex",
+            gap: 8,
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Share"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "var(--white)",
+              border: "1px solid var(--border-default)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <Share size={16} color="var(--gray-900)" />
+          </button>
+          <button
+            type="button"
+            aria-label={placeSaved ? `Remove ${place.name} from your plan` : `Add ${place.name} to your plan`}
+            aria-pressed={placeSaved}
+            onClick={toggleSaved}
+            disabled={isSavingPending}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "var(--white)",
+              border: "1px solid var(--border-default)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: isSavingPending ? "default" : "pointer",
+              transition: "var(--motion-color)",
+            }}
+          >
+            <Heart
+              size={18}
+              color={placeSaved ? "var(--brand-600)" : "var(--gray-500)"}
+              fill={placeSaved ? "var(--brand-600)" : "none"}
+            />
+          </button>
+        </div>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+      <div
+        style={{
+          padding: "18px 18px 100px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          maxWidth: 800,
+          margin: "0 auto",
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "var(--text-3xl)",
+              fontWeight: 600,
+              lineHeight: 1.3,
+              color: "var(--text-primary)",
+              margin: 0,
+            }}
+          >
+            {place.name}
+          </h1>
+          <div
+            style={{
+              fontSize: "var(--text-sm)",
+              color: "var(--text-tertiary)",
+              marginTop: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {place.rating > 0 && (
+              <>
+                <Star size={14} fill="var(--brand-600)" color="var(--brand-600)" />
+                {place.rating.toFixed(1)} ·{" "}
+              </>
+            )}
+            {place.address ?? "Egypt"}
+            {priceSymbols && (
+              <>
+                {" · "}
+                <span style={{ color: "var(--text-tertiary)" }}>{priceSymbols}</span>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Gallery */}
         <ImageGallery
           images={(place as any).images?.map((img: any) => ({ url: img.url, alt: img.alt })) || []}
         />
 
-        {/* Name + rating + price */}
-        <div>
-          <div className="flex items-start justify-between">
-            <h1 className="text-3xl font-bold text-foreground">{place.name}</h1>
-            <div className="flex items-center gap-1">
-              <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-              <span className="font-semibold">{place.rating > 0 ? place.rating.toFixed(1) : '—'}</span>
-            </div>
-          </div>
-          {priceSymbols && (
-            <span className="text-sm text-muted-foreground">{priceSymbols}</span>
-          )}
-        </div>
-
-        {/* Contact info */}
-        {hasContact && (
-          <div className="space-y-3">
-            {place.address && (
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span>{place.address}</span>
-              </div>
-            )}
-            {place.phone && (
-              <a href={`tel:${place.phone}`} className="flex items-center gap-2 text-sm hover:text-orange-600">
-                <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span>{place.phone}</span>
-              </a>
-            )}
-            {place.website && (
-              <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:text-orange-600">
-                <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span>{place.website}</span>
-              </a>
-            )}
-            {place.instagram && (
-              <a href={`https://instagram.com/${place.instagram}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:text-orange-600">
-                <Instagram className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span>{place.instagram}</span>
-              </a>
-            )}
-          </div>
-        )}
-
         {/* Description */}
         {place.description && (
           <section>
-            <h2 className="text-lg font-semibold mb-2">About</h2>
-            <p className="text-muted-foreground leading-relaxed">{place.description}</p>
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "var(--text-xl)",
+                fontWeight: 600,
+                lineHeight: 1.3,
+                color: "var(--text-primary)",
+                margin: "0 0 var(--space-2)",
+              }}
+            >
+              About
+            </h2>
+            <p
+              style={{
+                fontSize: "var(--text-md)",
+                lineHeight: 1.65,
+                color: "var(--text-secondary)",
+                margin: 0,
+              }}
+            >
+              {place.description}
+            </p>
           </section>
         )}
 
         {/* Opening Hours */}
         <section>
-          <h2 className="text-lg font-semibold mb-3">Opening Hours</h2>
+          <h2
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "var(--text-xl)",
+              fontWeight: 600,
+              lineHeight: 1.3,
+              color: "var(--text-primary)",
+              margin: "0 0 var(--space-3)",
+            }}
+          >
+            Opening hours
+          </h2>
           <HoursTable hours={[]} />
-          <p className="text-xs text-muted-foreground mt-1">
+          <p
+            style={{
+              fontSize: "var(--text-xs)",
+              color: "var(--text-tertiary)",
+              marginTop: "var(--space-1)",
+            }}
+          >
             Hours data not available from API yet
           </p>
         </section>
+
+        {/* What's included — design-kit pattern; rendered only if the place has features */}
+        {(place as any).features && (place as any).features.length > 0 && (
+          <section>
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "var(--text-xl)",
+                fontWeight: 600,
+                lineHeight: 1.3,
+                color: "var(--text-primary)",
+                margin: "0 0 var(--space-3)",
+              }}
+            >
+              What&apos;s included
+            </h2>
+            {(place as any).features.map((f: string) => (
+              <div
+                key={f}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  fontSize: "var(--text-base)",
+                  color: "var(--text-secondary)",
+                  marginBottom: 8,
+                }}
+              >
+                <Check size={16} color="var(--success)" /> {f}
+              </div>
+            ))}
+          </section>
+        )}
 
         {/* Similar Places */}
         {similar && similar.length > 0 && (
           <SimilarPlaces places={similar} citySlug={citySlug} />
         )}
-      </main>
+      </div>
+
+      {/* Sticky action bar — discovery product: no price/payment, just save + directions */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "var(--white)",
+          borderTop: "1px solid var(--border-default)",
+          padding: 14,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          maxWidth: 800,
+          margin: "0 auto",
+          zIndex: 10,
+        }}
+      >
+        <button
+          type="button"
+          aria-label="Get directions"
+          onClick={() => {
+            if (place.lat && place.lng) {
+              window.open(
+                `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`,
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }
+          }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "var(--white)",
+            border: "1px solid var(--border-default)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          <Navigation size={18} color="var(--gray-900)" />
+        </button>
+        <Link
+          href={`/explorer/${citySlug}/${placeSlug}#add-to-plan`}
+          style={{
+            flex: 1,
+            height: 52,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "var(--brand-600)",
+            color: "var(--white)",
+            border: "1px solid transparent",
+            borderRadius: "var(--radius-xl)",
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-md)",
+            fontWeight: 600,
+            textDecoration: "none",
+            boxShadow: "var(--shadow-sm)",
+            transition: "var(--motion-color), var(--motion-shadow)",
+          }}
+        >
+          Add to my plan
+        </Link>
+      </div>
     </div>
   );
 }
