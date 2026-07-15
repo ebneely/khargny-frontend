@@ -12,7 +12,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { ExplorerHeader } from "@/components/explorer/ExplorerHeader";
 import { SearchBar } from "@/components/explorer/SearchBar";
-import { CategoryPill } from "@/components/explorer/CategoryPill";
+import { CategoryChip } from "@/components/ds/CategoryChip";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { PlaceCard } from "@/components/ds/PlaceCard";
@@ -125,16 +125,15 @@ export default function CityExplorerPage() {
               marginBottom: "var(--space-2)",
             }}
           >
-            <CategoryPill
+            <CategoryChip
               label="All"
               active={activeCategory === null}
               onClick={() => setActiveCategory(null)}
             />
             {categories.map((cat) => (
-              <CategoryPill
+              <CategoryChip
                 key={cat.id}
                 label={cat.nameAr || cat.nameEn || cat.slug}
-                icon={cat.icon || undefined}
                 active={activeCategory === cat.id}
                 onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
               />
