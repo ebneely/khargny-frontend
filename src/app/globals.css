@@ -187,3 +187,22 @@
     font-family: var(--font-body, 'IBM Plex Sans Arabic', sans-serif);
   }
 }
+
+/* ── Device-split presentation (container/presenter home; scenario US-VISITOR-CIT-001) ──
+   Both HomeMobile and HomeDesktop render; exactly one shows. SSR-safe, no JS, no layout
+   shift. Desktop breakpoint = 1024px. Reused by any route that ships distinct shells. */
+.khg-only-mobile { display: block; }
+.khg-only-desktop { display: none; }
+@media (min-width: 1024px) {
+  .khg-only-mobile { display: none; }
+  .khg-only-desktop { display: block; }
+}
+
+/* Desktop home interaction polish */
+.khg-navlink:hover { color: var(--brand-700); background: var(--brand-50); }
+.khg-herosearch:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+.khg-herosearch:active { transform: translateY(0); }
+.khg-region:hover { border-color: var(--brand-600); box-shadow: var(--shadow-sm); }
+@media (prefers-reduced-motion: reduce) {
+  .khg-herosearch:hover { transform: none; }
+}
