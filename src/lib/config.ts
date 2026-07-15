@@ -15,9 +15,7 @@ const normalizeUrl = (url: string) => url.replace(/\/$/, '');
 const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || '';
 export const BACKEND_URL = BACKEND_BASE_URL ? normalizeUrl(BACKEND_BASE_URL) : '';
 
-export const BETTER_AUTH_URL = BACKEND_URL ? `${BACKEND_URL}/api/auth` : '';
 export const HEALTH_CHECK_URL = BACKEND_URL ? `${BACKEND_URL}/health` : '';
-export const PAYMOB_INTENT_URL = BACKEND_URL ? `${BACKEND_URL}/api/paymob/intent` : '';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 export const API_BASE_URL = API_URL ? normalizeUrl(API_URL) : '';
