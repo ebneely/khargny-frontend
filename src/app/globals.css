@@ -198,6 +198,27 @@
   .khg-only-desktop { display: block; }
 }
 
+/* ── Motion polish ──────────────────────────────────────────────────────────────────────
+   Subtle entrance + interaction animation across the visitor UI. Respects reduced-motion. */
+@keyframes khg-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.khg-anim-in { animation: khg-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.khg-anim-in-2 { animation: khg-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both; }
+.khg-anim-in-3 { animation: khg-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both; }
+/* interaction: cards + buttons get a springy press. Components already set hover transforms;
+   this adds a consistent active-press feedback and a smooth default transition. */
+.khg-press { transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease; }
+.khg-press:active { transform: scale(0.97); }
+.khg-region:hover, .khg-city-card:hover { transform: translateY(-3px); }
+.khg-region:active, .khg-city-card:active { transform: translateY(-1px) scale(0.99); }
+@media (prefers-reduced-motion: reduce) {
+  .khg-anim-in, .khg-anim-in-2, .khg-anim-in-3 { animation: none; }
+  .khg-press, .khg-region, .khg-city-card { transition: none; }
+  .khg-press:active, .khg-region:active, .khg-city-card:active { transform: none; }
+}
+
 /* ── /plan responsive shell ─────────────────────────────────────────────────────────────
    The plan page was a single mobile column stretched full-bleed on desktop. Center it in a
    readable max-width and lay its saved-place cards out multi-column on wide screens, so a

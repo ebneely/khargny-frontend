@@ -115,7 +115,7 @@ function Hero({ onSearch }: { onSearch: () => void }) {
 function RegionGrid({ d }: { d: HomeDiscovery }) {
   const { t, locale } = useI18n();
   return (
-    <section id="khg-regions" style={{ margin: "40px 0 8px", scrollMarginTop: 80 }}>
+    <section id="khg-regions" className="khg-anim-in" style={{ margin: "40px 0 8px", scrollMarginTop: 80 }}>
       <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 6px" }}>
         {t("home.exploreRegion")}
       </h2>
@@ -191,7 +191,7 @@ export function HomeDesktop({ d }: { d: HomeDiscovery }) {
         {/* Place grids when the backend has places */}
         {hasPlaces
           ? d.rails.map((rail) => (
-              <section key={rail.title} style={{ margin: "36px 0" }}>
+              <section key={rail.title} className="khg-anim-in-2" style={{ margin: "36px 0" }}>
                 <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 18px" }}>
                   {rail.title}
                 </h2>
