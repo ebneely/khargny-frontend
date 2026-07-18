@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { clientApi } from "@/lib/api-client";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 /**
  * Contact form — restyled against `design/builds/Khargny Design System` foundations
@@ -13,6 +14,7 @@ import { clientApi } from "@/lib/api-client";
  * surfaces success/error UI per the design's intent.
  */
 export function ContactForm() {
+  const { t } = useI18n();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -165,10 +167,10 @@ export function ContactForm() {
 
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Field
-            label="Your name (optional)"
+            label={t("contact.name")}
             value={name}
             onChange={setName}
-            placeholder="Your name"
+            placeholder={t("contact.namePlaceholder")}
             id="name"
             type="text"
             fieldShell={fieldShell}
@@ -176,7 +178,7 @@ export function ContactForm() {
             colorTextPrimary={colorTextPrimary}
           />
           <Field
-            label="Your email"
+            label={t("contact.email")}
             value={email}
             onChange={setEmail}
             placeholder="you@example.com"
@@ -188,10 +190,10 @@ export function ContactForm() {
             colorTextPrimary={colorTextPrimary}
           />
           <Field
-            label="Subject"
+            label={t("contact.subject")}
             value={subject}
             onChange={setSubject}
-            placeholder="What's this about?"
+            placeholder={t("contact.subjectPlaceholder")}
             id="subject"
             type="text"
             required
@@ -200,10 +202,10 @@ export function ContactForm() {
             colorTextPrimary={colorTextPrimary}
           />
           <TextareaField
-            label="Message"
+            label={t("contact.message")}
             value={message}
             onChange={setMessage}
-            placeholder="Tell us more"
+            placeholder={t("contact.messagePlaceholder")}
             id="message"
             required
             fieldShell={fieldShell}

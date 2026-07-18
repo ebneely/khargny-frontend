@@ -22,8 +22,10 @@ import { NotFoundState } from "@/components/explorer/NotFoundState";
 import { usePlace, useSimilarPlaces } from "@/lib/api/hooks/use-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 function PlaceDetailPage() {
+  const { t } = useI18n();
   const params = useParams();
   const router = useRouter();
   const citySlug = params.citySlug as string;
@@ -93,7 +95,7 @@ function PlaceDetailPage() {
         <div style={{ position: "absolute", top: 14, left: 14 }}>
           <button
             type="button"
-            aria-label="Back"
+            aria-label={t("explorer.back")}
             onClick={() => router.back()}
             style={{
               width: 44,
@@ -121,7 +123,7 @@ function PlaceDetailPage() {
         >
           <button
             type="button"
-            aria-label="Share"
+            aria-label={t("explorer.share")}
             style={{
               width: 44,
               height: 44,
@@ -331,7 +333,7 @@ function PlaceDetailPage() {
       >
         <button
           type="button"
-          aria-label="Get directions"
+          aria-label={t("explorer.directions")}
           onClick={() => {
             if (place.lat && place.lng) {
               window.open(

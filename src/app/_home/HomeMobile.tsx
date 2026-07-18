@@ -13,12 +13,14 @@ import { BottomNav } from "@/components/ds/BottomNav";
 import { Sheet } from "@/components/ds/Sheet";
 import { Toast } from "@/components/ds/Toast";
 import type { HomeDiscovery } from "./useHomeDiscovery";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 const lucide = (icon: string, size = 22) => (
   <img src={`https://unpkg.com/lucide-static@0.462.0/icons/${icon}.svg`} width={size} height={size} alt="" />
 );
 
 export function HomeMobile({ d }: { d: HomeDiscovery }) {
+  const { t } = useI18n();
   return (
     <div
       style={{
@@ -38,7 +40,7 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
       </div>
 
       <div style={{ padding: "0 16px 12px" }}>
-        <SearchBar area="Anywhere in Egypt" onOpen={d.openFilters} />
+        <SearchBar area={t("home.anywhere")} onOpen={d.openFilters} />
       </div>
 
       <div style={{ display: "flex", gap: 4, padding: "0 12px 10px", overflowX: "auto" }}>
@@ -64,7 +66,7 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
 
       <BottomNav active="discover" />
 
-      <Sheet open={d.filtersOpen} onClose={d.closeFilters} title="Where to?">
+      <Sheet open={d.filtersOpen} onClose={d.closeFilters} title={t("home.whereTo")}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {d.regions.map((r) => (
             <button

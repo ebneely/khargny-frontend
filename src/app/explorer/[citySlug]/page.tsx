@@ -21,8 +21,10 @@ import { useCities } from "@/lib/api/hooks/use-cities";
 import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useSearchPlaces } from "@/lib/api/hooks/use-search";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 export default function CityExplorerPage() {
+  const { t } = useI18n();
   const params = useParams();
   const router = useRouter();
   const citySlug = params.citySlug as string;
@@ -126,7 +128,7 @@ export default function CityExplorerPage() {
             }}
           >
             <CategoryChip
-              label="All"
+              label={t("explorer.all")}
               active={activeCategory === null}
               onClick={() => setActiveCategory(null)}
             />

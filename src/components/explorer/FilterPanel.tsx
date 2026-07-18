@@ -6,6 +6,7 @@
  */
 import * as React from "react";
 import { Sheet } from "@/components/ds/Sheet";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 export type ActiveFilters = {
   priceRange?: string[];
@@ -31,6 +32,7 @@ export function FilterPanel({
   onClear,
   children,
 }: FilterPanelProps) {
+  const { t } = useI18n();
   const hasFilters = Object.values(activeFilters).some(
     (v) => v !== undefined && v !== false && (Array.isArray(v) ? v.length > 0 : true),
   );
@@ -77,7 +79,7 @@ export function FilterPanel({
           />
         )}
       </button>
-      <Sheet open={isOpen} onClose={() => onOpenChange(false)} title="Filters">
+      <Sheet open={isOpen} onClose={() => onOpenChange(false)} title={t("explorer.filters")}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
           {children}
           {hasFilters && (

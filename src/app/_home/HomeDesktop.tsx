@@ -13,6 +13,7 @@ import { PlaceCard } from "@/components/ds/PlaceCard";
 import { Sheet } from "@/components/ds/Sheet";
 import { Toast } from "@/components/ds/Toast";
 import type { HomeDiscovery } from "./useHomeDiscovery";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 const lucide = (icon: string, size = 20) => (
   <img src={`https://unpkg.com/lucide-static@0.462.0/icons/${icon}.svg`} width={size} height={size} alt="" />
@@ -134,6 +135,7 @@ function Hero({ onSearch }: { onSearch: () => void }) {
 }
 
 export function HomeDesktop({ d }: { d: HomeDiscovery }) {
+  const { t } = useI18n();
   return (
     <div style={{ minHeight: "100dvh", background: "var(--surface-app)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}>
       <TopNav onLang={() => {}} />
@@ -165,11 +167,11 @@ export function HomeDesktop({ d }: { d: HomeDiscovery }) {
       <footer style={{ marginTop: "auto", borderTop: "1px solid var(--gray-200)", background: "var(--gray-50)" }}>
         <div style={{ maxWidth: MAXW, margin: "0 auto", padding: "28px 32px", display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", color: "var(--text-secondary)", fontSize: "var(--text-sm)" }}>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--brand-700)" }}>Khargny</span>
-          <span>Curated outings across Egypt · not a booking site</span>
+          <span>{t("home.subtitle")}</span>
         </div>
       </footer>
 
-      <Sheet open={d.filtersOpen} onClose={d.closeFilters} title="Where to?">
+      <Sheet open={d.filtersOpen} onClose={d.closeFilters} title={t("home.whereTo")}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {d.regions.map((r) => (
             <button
