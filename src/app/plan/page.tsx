@@ -18,6 +18,7 @@ import { PlaceCard } from "@/components/ds/PlaceCard";
 import { BottomNav } from "@/components/ds/BottomNav";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
+import { SiteHeader } from "@/components/ds/SiteHeader";
 
 type SavedPlaceWithPlace = {
   id: string;
@@ -124,9 +125,14 @@ export default function PlanPage() {
         flexDirection: "column",
       }}
     >
-      {/* Top bar */}
+      {/* Desktop: the shared site header (logo=home, nav, one wired language switch) */}
+      <div className="khg-only-desktop">
+        <SiteHeader active="plan" />
+      </div>
+
+      {/* Mobile: compact top bar (logo + saved count); the BottomNav carries nav */}
       <div
-        className="khg-plan-container"
+        className="khg-plan-container khg-only-mobile"
         style={{
           display: "flex",
           alignItems: "center",
@@ -148,13 +154,6 @@ export default function PlanPage() {
         >
           Khargny
         </Link>
-        {/* Desktop nav — replaces the mobile BottomNav ≥1024 */}
-        <nav className="khg-plan-nav khg-only-desktop" aria-label="Primary">
-          <Link href="/explorer">Explore</Link>
-          <Link href="/plan" data-active="true">
-            Your plan
-          </Link>
-        </nav>
         <span
           aria-label={`${totalCount} saved`}
           style={{

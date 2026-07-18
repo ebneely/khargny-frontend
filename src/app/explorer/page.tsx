@@ -7,6 +7,7 @@
 import * as React from "react";
 import { useState } from "react";
 import { ExplorerHeader } from "@/components/explorer/ExplorerHeader";
+import { SiteHeader } from "@/components/ds/SiteHeader";
 import { CityGrid } from "@/components/explorer/CityGrid";
 import { SearchBar } from "@/components/explorer/SearchBar";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
@@ -33,7 +34,12 @@ export default function ExplorerPage() {
         fontFamily: "var(--font-body)",
       }}
     >
-      <ExplorerHeader cities={cities || []} />
+      <div className="khg-only-desktop">
+        <SiteHeader active="explore" />
+      </div>
+      <div className="khg-only-mobile">
+        <ExplorerHeader cities={cities || []} />
+      </div>
 
       <main
         style={{

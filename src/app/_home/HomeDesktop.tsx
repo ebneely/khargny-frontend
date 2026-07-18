@@ -1,72 +1,46 @@
 "use client";
 /**
- * HomeDesktop — the distinct desktop presentational shell for the home discovery
- * scenario. NOT the mobile column stretched: a sticky top nav (no bottom-nav), a
- * warm hero with a large search affordance, a centered max-width content column, and
- * place sections rendered as wrapping GRIDS instead of horizontal rails. All state
- * and actions come from useHomeDiscovery(), shared with HomeMobile.
+ * HomeDesktop — the desktop shell for the home discovery scenario. A shared SiteHeader
+ * (logo=home, Home/Explore/Your plan, one wired language switch), a warm hero, the
+ * category row, an always-present "Explore by region" grid (so the page is never empty
+ * even before any place is published), and place grids when the backend has places.
+ * All state/actions come from useHomeDiscovery(); icons are bundled (lucide-react).
  */
 import * as React from "react";
-import { IconButton } from "@/components/ds/IconButton";
+import {
+  Search,
+  ArrowRight,
+  Waves,
+  Landmark,
+  Trees,
+  Mountain,
+  Utensils,
+  Coffee,
+  ShoppingBag,
+  MapPin,
+} from "lucide-react";
 import { CategoryChip } from "@/components/ds/CategoryChip";
 import { PlaceCard } from "@/components/ds/PlaceCard";
-import { Sheet } from "@/components/ds/Sheet";
 import { Toast } from "@/components/ds/Toast";
+import { SiteHeader } from "@/components/ds/SiteHeader";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
 
-const lucide = (icon: string, size = 20) => (
-  <img src={`https://unpkg.com/lucide-static@0.462.0/icons/${icon}.svg`} width={size} height={size} alt="" />
-);
-
 const MAXW = 1120;
 
-function TopNav({ onLang }: { onLang: () => void }) {
-  return (
-    <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 20,
-        background: "color-mix(in srgb, var(--surface-app) 88%, transparent)",
-        backdropFilter: "blur(10px)",
-        borderBottom: "1px solid var(--gray-200)",
-      }}
-    >
-      <div style={{ maxWidth: MAXW, margin: "0 auto", padding: "14px 32px", display: "flex", alignItems: "center", gap: 32 }}>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--brand-700)", letterSpacing: "-0.01em" }}>
-          Khargny
-        </span>
-        <nav style={{ display: "flex", gap: 4, marginInlineStart: 8 }}>
-          {[
-            { href: "/explorer", label: "Explore" },
-            { href: "/plan", label: "Your plan" },
-          ].map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              style={{
-                padding: "8px 14px",
-                borderRadius: "var(--radius-full)",
-                fontFamily: "var(--font-body)",
-                fontSize: "var(--text-base)",
-                fontWeight: 500,
-                color: "var(--text-secondary)",
-                textDecoration: "none",
-                transition: "var(--motion-color)",
-              }}
-              className="khg-navlink"
-            >
-              {l.label}
-            </a>
-          ))}
-        </nav>
-        <div style={{ marginInlineStart: "auto" }}>
-          <IconButton ariaLabel="Language" icon={lucide("globe", 16)} onClick={onLang} />
-        </div>
-      </div>
-    </header>
-  );
+const CAT_ICON: Record<string, React.ComponentType<{ size?: number }>> = {
+  waves: Waves,
+  landmark: Landmark,
+  trees: Trees,
+  mountain: Mountain,
+  utensils: Utensils,
+  coffee: Coffee,
+  "shopping-bag": ShoppingBag,
+  "map-pin": MapPin,
+};
+function catIcon(name: string, size = 22) {
+  const C = CAT_ICON[name] || MapPin;
+  return <C size={size} />;
 }
 
 function Hero({ onSearch }: { onSearch: () => void }) {
@@ -110,7 +84,9 @@ function Hero({ onSearch }: { onSearch: () => void }) {
             textAlign: "start",
           }}
         >
-          <span style={{ display: "inline-flex", color: "var(--brand-600)" }}>{lucide("search", 20)}</span>
+          <span style={{ display: "inline-flex", color: "var(--brand-600)" }}>
+            <Search size={20} aria-hidden="true" />
+          </span>
           <span style={{ fontFamily: "var(--font-body)", fontSize: "var(--text-base)", color: "var(--text-secondary)", flex: 1 }}>
             Where to? &nbsp;·&nbsp; Anywhere in Egypt
           </span>
@@ -126,7 +102,7 @@ function Hero({ onSearch }: { onSearch: () => void }) {
               color: "var(--white)",
             }}
           >
-            <img src="https://unpkg.com/lucide-static@0.462.0/icons/arrow-right.svg" width={18} height={18} alt="" style={{ filter: "invert(1)" }} />
+            <ArrowRight size={18} aria-hidden="true" />
           </span>
         </button>
       </div>
@@ -134,34 +110,105 @@ function Hero({ onSearch }: { onSearch: () => void }) {
   );
 }
 
+function RegionGrid({ d }: { d: HomeDiscovery }) {
+  return (
+    <section id="khg-regions" style={{ margin: "40px 0 8px", scrollMarginTop: 80 }}>
+      <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 6px" }}>
+        Explore by region
+      </h2>
+      <p style={{ color: "var(--text-secondary)", margin: "0 0 18px", fontSize: "var(--text-base)" }}>
+        Pick where you&apos;re headed — we&apos;ll show you what&apos;s worth the trip.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        {d.regions.map((r) => (
+          <button
+            key={r.label}
+            type="button"
+            onClick={() => d.onRegionSelect(r.label)}
+            className="khg-region"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              textAlign: "start",
+              padding: "22px 20px",
+              borderRadius: "var(--radius-xl)",
+              border: "1px solid var(--gray-200)",
+              background: "linear-gradient(135deg, var(--brand-50), var(--white))",
+              cursor: "pointer",
+              transition: "var(--motion-color), var(--motion-shadow), var(--motion-transform)",
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: "var(--radius-full)", background: "var(--brand-100)", color: "var(--brand-700)", flexShrink: 0 }}>
+                <MapPin size={20} aria-hidden="true" />
+              </span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-lg)", fontWeight: 600, color: "var(--text-primary)" }}>
+                {r.label}
+              </span>
+            </span>
+            <span style={{ color: "var(--brand-600)", display: "inline-flex" }}>
+              <ArrowRight size={18} aria-hidden="true" />
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function HomeDesktop({ d }: { d: HomeDiscovery }) {
   const { t } = useI18n();
+  const hasPlaces = d.rails.length > 0;
   return (
     <div style={{ minHeight: "100dvh", background: "var(--surface-app)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}>
-      <TopNav onLang={() => {}} />
-      <Hero onSearch={d.openFilters} />
+      <SiteHeader active="home" />
+      <Hero
+        onSearch={() =>
+          document
+            .getElementById("khg-regions")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }
+      />
 
       <div style={{ maxWidth: MAXW, margin: "0 auto", width: "100%", padding: "0 32px" }}>
-        {/* Category row — centered, no scroll needed at this width */}
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", padding: "28px 0 8px" }}>
-          {d.categories.map((c) => (
-            <CategoryChip key={c.key} label={c.label} active={d.cat === c.key} onClick={() => d.setCat(c.key)} icon={lucide(c.icon, 22)} />
-          ))}
-        </div>
+        {/* Category row */}
+        {d.categories.length > 0 && (
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", padding: "28px 0 4px" }}>
+            {d.categories.map((c) => (
+              <CategoryChip key={c.key} label={c.label} active={d.cat === c.key} onClick={() => d.setCat(c.key)} icon={catIcon(c.icon, 22)} />
+            ))}
+          </div>
+        )}
 
-        {/* Place sections — wrapping grids of md cards */}
-        {d.rails.map((rail) => (
-          <section key={rail.title} style={{ margin: "36px 0" }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 18px" }}>
-              {rail.title}
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20, justifyItems: "start" }}>
-              {rail.places.map((p) => (
-                <PlaceCard key={p.id} size="md" title={p.title} area={p.area} rating={p.rating} badge={p.badge} favorite={false} onToggleFavorite={() => d.onSavePlace(p.id)} />
-              ))}
-            </div>
-          </section>
-        ))}
+        {/* Regions — always present, so the home is never an empty page */}
+        <RegionGrid d={d} />
+
+        {/* Place grids when the backend has places */}
+        {hasPlaces
+          ? d.rails.map((rail) => (
+              <section key={rail.title} style={{ margin: "36px 0" }}>
+                <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 18px" }}>
+                  {rail.title}
+                </h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20, justifyItems: "start" }}>
+                  {rail.places.map((p) => (
+                    <PlaceCard key={p.id} size="md" title={p.title} area={p.area} rating={p.rating} badge={p.badge} favorite={false} onToggleFavorite={() => d.onSavePlace(p.id)} />
+                  ))}
+                </div>
+              </section>
+            ))
+          : (
+            <section style={{ margin: "40px 0 56px", padding: "40px 24px", textAlign: "center", border: "1px dashed var(--gray-300)", borderRadius: "var(--radius-xl)", background: "var(--gray-50)" }}>
+              <p style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-xl)", fontWeight: 600, color: "var(--text-primary)", margin: "0 0 6px" }}>
+                New places are on the way
+              </p>
+              <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "var(--text-base)" }}>
+                Pick a region above to start exploring what&apos;s already mapped.
+              </p>
+            </section>
+          )}
       </div>
 
       <footer style={{ marginTop: "auto", borderTop: "1px solid var(--gray-200)", background: "var(--gray-50)" }}>
@@ -170,22 +217,6 @@ export function HomeDesktop({ d }: { d: HomeDiscovery }) {
           <span>{t("home.subtitle")}</span>
         </div>
       </footer>
-
-      <Sheet open={d.filtersOpen} onClose={d.closeFilters} title={t("home.whereTo")}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {d.regions.map((r) => (
-            <button
-              key={r.label}
-              type="button"
-              onClick={() => d.onRegionSelect(r.label)}
-              className="khg-region"
-              style={{ textAlign: "start", padding: "16px 18px", borderRadius: "var(--radius-lg)", border: "1px solid var(--gray-200)", background: "var(--white)", fontFamily: "var(--font-body)", fontSize: "var(--text-base)", color: "var(--text-primary)", cursor: "pointer", transition: "var(--motion-color), var(--motion-shadow)" }}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-      </Sheet>
 
       {d.toast && <Toast message={d.toast.message} tone={d.toast.tone} onDismiss={d.dismissToast} />}
     </div>

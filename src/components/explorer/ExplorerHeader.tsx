@@ -6,7 +6,6 @@
  */
 import * as React from "react";
 import Link from "next/link";
-import { IconButton } from "@/components/ds/IconButton";
 import { CitySelector } from "./CitySelector";
 import type { City } from "@/lib/api/types";
 
@@ -30,7 +29,8 @@ export function ExplorerHeader({ cities, currentCitySlug, onCityChange }: Explor
       }}
     >
       <Link
-        href="/explorer"
+        href="/"
+        aria-label="Khargny — home"
         style={{
           fontFamily: "var(--font-display)",
           fontSize: "var(--text-xl)",
@@ -50,17 +50,6 @@ export function ExplorerHeader({ cities, currentCitySlug, onCityChange }: Explor
             onChange={onCityChange}
           />
         )}
-        <IconButton
-          ariaLabel="Language"
-          icon={
-            <img
-              src="https://unpkg.com/lucide-static@0.462.0/icons/globe.svg"
-              width={16}
-              height={16}
-              alt=""
-            />
-          }
-        />
       </div>
     </header>
   );

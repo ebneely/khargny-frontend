@@ -5,7 +5,6 @@
  * rails, bottom nav, region Sheet. All state/actions come from useHomeDiscovery().
  */
 import * as React from "react";
-import { IconButton } from "@/components/ds/IconButton";
 import { SearchBar } from "@/components/ds/SearchBar";
 import { CategoryChip } from "@/components/ds/CategoryChip";
 import { PlaceCard } from "@/components/ds/PlaceCard";
@@ -36,7 +35,8 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
         <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-xl)", fontWeight: 600, lineHeight: 1.3, color: "var(--brand-700)" }}>
           Khargny
         </span>
-        <IconButton ariaLabel="Language" icon={lucide("globe", 16)} />
+        {/* Language on mobile is the floating LanguageToggle (lg:hidden) — no header globe here,
+            so there is exactly one language control at this width. */}
       </div>
 
       <div style={{ padding: "0 16px 12px" }}>
