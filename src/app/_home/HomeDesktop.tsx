@@ -44,6 +44,7 @@ function catIcon(name: string, size = 22) {
 }
 
 function Hero({ onSearch }: { onSearch: () => void }) {
+  const { t } = useI18n();
   return (
     <section style={{ background: "var(--brand-50)", borderBottom: "1px solid var(--gray-200)" }}>
       <div style={{ maxWidth: MAXW, margin: "0 auto", padding: "72px 32px 64px", textAlign: "center" }}>
@@ -59,10 +60,10 @@ function Hero({ onSearch }: { onSearch: () => void }) {
             textWrap: "balance",
           }}
         >
-          Find your next outing in Egypt
+          {t("home.heroTitle")}
         </h1>
         <p style={{ fontFamily: "var(--font-body)", fontSize: "var(--text-lg)", color: "var(--text-secondary)", margin: "16px auto 0", maxWidth: "44ch", lineHeight: 1.5 }}>
-          Curated places worth the trip — beaches, ruins, oases and tables. No bookings, just where to go next.
+          {t("home.heroSubtitle")}
         </p>
         <button
           type="button"
@@ -88,7 +89,7 @@ function Hero({ onSearch }: { onSearch: () => void }) {
             <Search size={20} aria-hidden="true" />
           </span>
           <span style={{ fontFamily: "var(--font-body)", fontSize: "var(--text-base)", color: "var(--text-secondary)", flex: 1 }}>
-            Where to? &nbsp;·&nbsp; Anywhere in Egypt
+            {t("home.whereTo")} &nbsp;·&nbsp; {t("home.anywhere")}
           </span>
           <span
             style={{
@@ -111,13 +112,14 @@ function Hero({ onSearch }: { onSearch: () => void }) {
 }
 
 function RegionGrid({ d }: { d: HomeDiscovery }) {
+  const { t } = useI18n();
   return (
     <section id="khg-regions" style={{ margin: "40px 0 8px", scrollMarginTop: 80 }}>
       <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 6px" }}>
-        Explore by region
+        {t("home.exploreRegion")}
       </h2>
       <p style={{ color: "var(--text-secondary)", margin: "0 0 18px", fontSize: "var(--text-base)" }}>
-        Pick where you&apos;re headed — we&apos;ll show you what&apos;s worth the trip.
+        {t("home.exploreRegionSub")}
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
         {d.regions.map((r) => (
@@ -202,10 +204,10 @@ export function HomeDesktop({ d }: { d: HomeDiscovery }) {
           : (
             <section style={{ margin: "40px 0 56px", padding: "40px 24px", textAlign: "center", border: "1px dashed var(--gray-300)", borderRadius: "var(--radius-xl)", background: "var(--gray-50)" }}>
               <p style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-xl)", fontWeight: 600, color: "var(--text-primary)", margin: "0 0 6px" }}>
-                New places are on the way
+                {t("home.emptyTitle")}
               </p>
               <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "var(--text-base)" }}>
-                Pick a region above to start exploring what&apos;s already mapped.
+                {t("home.emptySub")}
               </p>
             </section>
           )}

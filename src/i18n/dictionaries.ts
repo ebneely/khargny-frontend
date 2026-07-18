@@ -41,6 +41,14 @@ const en = {
     popular: "Popular right now",
     anywhere: "Anywhere in Egypt",
     subtitle: "Curated outings across Egypt · not a booking site",
+    heroTitle: "Find your next outing in Egypt",
+    heroSubtitle:
+      "Curated places worth the trip — beaches, ruins, oases and tables. No bookings, just where to go next.",
+    exploreRegion: "Explore by region",
+    exploreRegionSub: "Pick where you're headed — we'll show you what's worth the trip.",
+    emptyTitle: "New places are on the way",
+    emptySub: "Pick a region above to start exploring what's already mapped.",
+    findPlaces: "Find places",
   },
   explorer: {
     cities: "Cities",
@@ -130,6 +138,14 @@ const ar: typeof en = {
     popular: "الأكثر رواجًا الآن",
     anywhere: "أي مكان في مصر",
     subtitle: "وجهات مختارة في مصر · لسنا موقع حجوزات",
+    heroTitle: "اكتشف وجهتك القادمة في مصر",
+    heroSubtitle:
+      "أماكن مختارة تستحق الرحلة — شواطئ وآثار وواحات ومطاعم. بدون حجوزات، فقط وجهتك التالية.",
+    exploreRegion: "استكشف حسب المنطقة",
+    exploreRegionSub: "اختر وجهتك — وسنعرض لك ما يستحق الرحلة.",
+    emptyTitle: "أماكن جديدة في الطريق",
+    emptySub: "اختر منطقة بالأعلى لتبدأ استكشاف ما هو متاح.",
+    findPlaces: "اكتشف الأماكن",
   },
   explorer: {
     cities: "المدن",

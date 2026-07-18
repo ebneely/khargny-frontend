@@ -20,14 +20,14 @@ const MAXW = 1120;
 
 type Active = "home" | "explore" | "plan";
 
-const LINKS: { key: Active; href: string; label: string }[] = [
-  { key: "home", href: "/", label: "Home" },
-  { key: "explore", href: "/explorer", label: "Explore" },
-  { key: "plan", href: "/plan", label: "Your plan" },
+const LINKS: { key: Active; href: string; tkey: string }[] = [
+  { key: "home", href: "/", tkey: "common.home" },
+  { key: "explore", href: "/explorer", tkey: "common.explore" },
+  { key: "plan", href: "/plan", tkey: "common.plan" },
 ];
 
 export function SiteHeader({ active }: { active?: Active }) {
-  const { toggleLocale, dict } = useI18n();
+  const { toggleLocale, dict, t } = useI18n();
   return (
     <header
       style={{
@@ -85,7 +85,7 @@ export function SiteHeader({ active }: { active?: Active }) {
                 transition: "var(--motion-color)",
               }}
             >
-              {l.label}
+              {t(l.tkey)}
             </Link>
           ))}
         </nav>
