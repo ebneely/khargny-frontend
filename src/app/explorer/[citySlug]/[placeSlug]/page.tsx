@@ -348,13 +348,13 @@ function PlaceDetailPage() {
           type="button"
           aria-label={t("explorer.directions")}
           onClick={() => {
-            if (place.lat && place.lng) {
-              window.open(
-                `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`,
-                "_blank",
-                "noopener,noreferrer",
-              );
-            }
+            // Prefer the admin-set Google Maps link; fall back to lat/lng directions.
+            const url = place.mapsUrl
+              ? place.mapsUrl
+              : place.lat && place.lng
+                ? `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`
+                : null;
+            if (url) window.open(url, "_blank", "noopener,noreferrer");
           }}
           style={{
             width: 44,
@@ -371,28 +371,32 @@ function PlaceDetailPage() {
         >
           <Navigation size={18} color="var(--gray-900)" />
         </button>
-        <Link
-          href={`/explorer/${citySlug}/${placeSlug}#add-to-plan`}
+        <button
+          type="button"
+          onClick={toggleSaved}
+          disabled={isSavingPending}
           style={{
             flex: 1,
             height: 52,
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "var(--brand-600)",
-            color: "var(--white)",
-            border: "1px solid transparent",
+            gap: 8,
+            background: placeSaved ? "var(--white)" : "var(--brand-600)",
+            color: placeSaved ? "var(--brand-600)" : "var(--white)",
+            border: placeSaved ? "1px solid var(--brand-600)" : "1px solid transparent",
             borderRadius: "var(--radius-xl)",
             fontFamily: "var(--font-display)",
             fontSize: "var(--text-md)",
             fontWeight: 600,
-            textDecoration: "none",
+            cursor: isSavingPending ? "default" : "pointer",
             boxShadow: "var(--shadow-sm)",
             transition: "var(--motion-color), var(--motion-shadow)",
           }}
         >
-          Add to my plan
-        </Link>
+          <Heart size={18} fill={placeSaved ? "var(--brand-600)" : "none"} color={placeSaved ? "var(--brand-600)" : "var(--white)"} />
+          {placeSaved ? t("place.saved") : t("place.save")}
+        </button>
       </div>
     </div>
   );

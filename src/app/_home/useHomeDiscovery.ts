@@ -12,7 +12,6 @@
  */
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { REGIONS, getRegionToCitySlug, type RegionName } from "@/lib/regions";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
@@ -79,7 +78,8 @@ export function useHomeDiscovery() {
       .map((c) => ({
         key: c.slug,
         label: locale === "ar" ? c.nameAr : c.nameEn || c.nameAr,
-        icon: ICON_BY_SLUG[c.slug] || c.icon || "map-pin",
+        // Prefer the icon the ADMIN set in the dashboard; fall back to a slug guess, then a pin.
+        icon: c.icon || ICON_BY_SLUG[c.slug] || "map-pin",
       }));
   }, [categoryData, locale]);
 
@@ -133,10 +133,25 @@ export function useHomeDiscovery() {
     [router],
   );
 
-  const onRegionSelect = React.useCallback(
-    (label: RegionName) => {
+  // "Explore by region" = the REAL cities the admin created (not a hardcoded 5-region list).
+  // Each card routes to that city's explorer page by its real slug.
+  const regionCities = React.useMemo(
+    () =>
+      (cityData ?? [])
+        .filter((c) => c.status !== "draft")
+        .map((c) => ({
+          id: c.id,
+          slug: c.slug,
+          label: locale === "ar" ? c.name : c.nameEn || c.name,
+          region: c.region ?? "",
+        })),
+    [cityData, locale],
+  );
+
+  const onCitySelect = React.useCallback(
+    (slug: string) => {
       setFiltersOpen(false);
-      router.push(`/explorer/${getRegionToCitySlug(label)}`);
+      if (slug) router.push(`/explorer/${slug}`);
     },
     [router],
   );
@@ -155,7 +170,7 @@ export function useHomeDiscovery() {
   );
 
   return {
-    regions: REGIONS,
+    regionCities,
     categories,
     rails,
     cat,
@@ -163,7 +178,7 @@ export function useHomeDiscovery() {
     filtersOpen,
     openFilters: () => setFiltersOpen(true),
     closeFilters: () => setFiltersOpen(false),
-    onRegionSelect,
+    onCitySelect,
     onOpenPlace,
     toast,
     dismissToast: () => setToast(null),

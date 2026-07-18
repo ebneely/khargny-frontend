@@ -5,27 +5,15 @@
  * rails, bottom nav, region Sheet. All state/actions come from useHomeDiscovery().
  */
 import * as React from "react";
-import {
-  Waves, Landmark, Trees, Mountain, Utensils, Coffee, ShoppingBag, MapPin,
-} from "lucide-react";
 import { SearchBar } from "@/components/ds/SearchBar";
 import { CategoryChip } from "@/components/ds/CategoryChip";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { BottomNav } from "@/components/ds/BottomNav";
 import { Sheet } from "@/components/ds/Sheet";
 import { Toast } from "@/components/ds/Toast";
+import { catIcon } from "@/lib/category-icon";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
-
-// Bundled icons (lucide-react), never a CDN — matches the shell contract's icon policy.
-const CAT_ICON: Record<string, React.ComponentType<{ size?: number }>> = {
-  waves: Waves, landmark: Landmark, trees: Trees, mountain: Mountain,
-  utensils: Utensils, coffee: Coffee, "shopping-bag": ShoppingBag, "map-pin": MapPin,
-};
-function catIcon(name: string, size = 22) {
-  const C = CAT_ICON[name] || MapPin;
-  return <C size={size} />;
-}
 
 export function HomeMobile({ d }: { d: HomeDiscovery }) {
   const { t, locale } = useI18n();
@@ -79,14 +67,14 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
 
       <Sheet open={d.filtersOpen} onClose={d.closeFilters} title={t("home.whereTo")}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {d.regions.map((r) => (
+          {d.regionCities.map((c) => (
             <button
-              key={r.label}
+              key={c.id}
               type="button"
-              onClick={() => d.onRegionSelect(r.label)}
+              onClick={() => d.onCitySelect(c.slug)}
               style={{ textAlign: "start", padding: "14px 16px", borderRadius: "var(--radius-lg)", border: "1px solid var(--gray-200)", background: "var(--white)", fontFamily: "var(--font-body)", fontSize: "var(--text-base)", color: "var(--text-primary)", cursor: "pointer", transition: "var(--motion-color), var(--motion-shadow)" }}
             >
-              {locale === "ar" ? r.labelAr : r.label}
+              {c.label}
             </button>
           ))}
         </div>

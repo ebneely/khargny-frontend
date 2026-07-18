@@ -98,6 +98,7 @@ export interface Place {
   lng: number | null;
   phone: string | null;
   website: string | null;
+  mapsUrl: string | null;
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;

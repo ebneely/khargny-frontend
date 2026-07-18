@@ -7,42 +7,17 @@
  * All state/actions come from useHomeDiscovery(); icons are bundled (lucide-react).
  */
 import * as React from "react";
-import {
-  Search,
-  ArrowRight,
-  Waves,
-  Landmark,
-  Trees,
-  Mountain,
-  Utensils,
-  Coffee,
-  ShoppingBag,
-  MapPin,
-} from "lucide-react";
+import { Search, ArrowRight, MapPin } from "lucide-react";
 import { CategoryChip } from "@/components/ds/CategoryChip";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { Toast } from "@/components/ds/Toast";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SiteFooter } from "@/components/ds/SiteFooter";
+import { catIcon } from "@/lib/category-icon";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
 
 const MAXW = 1120;
-
-const CAT_ICON: Record<string, React.ComponentType<{ size?: number }>> = {
-  waves: Waves,
-  landmark: Landmark,
-  trees: Trees,
-  mountain: Mountain,
-  utensils: Utensils,
-  coffee: Coffee,
-  "shopping-bag": ShoppingBag,
-  "map-pin": MapPin,
-};
-function catIcon(name: string, size = 22) {
-  const C = CAT_ICON[name] || MapPin;
-  return <C size={size} />;
-}
 
 function Hero({ onSearch }: { onSearch: () => void }) {
   const { t } = useI18n();
@@ -113,7 +88,8 @@ function Hero({ onSearch }: { onSearch: () => void }) {
 }
 
 function RegionGrid({ d }: { d: HomeDiscovery }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
+  if (d.regionCities.length === 0) return null;
   return (
     <section id="khg-regions" className="khg-anim-in" style={{ margin: "40px 0 8px", scrollMarginTop: 80 }}>
       <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 6px" }}>
@@ -123,11 +99,11 @@ function RegionGrid({ d }: { d: HomeDiscovery }) {
         {t("home.exploreRegionSub")}
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-        {d.regions.map((r) => (
+        {d.regionCities.map((c) => (
           <button
-            key={r.label}
+            key={c.id}
             type="button"
-            onClick={() => d.onRegionSelect(r.label)}
+            onClick={() => d.onCitySelect(c.slug)}
             className="khg-region"
             style={{
               display: "flex",
@@ -147,8 +123,11 @@ function RegionGrid({ d }: { d: HomeDiscovery }) {
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: "var(--radius-full)", background: "var(--brand-100)", color: "var(--brand-700)", flexShrink: 0 }}>
                 <MapPin size={20} aria-hidden="true" />
               </span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-lg)", fontWeight: 600, color: "var(--text-primary)" }}>
-                {locale === "ar" ? r.labelAr : r.label}
+              <span style={{ display: "inline-flex", flexDirection: "column" }}>
+                <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-lg)", fontWeight: 600, color: "var(--text-primary)" }}>
+                  {c.label}
+                </span>
+                {c.region && <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{c.region}</span>}
               </span>
             </span>
             <span style={{ color: "var(--brand-600)", display: "inline-flex" }}>
