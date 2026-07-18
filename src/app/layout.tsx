@@ -4,6 +4,7 @@ import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { LanguageToggle } from "@/components/ds/LanguageToggle";
+import { SITE_URL } from "@/lib/config";
 
 /**
  * Root layout — single light theme (no `next-themes` / dark mode).
@@ -16,9 +17,33 @@ import { LanguageToggle } from "@/components/ds/LanguageToggle";
  * throw a hydration mismatch.
  */
 export const metadata: Metadata = {
-  title: "Khargny",
-  description: "Find your next outing in Egypt — curated places, not bookings.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Khargny — Find your next outing in Egypt",
+    template: "%s · Khargny",
+  },
+  description:
+    "Curated places worth the trip across Egypt — beaches, ruins, oases and tables. Discover where to go next.",
+  applicationName: "Khargny",
   icons: { icon: "/images/logo-en.png" },
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Khargny",
+    title: "Khargny — Find your next outing in Egypt",
+    description:
+      "Curated places worth the trip across Egypt — beaches, ruins, oases and tables.",
+    url: SITE_URL,
+    images: [{ url: "/images/logo-en.png", width: 1200, height: 630, alt: "Khargny" }],
+    locale: "ar_EG",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Khargny — Find your next outing in Egypt",
+    description: "Curated places worth the trip across Egypt.",
+    images: ["/images/logo-en.png"],
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
