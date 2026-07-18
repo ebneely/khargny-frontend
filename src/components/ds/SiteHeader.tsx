@@ -53,15 +53,25 @@ export function SiteHeader({ active }: { active?: Active }) {
           href="/"
           aria-label="Khargny — home"
           style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "var(--text-2xl)",
-            fontWeight: 700,
-            color: "var(--brand-700)",
-            letterSpacing: "-0.01em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
             textDecoration: "none",
           }}
         >
-          Khargny
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo-en.png" alt="Khargny" width={34} height={44} style={{ height: 40, width: "auto", display: "block" }} />
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "var(--text-2xl)",
+              fontWeight: 700,
+              color: "var(--brand-700)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Khargny
+          </span>
         </Link>
         <nav
           aria-label="Primary"

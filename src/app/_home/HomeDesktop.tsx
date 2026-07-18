@@ -23,6 +23,7 @@ import { CategoryChip } from "@/components/ds/CategoryChip";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { Toast } from "@/components/ds/Toast";
 import { SiteHeader } from "@/components/ds/SiteHeader";
+import { SiteFooter } from "@/components/ds/SiteFooter";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
 
@@ -213,12 +214,9 @@ export function HomeDesktop({ d }: { d: HomeDiscovery }) {
           )}
       </div>
 
-      <footer style={{ marginTop: "auto", borderTop: "1px solid var(--gray-200)", background: "var(--gray-50)" }}>
-        <div style={{ maxWidth: MAXW, margin: "0 auto", padding: "28px 32px", display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", color: "var(--text-secondary)", fontSize: "var(--text-sm)" }}>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--brand-700)" }}>Khargny</span>
-          <span>{t("home.subtitle")}</span>
-        </div>
-      </footer>
+      <SiteFooter />
+
+      {/* toast lives outside the footer */}
 
       {d.toast && <Toast message={d.toast.message} tone={d.toast.tone} onDismiss={d.dismissToast} />}
     </div>

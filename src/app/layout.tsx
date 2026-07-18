@@ -18,6 +18,7 @@ import { LanguageToggle } from "@/components/ds/LanguageToggle";
 export const metadata: Metadata = {
   title: "Khargny",
   description: "Find your next outing in Egypt — curated places, not bookings.",
+  icons: { icon: "/images/logo-en.png" },
 };
 
 export default function RootLayout({
