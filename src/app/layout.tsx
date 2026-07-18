@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { LocaleProvider } from "@/i18n/LocaleProvider";
+import { LanguageToggle } from "@/components/ds/LanguageToggle";
 
 /**
  * Root layout — single light theme (no `next-themes` / dark mode).
@@ -24,12 +26,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scrollbar-hide" suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className="scrollbar-hide" suppressHydrationWarning>
       <body>
-        <QueryProvider>
-          {children}
-          <Toaster />
-        </QueryProvider>
+        <LocaleProvider>
+          <QueryProvider>
+            {children}
+            <LanguageToggle />
+            <Toaster />
+          </QueryProvider>
+        </LocaleProvider>
       </body>
     </html>
   );
