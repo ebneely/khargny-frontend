@@ -11,6 +11,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { ExplorerHeader } from "@/components/explorer/ExplorerHeader";
+import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SearchBar } from "@/components/explorer/SearchBar";
 import { CategoryChip } from "@/components/ds/CategoryChip";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
@@ -24,7 +25,7 @@ import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
 
 export default function CityExplorerPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const params = useParams();
   const router = useRouter();
   const citySlug = params.citySlug as string;
@@ -58,11 +59,16 @@ export default function CityExplorerPage() {
         fontFamily: "var(--font-body)",
       }}
     >
-      <ExplorerHeader
-        cities={cities || []}
-        currentCitySlug={citySlug}
-        onCityChange={handleCityChange}
-      />
+      <div className="khg-only-desktop">
+        <SiteHeader active="explore" />
+      </div>
+      <div className="khg-only-mobile">
+        <ExplorerHeader
+          cities={cities || []}
+          currentCitySlug={citySlug}
+          onCityChange={handleCityChange}
+        />
+      </div>
 
       <main
         style={{
@@ -82,7 +88,7 @@ export default function CityExplorerPage() {
               margin: 0,
             }}
           >
-            {currentCity?.name ?? "Loading…"}
+            {currentCity ? (locale === "ar" ? currentCity.name : currentCity.nameEn || currentCity.name) : t("common.loading")}
           </h1>
           {placesData && (
             <p
@@ -92,7 +98,7 @@ export default function CityExplorerPage() {
                 marginTop: "var(--space-1)",
               }}
             >
-              {placesData.items.length} places found
+              {t("explorer.placesFound", { count: placesData.items.length })}
             </p>
           )}
         </div>
@@ -106,7 +112,7 @@ export default function CityExplorerPage() {
           }}
         >
           <div style={{ flex: 1 }}>
-            <SearchBar value={search} onChange={setSearch} />
+            <SearchBar value={search} onChange={setSearch} placeholder={t("common.searchPlaces")} />
           </div>
           <FilterPanel
             isOpen={filtersOpen}
@@ -135,7 +141,7 @@ export default function CityExplorerPage() {
             {categories.map((cat) => (
               <CategoryChip
                 key={cat.id}
-                label={cat.nameAr || cat.nameEn || cat.slug}
+                label={locale === "ar" ? cat.nameAr || cat.nameEn || cat.slug : cat.nameEn || cat.nameAr || cat.slug}
                 active={activeCategory === cat.id}
                 onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
               />
@@ -146,16 +152,9 @@ export default function CityExplorerPage() {
         {isLoading ? (
           <LoadingSkeleton count={6} />
         ) : isError ? (
-          <ErrorState message="Failed to load places" onRetry={() => refetch()} />
+          <ErrorState message={t("explorer.loadFailed")} onRetry={() => refetch()} />
         ) : displayedPlaces && displayedPlaces.length > 0 ? (
-          <div
-            style={{
-              display: "flex",
-              gap: "var(--space-4)",
-              overflowX: "auto",
-              paddingBottom: "var(--space-4)",
-            }}
-          >
+          <div className="khg-place-grid">
             {displayedPlaces.map((place) => (
               <div
                 key={place.id}
@@ -163,18 +162,20 @@ export default function CityExplorerPage() {
                 style={{ cursor: "pointer" }}
               >
                 <PlaceCard
-                  size="sm"
+                  size="md"
                   placeId={place.id}
-                  title={place.name}
+                  title={locale === "ar" ? place.name : place.nameEn || place.name}
                   area={place.address || ""}
-                  rating={place.rating > 0 ? place.rating.toString() : undefined}
-                  onToggleFavorite={() => {
-                    // no-op callback — `placeId` above wires the heart to the saved-places
-                    // backend (TASK-0009) automatically. The callback is unused in this path.
-                  }}
+                  rating={Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : undefined}
+                  onToggleFavorite={() => {}}
                 />
               </div>
             ))}
+            <style>{`
+              .khg-place-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:var(--space-4); }
+              @media (min-width:640px){ .khg-place-grid { grid-template-columns:repeat(3,1fr); } }
+              @media (min-width:1024px){ .khg-place-grid { grid-template-columns:repeat(4,1fr); } }
+            `}</style>
           </div>
         ) : (
           <div
@@ -191,7 +192,7 @@ export default function CityExplorerPage() {
                 margin: 0,
               }}
             >
-              {search ? `No results for "${search}"` : "No places found in this city"}
+              {search ? t("explorer.searchNoResults", { q: search }) : t("explorer.noPlacesInCity")}
             </p>
           </div>
         )}
