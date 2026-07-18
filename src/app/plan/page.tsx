@@ -13,6 +13,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places";
+import { useI18n } from "@/i18n/LocaleProvider";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { BottomNav } from "@/components/ds/BottomNav";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
@@ -108,6 +109,7 @@ function groupAndSort(data: SavedPlaceWithPlace[]): DayGroup[] {
 
 export default function PlanPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const { data, isLoading, isError, refetch } = useSavedPlaces();
   const groups = React.useMemo(() => (data ? groupAndSort(data) : []), [data]);
   const totalCount = data?.length ?? 0;
@@ -171,7 +173,7 @@ export default function PlanPage() {
             margin: "0 0 var(--space-2)",
           }}
         >
-          Your plan
+          {t("plan.title")}
         </h1>
         <p
           style={{
@@ -197,7 +199,7 @@ export default function PlanPage() {
           <LoadingSkeleton count={4} />
         ) : isError ? (
           <ErrorState
-            message="Failed to load your plan"
+            message={t("errors.loadFailed")}
             onRetry={() => refetch()}
           />
         ) : totalCount === 0 ? (
@@ -217,7 +219,7 @@ export default function PlanPage() {
                 margin: "0 0 var(--space-4)",
               }}
             >
-              Your plan is empty
+              {t("plan.empty")}
             </h2>
             <p
               style={{
@@ -228,7 +230,7 @@ export default function PlanPage() {
                 maxWidth: 360,
               }}
             >
-              You haven&apos;t saved any places yet — find your next outing on the home page.
+              {t("plan.empty")}
             </p>
             <Link
               href="/"

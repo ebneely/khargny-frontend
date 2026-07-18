@@ -12,8 +12,10 @@ import { SearchBar } from "@/components/explorer/SearchBar";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { useCities } from "@/lib/api/hooks/use-cities";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 export default function ExplorerPage() {
+  const { t } = useI18n();
   const { data: cities, isLoading, isError, refetch } = useCities();
   const [search, setSearch] = useState("");
 
@@ -70,7 +72,7 @@ export default function ExplorerPage() {
             margin: "0 auto var(--space-8)",
           }}
         >
-          <SearchBar value={search} onChange={setSearch} placeholder="Search cities..." />
+          <SearchBar value={search} onChange={setSearch} placeholder={t("explorer.pickCity")} />
         </div>
 
         {isLoading ? (
@@ -96,7 +98,7 @@ export default function ExplorerPage() {
             <style>{`@keyframes khargny-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
           </div>
         ) : isError ? (
-          <ErrorState message="Failed to load cities" onRetry={() => refetch()} />
+          <ErrorState message={t("errors.loadFailed")} onRetry={() => refetch()} />
         ) : (
           <>
             <h2

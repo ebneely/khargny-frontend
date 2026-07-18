@@ -83,6 +83,12 @@ const en = {
     loadFailed: "This page couldn't load.",
     tryAgain: "Try again",
   },
+  nav: {
+    discover: "Discover",
+    saved: "Saved",
+    plan: "My plan",
+    profile: "Profile",
+  },
 };
 
 const ar: typeof en = {
@@ -149,6 +155,12 @@ const ar: typeof en = {
     generic: "حدث خطأ ما.",
     loadFailed: "تعذّر تحميل هذه الصفحة.",
     tryAgain: "حاول مجددًا",
+  },
+  nav: {
+    discover: "اكتشف",
+    saved: "المحفوظة",
+    plan: "خطتي",
+    profile: "حسابي",
   },
 };
 

@@ -10,14 +10,15 @@
  */
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 type Tab = "discover" | "saved" | "plan" | "profile";
 
-const ITEMS: { key: Tab; label: string; icon: string; href: string }[] = [
-  { key: "discover", label: "Discover", icon: "compass", href: "/" },
-  { key: "saved", label: "Saved", icon: "heart", href: "/saved" },
-  { key: "plan", label: "My Plan", icon: "bookmark", href: "/plan" },
-  { key: "profile", label: "Profile", icon: "user", href: "/profile" },
+const ITEMS: { key: Tab; labelKey: string; icon: string; href: string }[] = [
+  { key: "discover", labelKey: "nav.discover", icon: "compass", href: "/" },
+  { key: "saved", labelKey: "nav.saved", icon: "heart", href: "/saved" },
+  { key: "plan", labelKey: "nav.plan", icon: "bookmark", href: "/plan" },
+  { key: "profile", labelKey: "nav.profile", icon: "user", href: "/profile" },
 ];
 
 // CSS filter that maps a neutral Lucide icon to the brand orange, matching the
@@ -27,6 +28,7 @@ const BRAND_ICON_FILTER =
 
 export function BottomNav({ active }: { active: Tab }) {
   const router = useRouter();
+  const { t } = useI18n();
   return (
     <nav
       aria-label="Primary"
@@ -52,7 +54,7 @@ export function BottomNav({ active }: { active: Tab }) {
               if (!isActive) router.push(it.href);
             }}
             aria-current={isActive ? "page" : undefined}
-            aria-label={isActive ? `${it.label} (current)` : it.label}
+            aria-label={isActive ? `${t(it.labelKey)} (current)` : t(it.labelKey)}
             style={{
               flex: 1,
               display: "flex",
@@ -78,7 +80,7 @@ export function BottomNav({ active }: { active: Tab }) {
                 filter: isActive ? BRAND_ICON_FILTER : "none",
               }}
             />
-            <span style={{ fontSize: 11, fontWeight: isActive ? 600 : 400 }}>{it.label}</span>
+            <span style={{ fontSize: 11, fontWeight: isActive ? 600 : 400 }}>{t(it.labelKey)}</span>
           </button>
         );
       })}
