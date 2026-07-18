@@ -16,6 +16,7 @@ import { REGIONS, getRegionToCitySlug, type RegionName } from "@/lib/regions";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
+import { useHomeSections } from "@/lib/api/hooks/use-home";
 import { useSavePlace } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
 
@@ -53,6 +54,7 @@ export function useHomeDiscovery() {
   const { data: categoryData } = useCategories();
   const { data: cityData } = useCities();
   const { data: placeData } = usePlaces({ limit: 12 });
+  const { data: homeSections } = useHomeSections();
   const savePlace = useSavePlace();
 
   const cityNameById = React.useMemo(() => {
@@ -74,27 +76,45 @@ export function useHomeDiscovery() {
   }, [categoryData, locale]);
 
   const rails = React.useMemo<Rail[]>(() => {
-    const items = placeData?.items ?? [];
-    const toRail = (
-      place: (typeof items)[number],
-      featured: boolean,
-    ): RailPlace => ({
+    const toRail = (place: {
+      id: string;
+      slug: string;
+      name: string;
+      nameEn?: string | null;
+      cityId: string;
+      rating: number | string;
+      featured?: boolean;
+    }, badge?: string): RailPlace => ({
       id: place.id,
       slug: place.slug,
       title: locale === "ar" ? place.name : place.nameEn || place.name,
       area: cityNameById.get(place.cityId) ?? "",
       // Backend serializes numeric rating as a string; coerce before format.
       rating: Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : "—",
-      badge: featured ? t("home.popular") : undefined,
+      badge,
     });
-    const popular = items.slice(0, 6).map((p) => toRail(p, p.featured));
-    const recommended = items.slice(6, 12).map((p) => toRail(p, false));
+
+    // PREFERRED: admin-curated sections (US-admin-STF-001). Each enabled section becomes a rail,
+    // titled by locale, in the admin's order.
+    if (homeSections && homeSections.length > 0) {
+      return homeSections
+        .filter((s) => (s.places?.length ?? 0) > 0)
+        .map((s) => ({
+          title: (locale === "ar" ? s.titleAr : s.titleEn || s.titleAr) || s.key,
+          places: s.places.map((p) => toRail(p, s.kind === "featured" ? t("home.popular") : undefined)),
+        }));
+    }
+
+    // FALLBACK: no curated sections → the built-in Popular / Recommended split.
+    const items = placeData?.items ?? [];
+    const popular = items.slice(0, 6).map((p) => toRail(p, p.featured ? t("home.popular") : undefined));
+    const recommended = items.slice(6, 12).map((p) => toRail(p));
     const out: Rail[] = [];
     if (popular.length) out.push({ title: t("home.popular"), places: popular });
     if (recommended.length)
       out.push({ title: t("home.recommended"), places: recommended });
     return out;
-  }, [placeData, cityNameById, locale, t]);
+  }, [homeSections, placeData, cityNameById, locale, t]);
 
   const onRegionSelect = React.useCallback(
     (label: RegionName) => {
