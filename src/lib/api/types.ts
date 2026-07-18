@@ -133,6 +133,11 @@ export interface PlaceFilters {
   cityId?: string;
   categoryId?: string;
   status?: PlaceStatus;
+  // visitor filters (comma-joined for the query string)
+  priceRange?: string;
+  featured?: boolean;
+  amenityIds?: string;
+  tagIds?: string;
   skip?: number;
   limit?: number;
 }

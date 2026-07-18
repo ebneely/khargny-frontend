@@ -16,9 +16,10 @@ import * as React from "react";
 import { IconButton } from "./IconButton";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 
-const HeartIcon = ({ filled }: { filled: boolean }) => (
-  <svg width={18} height={18} viewBox="0 0 24 24" fill={filled ? "var(--brand-600)" : "rgba(0,0,0,0.5)"} stroke="white" strokeWidth="1.5">
-    <path d="M12 21s-7.5-4.6-10-9.3C0.4 8.1 2 4.5 5.6 4.5c2 0 3.6 1.1 4.4 2.6.8-1.5 2.4-2.6 4.4-2.6 3.6 0 5.2 3.6 3.6 7.2C19.5 16.4 12 21 12 21z" />
+// Bookmark (save-to-plan) icon — clearer intent than a heart for "add to my plan".
+const SaveIcon = ({ filled }: { filled: boolean }) => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill={filled ? "var(--brand-600)" : "none"} stroke={filled ? "var(--brand-600)" : "var(--gray-700)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
   </svg>
 );
 
@@ -92,6 +93,7 @@ export function PlaceCard({
   const useBackend = Boolean(placeId);
   const backend = useSaveToggle(useBackend ? placeId! : null);
   const [localSaved, setLocalSaved] = React.useState(favorite);
+  const [bump, setBump] = React.useState(0); // re-triggers the pop animation on each toggle
   const saved = useBackend ? backend.saved : localSaved;
   const w = size === "sm" ? 168 : 220;
   return (
@@ -142,8 +144,13 @@ export function PlaceCard({
                     : `Add ${title} to your plan`
                 }
                 selected={saved}
-                icon={<HeartIcon filled={saved} />}
+                icon={
+                  <span key={bump} className={bump > 0 ? "khg-pop-anim" : undefined} style={{ display: "inline-flex" }}>
+                    <SaveIcon filled={saved} />
+                  </span>
+                }
                 onClick={() => {
+                  setBump((b) => b + 1);
                   if (useBackend) {
                     backend.toggle();
                   } else {

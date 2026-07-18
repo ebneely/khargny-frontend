@@ -17,7 +17,8 @@ import { CategoryChip } from "@/components/ds/CategoryChip";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { PlaceCard } from "@/components/ds/PlaceCard";
-import { FilterPanel } from "@/components/explorer/FilterPanel";
+import { FilterPanel, type ActiveFilters } from "@/components/explorer/FilterPanel";
+import { PlaceFilters } from "@/components/explorer/PlaceFilters";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCategories } from "@/lib/api/hooks/use-categories";
@@ -33,7 +34,7 @@ export default function CityExplorerPage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<{}>({});
+  const [filters, setFilters] = useState<ActiveFilters>({});
 
   const { data: cities, isLoading: loadingCities } = useCities();
   const { data: categories } = useCategories();
@@ -45,6 +46,11 @@ export default function CityExplorerPage() {
     {
       cityId: currentCity?.id,
       categoryId: activeCategory || undefined,
+      // visitor filters → query params (arrays comma-joined). Options come from the admin taxonomy.
+      priceRange: filters.priceRange?.length ? filters.priceRange.join(",") : undefined,
+      featured: filters.featured || undefined,
+      amenityIds: filters.amenityIds?.length ? filters.amenityIds.join(",") : undefined,
+      tagIds: filters.tagIds?.length ? filters.tagIds.join(",") : undefined,
     },
     // gate: only query once we have a real cityId, so it never returns ALL places
     Boolean(currentCity?.id),
@@ -126,7 +132,9 @@ export default function CityExplorerPage() {
             activeFilters={filters}
             onFilterChange={setFilters}
             onClear={() => setFilters({})}
-          />
+          >
+            <PlaceFilters value={filters} onChange={setFilters} />
+          </FilterPanel>
         </div>
 
         {categories && categories.length > 0 && (

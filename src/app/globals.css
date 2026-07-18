@@ -209,6 +209,15 @@
 .khg-anim-in-3 { animation: khg-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both; }
 /* interaction: cards + buttons get a springy press. Components already set hover transforms;
    this adds a consistent active-press feedback and a smooth default transition. */
+/* Save/bookmark pop — a springy scale when a place is added/removed from the plan. */
+@keyframes khg-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.4); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.khg-pop-anim { animation: khg-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) { .khg-pop-anim { animation: none; } }
 .khg-press { transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease; }
 .khg-press:active { transform: scale(0.97); }
 .khg-region:hover, .khg-city-card:hover { transform: translateY(-3px); }
