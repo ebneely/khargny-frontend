@@ -198,6 +198,47 @@
   .khg-only-desktop { display: block; }
 }
 
+/* ── /plan responsive shell ─────────────────────────────────────────────────────────────
+   The plan page was a single mobile column stretched full-bleed on desktop. Center it in a
+   readable max-width and lay its saved-place cards out multi-column on wide screens, so a
+   desktop viewport gets a desktop layout rather than a phone screen zoomed up. */
+.khg-plan-container {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+@media (min-width: 1024px) {
+  .khg-plan-container { padding-inline: 48px; }
+}
+.khg-plan-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+@media (min-width: 1024px) {
+  .khg-plan-items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+}
+/* Desktop top nav (Explore / Your plan) shown in the plan top bar; the mobile BottomNav is
+   hidden ≥1024 via .khg-only-mobile. */
+.khg-plan-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+.khg-plan-nav a {
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.khg-plan-nav a:hover { color: var(--brand-600); }
+.khg-plan-nav a[data-active="true"] { color: var(--brand-600); font-weight: 600; }
+
 /* Desktop home interaction polish */
 .khg-navlink:hover { color: var(--brand-700); background: var(--brand-50); }
 .khg-herosearch:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }

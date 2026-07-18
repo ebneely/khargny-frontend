@@ -126,25 +126,35 @@ export default function PlanPage() {
     >
       {/* Top bar */}
       <div
+        className="khg-plan-container"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "14px 16px",
+          padding: "14px 0",
           flexShrink: 0,
         }}
       >
-        <span
+        <Link
+          href="/"
           style={{
             fontFamily: "var(--font-display)",
             fontSize: "var(--text-xl)",
             fontWeight: 600,
             lineHeight: 1.3,
             color: "var(--brand-600)",
+            textDecoration: "none",
           }}
         >
           Khargny
-        </span>
+        </Link>
+        {/* Desktop nav — replaces the mobile BottomNav ≥1024 */}
+        <nav className="khg-plan-nav khg-only-desktop" aria-label="Primary">
+          <Link href="/explorer">Explore</Link>
+          <Link href="/plan" data-active="true">
+            Your plan
+          </Link>
+        </nav>
         <span
           aria-label={`${totalCount} saved`}
           style={{
@@ -158,8 +168,9 @@ export default function PlanPage() {
 
       {/* Page header */}
       <header
+        className="khg-plan-container"
         style={{
-          padding: "24px 16px 16px",
+          padding: "24px 0 16px",
           flexShrink: 0,
         }}
       >
@@ -204,8 +215,9 @@ export default function PlanPage() {
           />
         ) : totalCount === 0 ? (
           <div
+            className="khg-plan-container"
             style={{
-              padding: "64px 16px",
+              padding: "64px 0",
               textAlign: "center",
             }}
           >
@@ -256,7 +268,10 @@ export default function PlanPage() {
             </Link>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
+          <div
+            className="khg-plan-container"
+            style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}
+          >
             {groups.map((g) => (
               <PlanDayGroup
                 key={g.key}
@@ -282,7 +297,9 @@ export default function PlanPage() {
         )}
       </main>
 
-      <BottomNav active="plan" />
+      <div className="khg-only-mobile">
+        <BottomNav active="plan" />
+      </div>
     </div>
   );
 }
@@ -301,7 +318,7 @@ function PlanDayGroup({
     <section aria-labelledby={`plan-day-${group.key}`}>
       <header
         style={{
-          padding: "0 16px var(--space-2)",
+          padding: "0 0 var(--space-2)",
         }}
       >
         <h2
@@ -330,14 +347,7 @@ function PlanDayGroup({
             : `${group.items.length} place${group.items.length === 1 ? "" : "s"} planned`}
         </p>
       </header>
-      <div
-        style={{
-          padding: "0 16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-3)",
-        }}
-      >
+      <div className="khg-plan-items">
         {group.items.map((sp) => (
           <div
             key={sp.id}
