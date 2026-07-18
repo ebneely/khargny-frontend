@@ -13,6 +13,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Star, Share, Navigation, Heart, Check } from "lucide-react";
 import Link from "next/link";
+import { SiteHeader } from "@/components/ds/SiteHeader";
 import { ImageGallery } from "@/components/explorer/ImageGallery";
 import { HoursTable } from "@/components/explorer/HoursTable";
 import { SimilarPlaces } from "@/components/explorer/SimilarPlaces";
@@ -25,7 +26,7 @@ import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
 
 function PlaceDetailPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const params = useParams();
   const router = useRouter();
   const citySlug = params.citySlug as string;
@@ -59,21 +60,21 @@ function PlaceDetailPage() {
         <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
           <NotFoundState
             backHref={`/explorer/${citySlug}`}
-            backLabel={`Back to ${currentCity?.name || "places"}`}
+            backLabel={t("explorer.backTo", { city: currentCity?.name || t("explorer.places") })}
           />
         </div>
       );
     }
     return (
       <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
-        <ErrorState message="Failed to load place" onRetry={() => refetch()} />
+        <ErrorState message={t("explorer.loadFailedPlace")} onRetry={() => refetch()} />
       </div>
     );
   }
 
   if (!place) return null;
 
-  const priceSymbols = place.priceRange ? "₹".repeat(Math.min(place.priceRange, 5)) : null;
+  const priceSymbols = place.priceRange ? "$".repeat(Math.min(place.priceRange, 4)) : null;
 
   return (
     <div
@@ -83,8 +84,20 @@ function PlaceDetailPage() {
         fontFamily: "var(--font-body)",
       }}
     >
-      {/* Hero image */}
+      {/* Desktop: shared nav so the detail page isn't a headerless full-bleed phone screen */}
+      <div className="khg-only-desktop">
+        <SiteHeader active="explore" />
+      </div>
+      <style>{`
+        @media (min-width:1024px){
+          .khg-detail-hero { aspect-ratio:auto; height:340px; max-width:1120px; margin:0 auto;
+                             border-radius:var(--radius-xl); overflow:hidden; margin-top:20px; }
+        }
+      `}</style>
+
+      {/* Hero image — full-bleed on mobile, capped + centered on desktop */}
       <div
+        className="khg-detail-hero"
         style={{
           position: "relative",
           width: "100%",
@@ -187,7 +200,7 @@ function PlaceDetailPage() {
               margin: 0,
             }}
           >
-            {place.name}
+            {locale === "ar" ? place.name : place.nameEn || place.name}
           </h1>
           <div
             style={{
@@ -233,7 +246,7 @@ function PlaceDetailPage() {
                 margin: "0 0 var(--space-2)",
               }}
             >
-              About
+              {t("explorer.about")}
             </h2>
             <p
               style={{
@@ -243,7 +256,7 @@ function PlaceDetailPage() {
                 margin: 0,
               }}
             >
-              {place.description}
+              {(locale === "en" && (place as any).descriptionEn) || place.description}
             </p>
           </section>
         )}
@@ -260,7 +273,7 @@ function PlaceDetailPage() {
               margin: "0 0 var(--space-3)",
             }}
           >
-            Opening hours
+            {t("explorer.hoursTitle")}
           </h2>
           <HoursTable hours={[]} />
           <p
@@ -270,7 +283,7 @@ function PlaceDetailPage() {
               marginTop: "var(--space-1)",
             }}
           >
-            Hours data not available from API yet
+            {t("explorer.hoursNA")}
           </p>
         </section>
 

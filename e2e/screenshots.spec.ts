@@ -31,33 +31,23 @@ test("visual sweep — desktop + mobile", async ({ page }) => {
   await capture(page, "explorer-desktop", DESKTOP);
   await capture(page, "explorer-mobile", MOBILE);
 
-  // pick the first seeded city (city cards carry data-trace-id="city-card-{slug}")
-  await page.setViewportSize(DESKTOP);
-  await page.goto("/explorer");
-  await page.waitForTimeout(1000);
-  const firstCity = page.locator("[data-trace-id^='city-card-']").first();
-  let citySlug = "";
-  if (await firstCity.count()) {
-    const tid = (await firstCity.getAttribute("data-trace-id")) || "";
-    citySlug = tid.replace("city-card-", "");
-  }
-  if (citySlug) {
+  // Cairo has the seeded places, so use it for the city + detail shots.
+  const citySlug = "cairo";
+  {
     await page.goto(`/explorer/${citySlug}`);
     await capture(page, "city-desktop", DESKTOP);
     await capture(page, "city-mobile", MOBILE);
 
-    // first place on the city page → detail
+    // first place on the city page → detail (cards are clickable divs, not <a>)
     await page.setViewportSize(DESKTOP);
     await page.goto(`/explorer/${citySlug}`);
-    await page.waitForTimeout(1000);
-    const firstPlace = page.locator(`a[href*='/explorer/${citySlug}/']`).first();
-    if (await firstPlace.count()) {
-      const phref = await firstPlace.getAttribute("href");
-      if (phref) {
-        await page.goto(phref);
-        await capture(page, "detail-desktop", DESKTOP);
-        await capture(page, "detail-mobile", MOBILE);
-      }
+    await page.waitForTimeout(1200);
+    const firstCard = page.locator(".khg-place-grid > div").first();
+    if (await firstCard.count()) {
+      await firstCard.click();
+      await page.waitForTimeout(1200);
+      await capture(page, "detail-desktop", DESKTOP);
+      await capture(page, "detail-mobile", MOBILE);
     }
   }
 
