@@ -35,14 +35,20 @@ export default function CityExplorerPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<{}>({});
 
-  const { data: cities } = useCities();
+  const { data: cities, isLoading: loadingCities } = useCities();
   const { data: categories } = useCategories();
   const currentCity = cities?.find((c) => c.slug === citySlug);
+  // cities are loaded but this slug isn't among them → the city doesn't exist
+  const cityNotFound = !loadingCities && !!cities && !currentCity;
 
-  const { data: placesData, isLoading, isError, refetch } = usePlaces({
-    cityId: currentCity?.id,
-    categoryId: activeCategory || undefined,
-  });
+  const { data: placesData, isLoading, isError, refetch } = usePlaces(
+    {
+      cityId: currentCity?.id,
+      categoryId: activeCategory || undefined,
+    },
+    // gate: only query once we have a real cityId, so it never returns ALL places
+    Boolean(currentCity?.id),
+  );
   const { data: searchData } = useSearchPlaces({ q: search || undefined });
 
   const displayedPlaces = search ? searchData?.items : placesData?.items;
@@ -149,7 +155,13 @@ export default function CityExplorerPage() {
           </div>
         )}
 
-        {isLoading ? (
+        {cityNotFound ? (
+          <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--text-tertiary)", margin: 0 }}>
+              {t("explorer.cityNotFound")}
+            </p>
+          </div>
+        ) : isLoading || (loadingCities && !currentCity) ? (
           <LoadingSkeleton count={6} />
         ) : isError ? (
           <ErrorState message={t("explorer.loadFailed")} onRetry={() => refetch()} />

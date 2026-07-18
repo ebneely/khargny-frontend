@@ -33,8 +33,10 @@ export function normalizePlaceList(raw: unknown): PlaceList {
   };
 }
 
-/** GET /v1/places */
-export function usePlaces(filters?: PlaceFilters) {
+/** GET /v1/places. `enabled` gates the query — pass false while a required filter
+ *  (e.g. cityId) is still unresolved, so it does NOT fire unscoped and return ALL
+ *  places (the "every city shows the same places" bug). */
+export function usePlaces(filters?: PlaceFilters, enabled: boolean = true) {
   return useQuery({
     queryKey: placesKeys.list(filters),
     queryFn: async () =>
@@ -43,6 +45,7 @@ export function usePlaces(filters?: PlaceFilters) {
           params: filters as Record<string, string | number | undefined | null>,
         }),
       ),
+    enabled,
     staleTime: 60 * 1000,
   });
 }

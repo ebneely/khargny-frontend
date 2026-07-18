@@ -197,7 +197,9 @@ export function HomeDesktop({ d }: { d: HomeDiscovery }) {
                 </h2>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20, justifyItems: "start" }}>
                   {rail.places.map((p) => (
-                    <PlaceCard key={p.id} size="md" title={p.title} area={p.area} rating={p.rating} badge={p.badge} favorite={false} onToggleFavorite={() => d.onSavePlace(p.id)} />
+                    <div key={p.id} onClick={() => d.onOpenPlace(p)} style={{ cursor: "pointer", width: "100%" }}>
+                      <PlaceCard size="md" title={p.title} area={p.area} rating={p.rating} badge={p.badge} favorite={false} onToggleFavorite={() => d.onSavePlace(p.id)} />
+                    </div>
                   ))}
                 </div>
               </section>

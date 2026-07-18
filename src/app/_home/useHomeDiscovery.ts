@@ -24,6 +24,7 @@ export type Category = { key: string; label: string; icon: string };
 export type RailPlace = {
   id: string;
   slug: string;
+  citySlug: string;
   title: string;
   area: string;
   rating: string;
@@ -65,6 +66,13 @@ export function useHomeDiscovery() {
     return m;
   }, [cityData, locale]);
 
+  // cityId → slug, so a home place card can route to /explorer/{citySlug}/{placeSlug}.
+  const citySlugById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of cityData ?? []) m.set(c.id, c.slug);
+    return m;
+  }, [cityData]);
+
   const categories = React.useMemo<Category[]>(() => {
     return (categoryData ?? [])
       .filter((c) => c.status !== "draft")
@@ -87,6 +95,7 @@ export function useHomeDiscovery() {
     }, badge?: string): RailPlace => ({
       id: place.id,
       slug: place.slug,
+      citySlug: citySlugById.get(place.cityId) ?? "",
       title: locale === "ar" ? place.name : place.nameEn || place.name,
       area: cityNameById.get(place.cityId) ?? "",
       // Backend serializes numeric rating as a string; coerce before format.
@@ -114,7 +123,15 @@ export function useHomeDiscovery() {
     if (recommended.length)
       out.push({ title: t("home.recommended"), places: recommended });
     return out;
-  }, [homeSections, placeData, cityNameById, locale, t]);
+  }, [homeSections, placeData, cityNameById, citySlugById, locale, t]);
+
+  // Open a place from a home rail card → its detail page (needs the city slug).
+  const onOpenPlace = React.useCallback(
+    (p: RailPlace) => {
+      if (p.citySlug && p.slug) router.push(`/explorer/${p.citySlug}/${p.slug}`);
+    },
+    [router],
+  );
 
   const onRegionSelect = React.useCallback(
     (label: RegionName) => {
@@ -147,6 +164,7 @@ export function useHomeDiscovery() {
     openFilters: () => setFiltersOpen(true),
     closeFilters: () => setFiltersOpen(false),
     onRegionSelect,
+    onOpenPlace,
     toast,
     dismissToast: () => setToast(null),
     onSavePlace,

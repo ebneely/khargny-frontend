@@ -66,7 +66,9 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
             </h2>
             <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "0 16px" }}>
               {rail.places.map((p) => (
-                <PlaceCard key={p.id} size="sm" title={p.title} area={p.area} rating={p.rating} badge={p.badge} favorite={false} onToggleFavorite={() => d.onSavePlace(p.id)} />
+                <div key={p.id} onClick={() => d.onOpenPlace(p)} style={{ cursor: "pointer" }}>
+                  <PlaceCard size="sm" title={p.title} area={p.area} rating={p.rating} badge={p.badge} favorite={false} onToggleFavorite={() => d.onSavePlace(p.id)} />
+                </div>
               ))}
             </div>
           </section>
