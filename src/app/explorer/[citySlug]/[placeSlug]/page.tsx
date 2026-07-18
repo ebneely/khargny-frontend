@@ -199,10 +199,10 @@ function PlaceDetailPage() {
               gap: 6,
             }}
           >
-            {place.rating > 0 && (
+            {Number(place.rating) > 0 && (
               <>
                 <Star size={14} fill="var(--brand-600)" color="var(--brand-600)" />
-                {place.rating.toFixed(1)} ·{" "}
+                {Number(place.rating).toFixed(1)} ·{" "}
               </>
             )}
             {place.address ?? "Egypt"}

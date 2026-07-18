@@ -83,7 +83,8 @@ export function useHomeDiscovery() {
       slug: place.slug,
       title: locale === "ar" ? place.name : place.nameEn || place.name,
       area: cityNameById.get(place.cityId) ?? "",
-      rating: place.rating > 0 ? place.rating.toFixed(1) : "—",
+      // Backend serializes numeric rating as a string; coerce before format.
+      rating: Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : "—",
       badge: featured ? t("home.popular") : undefined,
     });
     const popular = items.slice(0, 6).map((p) => toRail(p, p.featured));

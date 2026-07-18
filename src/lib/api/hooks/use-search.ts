@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
+import { normalizePlaceList } from '@/lib/api/hooks/use-places';
 import type { SearchPlacesQuery, SearchPlacesResult } from '@/lib/api/types';
 
 export const searchKeys = {
@@ -12,10 +13,14 @@ export function useSearchPlaces(query: SearchPlacesQuery) {
 
   return useQuery({
     queryKey: searchKeys.places(query),
-    queryFn: () =>
-      apiRequest<SearchPlacesResult>('GET', '/v1/search/places', {
-        params: query as Record<string, string | number | string[] | undefined | null>,
-      }),
+    // Backend returns the paginated { data, meta } envelope; normalize to
+    // { items } which the explorer/search UI consumes.
+    queryFn: async () =>
+      normalizePlaceList(
+        await apiRequest<unknown>('GET', '/v1/search/places', {
+          params: query as Record<string, string | number | string[] | undefined | null>,
+        }),
+      ) as unknown as SearchPlacesResult,
     enabled: hasQuery,
     staleTime: 60 * 1000,
   });

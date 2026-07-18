@@ -9,14 +9,40 @@ export const placesKeys = {
   similar: (id: string) => ['places', 'similar', id] as const,
 };
 
+/**
+ * Normalize a places-list payload to the `{ items, skip, limit }` shape the UI
+ * consumes. The backend's public list endpoints return the paginated envelope
+ * `{ data: Place[], meta: { skip, limit, total } }`, not `{ items }`.
+ */
+export function normalizePlaceList(raw: unknown): PlaceList {
+  if (Array.isArray(raw)) {
+    return { items: raw as Place[], skip: 0, limit: (raw as Place[]).length };
+  }
+  const r = (raw ?? {}) as {
+    items?: Place[];
+    data?: Place[];
+    skip?: number;
+    limit?: number;
+    meta?: { skip?: number; limit?: number };
+  };
+  const items = r.items ?? r.data ?? [];
+  return {
+    items,
+    skip: r.skip ?? r.meta?.skip ?? 0,
+    limit: r.limit ?? r.meta?.limit ?? items.length,
+  };
+}
+
 /** GET /v1/places */
 export function usePlaces(filters?: PlaceFilters) {
   return useQuery({
     queryKey: placesKeys.list(filters),
-    queryFn: () =>
-      apiRequest<PlaceList>('GET', '/v1/places', {
-        params: filters as Record<string, string | number | undefined | null>,
-      }),
+    queryFn: async () =>
+      normalizePlaceList(
+        await apiRequest<unknown>('GET', '/v1/places', {
+          params: filters as Record<string, string | number | undefined | null>,
+        }),
+      ),
     staleTime: 60 * 1000,
   });
 }

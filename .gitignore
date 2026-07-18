@@ -88,3 +88,6 @@ Desktop.ini
 *.temp
 .cache/
 .temp/
+/test-results
+/playwright-report
+/playwright/.cache
