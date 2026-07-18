@@ -112,7 +112,7 @@ function Hero({ onSearch }: { onSearch: () => void }) {
 }
 
 function RegionGrid({ d }: { d: HomeDiscovery }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <section id="khg-regions" style={{ margin: "40px 0 8px", scrollMarginTop: 80 }}>
       <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-3xl)", fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 6px" }}>
@@ -147,7 +147,7 @@ function RegionGrid({ d }: { d: HomeDiscovery }) {
                 <MapPin size={20} aria-hidden="true" />
               </span>
               <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-lg)", fontWeight: 600, color: "var(--text-primary)" }}>
-                {r.label}
+                {locale === "ar" ? r.labelAr : r.label}
               </span>
             </span>
             <span style={{ color: "var(--brand-600)", display: "inline-flex" }}>

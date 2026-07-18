@@ -15,12 +15,12 @@ export type RegionName =
   | "Siwa & Western Desert"
   | "Luxor & Aswan";
 
-export const REGIONS: { label: RegionName; defaultCitySlug: string }[] = [
-  { label: "Cairo & Giza", defaultCitySlug: "cairo" },
-  { label: "Alexandria & North Coast", defaultCitySlug: "alexandria" },
-  { label: "Red Sea (Sokhna, Sharm, Hurghada)", defaultCitySlug: "hurghada" },
-  { label: "Siwa & Western Desert", defaultCitySlug: "siwa" },
-  { label: "Luxor & Aswan", defaultCitySlug: "luxor" },
+export const REGIONS: { label: RegionName; labelAr: string; defaultCitySlug: string }[] = [
+  { label: "Cairo & Giza", labelAr: "القاهرة والجيزة", defaultCitySlug: "cairo" },
+  { label: "Alexandria & North Coast", labelAr: "الإسكندرية والساحل الشمالي", defaultCitySlug: "alexandria" },
+  { label: "Red Sea (Sokhna, Sharm, Hurghada)", labelAr: "البحر الأحمر (السخنة، شرم، الغردقة)", defaultCitySlug: "hurghada" },
+  { label: "Siwa & Western Desert", labelAr: "سيوة والصحراء الغربية", defaultCitySlug: "siwa" },
+  { label: "Luxor & Aswan", labelAr: "الأقصر وأسوان", defaultCitySlug: "luxor" },
 ];
 
 /**

@@ -53,6 +53,9 @@ const en = {
   explorer: {
     cities: "Cities",
     pickCity: "Pick a city",
+    title: "Explore Egypt",
+    subtitle: "Pick a city to see what's worth the trip.",
+    noCities: "No cities available yet.",
     places: "Places",
     all: "All",
     filters: "Filters",
@@ -150,6 +153,9 @@ const ar: typeof en = {
   explorer: {
     cities: "المدن",
     pickCity: "اختر مدينة",
+    title: "استكشف مصر",
+    subtitle: "اختر مدينة لترى ما يستحق الرحلة.",
+    noCities: "لا توجد مدن متاحة بعد.",
     places: "الأماكن",
     all: "الكل",
     filters: "التصفية",

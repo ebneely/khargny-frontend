@@ -59,7 +59,7 @@ export default function ExplorerPage() {
               margin: "0 0 var(--space-2)",
             }}
           >
-            Khargny
+            {t("explorer.title")}
           </h1>
           <p
             style={{
@@ -68,7 +68,7 @@ export default function ExplorerPage() {
               margin: 0,
             }}
           >
-            Find your next outing in Egypt.
+            {t("explorer.subtitle")}
           </p>
         </div>
 
@@ -118,7 +118,7 @@ export default function ExplorerPage() {
                 margin: "0 0 var(--space-4)",
               }}
             >
-              Pick a city
+              {t("explorer.pickCity")}
             </h2>
             <CityGrid cities={filtered || []} />
           </>

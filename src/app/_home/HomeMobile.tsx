@@ -5,6 +5,9 @@
  * rails, bottom nav, region Sheet. All state/actions come from useHomeDiscovery().
  */
 import * as React from "react";
+import {
+  Waves, Landmark, Trees, Mountain, Utensils, Coffee, ShoppingBag, MapPin,
+} from "lucide-react";
 import { SearchBar } from "@/components/ds/SearchBar";
 import { CategoryChip } from "@/components/ds/CategoryChip";
 import { PlaceCard } from "@/components/ds/PlaceCard";
@@ -14,12 +17,18 @@ import { Toast } from "@/components/ds/Toast";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
 
-const lucide = (icon: string, size = 22) => (
-  <img src={`https://unpkg.com/lucide-static@0.462.0/icons/${icon}.svg`} width={size} height={size} alt="" />
-);
+// Bundled icons (lucide-react), never a CDN — matches the shell contract's icon policy.
+const CAT_ICON: Record<string, React.ComponentType<{ size?: number }>> = {
+  waves: Waves, landmark: Landmark, trees: Trees, mountain: Mountain,
+  utensils: Utensils, coffee: Coffee, "shopping-bag": ShoppingBag, "map-pin": MapPin,
+};
+function catIcon(name: string, size = 22) {
+  const C = CAT_ICON[name] || MapPin;
+  return <C size={size} />;
+}
 
 export function HomeMobile({ d }: { d: HomeDiscovery }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <div
       style={{
@@ -45,7 +54,7 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
 
       <div style={{ display: "flex", gap: 4, padding: "0 12px 10px", overflowX: "auto" }}>
         {d.categories.map((c) => (
-          <CategoryChip key={c.key} label={c.label} active={d.cat === c.key} onClick={() => d.setCat(c.key)} icon={lucide(c.icon)} />
+          <CategoryChip key={c.key} label={c.label} active={d.cat === c.key} onClick={() => d.setCat(c.key)} icon={catIcon(c.icon)} />
         ))}
       </div>
 
@@ -75,7 +84,7 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
               onClick={() => d.onRegionSelect(r.label)}
               style={{ textAlign: "start", padding: "14px 16px", borderRadius: "var(--radius-lg)", border: "1px solid var(--gray-200)", background: "var(--white)", fontFamily: "var(--font-body)", fontSize: "var(--text-base)", color: "var(--text-primary)", cursor: "pointer", transition: "var(--motion-color), var(--motion-shadow)" }}
             >
-              {r.label}
+              {locale === "ar" ? r.labelAr : r.label}
             </button>
           ))}
         </div>
