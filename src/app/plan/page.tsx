@@ -13,8 +13,9 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places";
+import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
-import { PlaceCard } from "@/components/ds/PlaceCard";
+import { Star, Bookmark } from "lucide-react";
 import { BottomNav } from "@/components/ds/BottomNav";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
@@ -112,8 +113,27 @@ export default function PlanPage() {
   const router = useRouter();
   const { t } = useI18n();
   const { data, isLoading, isError, refetch } = useSavedPlaces();
+  const { data: cities } = useCities();
   const groups = React.useMemo(() => (data ? groupAndSort(data) : []), [data]);
   const totalCount = data?.length ?? 0;
+
+  // cityId → slug, so a saved place deep-links to the real explorer URL
+  // (/explorer/{citySlug}/{placeSlug}) instead of a raw UUID segment.
+  const citySlugById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    cities?.forEach((c) => m.set(c.id, c.slug));
+    return m;
+  }, [cities]);
+
+  const openPlace = React.useCallback(
+    (place: SavedPlaceWithPlace["place"]) => {
+      const citySlug = citySlugById.get(place.cityId);
+      // Fall back to the slug endpoint even without a resolved city — the detail
+      // page loads by placeSlug regardless; the city segment only sets context.
+      router.push(`/explorer/${citySlug ?? place.cityId}/${place.slug}`);
+    },
+    [citySlugById, router],
+  );
 
   return (
     <div
@@ -157,11 +177,20 @@ export default function PlanPage() {
         <span
           aria-label={`${totalCount} saved`}
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
             fontSize: "var(--text-xs)",
-            color: "var(--text-tertiary)",
+            fontWeight: 600,
+            color: "var(--brand-700)",
+            background: "var(--brand-50)",
+            border: "1px solid var(--brand-100)",
+            borderRadius: "var(--radius-full)",
+            padding: "4px 10px",
           }}
         >
-          {totalCount} saved
+          <Bookmark size={12} fill="var(--brand-600)" color="var(--brand-600)" />
+          {totalCount}
         </span>
       </div>
 
@@ -272,25 +301,7 @@ export default function PlanPage() {
             style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}
           >
             {groups.map((g) => (
-              <PlanDayGroup
-                key={g.key}
-                group={g}
-                onOpenPlace={(place) => {
-                  // The place detail page needs a citySlug; we don't have it on the
-                  // SavedPlaceWithPlace shape (the backend returns cityId, not citySlug).
-                  // A future iteration can either:
-                  //  (a) extend SavedPlaceWithPlace to include `place.citySlug`, OR
-                  //  (b) fetch the city by cityId and derive the slug.
-                  // For TASK-0010, the explorer-detail page resolves by {citySlug} → cityId,
-                  // so the natural shape is to navigate to /explorer/{cityId}/{place.slug}
-                  // IF the explorer-detail page also accepts a cityId. That's a follow-up.
-                  // For now, the open handler routes to the place detail using cityId as
-                  // the URL segment — the explorer-detail page's slug→id resolution will
-                  // return empty results for a numeric cityId, but the URL shape stays
-                  // consistent for K3 testing.
-                  router.push(`/explorer/${place.cityId}/${place.slug}`);
-                }}
-              />
+              <PlanDayGroup key={g.key} group={g} onOpenPlace={openPlace} />
             ))}
           </div>
         )}
@@ -348,24 +359,137 @@ function PlanDayGroup({
       </header>
       <div className="khg-plan-items">
         {group.items.map((sp) => (
-          <div
+          <PlanItemCard
             key={sp.id}
-            onClick={() => onOpenPlace(sp.place)}
-            style={{ cursor: "pointer" }}
-          >
-            <PlaceCard
-              placeId={sp.placeId}
-              size="md"
-              title={sp.place.name}
-              area={sp.place.address || ""}
-              rating={sp.place.rating > 0 ? sp.place.rating.toString() : undefined}
-              onToggleFavorite={() => {
-                unsave.mutate(sp.placeId);
-              }}
-            />
-          </div>
+            saved={sp}
+            onOpen={() => onOpenPlace(sp.place)}
+            onRemove={() => unsave.mutate(sp.placeId)}
+            removing={unsave.isPending}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+/**
+ * A saved place, as a full-width row: gradient thumbnail + name/address/rating,
+ * with a remove (bookmark) button. The whole row is the click target (no dead
+ * clickable whitespace — the old fixed-width card left the rest of the grid cell
+ * clickable, which silently navigated when you clicked empty space).
+ */
+function PlanItemCard({
+  saved: sp,
+  onOpen,
+  onRemove,
+  removing,
+}: {
+  saved: SavedPlaceWithPlace;
+  onOpen: () => void;
+  onRemove: () => void;
+  removing: boolean;
+}) {
+  return (
+    <div
+      onClick={onOpen}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        padding: 12,
+        background: "var(--white)",
+        border: "1px solid var(--border-default)",
+        borderRadius: "var(--radius-xl)",
+        cursor: "pointer",
+        transition: "var(--motion-shadow), var(--motion-transform)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+    >
+      <div
+        aria-hidden
+        style={{
+          width: 72,
+          height: 72,
+          flexShrink: 0,
+          borderRadius: "var(--radius-lg)",
+          background: "var(--gradient-sunset)",
+        }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-md)",
+            fontWeight: 600,
+            color: "var(--text-primary)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {sp.place.name}
+        </div>
+        {sp.place.address && (
+          <div
+            style={{
+              fontSize: "var(--text-sm)",
+              color: "var(--text-tertiary)",
+              marginTop: 2,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {sp.place.address}
+          </div>
+        )}
+        {sp.place.rating > 0 && (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: "var(--text-sm)",
+              color: "var(--text-secondary)",
+              marginTop: 4,
+            }}
+          >
+            <Star size={13} fill="var(--brand-600)" color="var(--brand-600)" />
+            {sp.place.rating.toFixed(1)}
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        aria-label={`Remove ${sp.place.name} from your plan`}
+        disabled={removing}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        style={{
+          flexShrink: 0,
+          width: 40,
+          height: 40,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "var(--radius-full)",
+          background: "var(--brand-50)",
+          border: "1px solid var(--brand-100)",
+          cursor: removing ? "default" : "pointer",
+        }}
+      >
+        <Bookmark size={16} fill="var(--brand-600)" color="var(--brand-600)" />
+      </button>
+    </div>
   );
 }

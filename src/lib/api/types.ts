@@ -114,13 +114,40 @@ export interface Place {
   deletedAt: string | null;
 }
 
-// GET /v1/places/:slug — CONFIRMED (Modules/places/decisions.md, 2026-07): the real
-// aggregation is images + videos ONLY. hours/amenities/tags do NOT exist on this
-// response today, and viewCount is NOT incremented on read. Do not render those
-// regions as if they work — omit or show empty with a note.
+// A place's opening hours row — mirrors Modules/place-hours PlaceHourItemDto.
+// dayOfWeek: 0=Sunday … 6=Saturday. Times are "HH:mm" (24h) or null. isClosed
+// true = the place is shut that day.
+export interface PlaceHour {
+  placeId?: string;
+  dayOfWeek: number;
+  openTime: string | null;
+  closeTime: string | null;
+  isClosed: boolean;
+}
+
+export interface PlaceAmenity {
+  id: string;
+  name: string;
+  nameEn: string | null;
+  icon: string | null;
+}
+
+export interface PlaceTag {
+  id: string;
+  name: string;
+  nameEn: string | null;
+  slug: string;
+}
+
+// GET /v1/places/:slug — the real aggregation now returns images + videos AND
+// placeHours + amenities + tags (verified against backend.5argny.com 2026-07-19).
+// The earlier "hours/amenities/tags do not exist" note is STALE — they are live.
 export interface PlaceDetail extends Place {
   images: unknown[]; // → Modules/media/contract.ts TransformedImage
   videos: unknown[]; // → Modules/media/contract.ts TransformedVideo
+  placeHours?: PlaceHour[];
+  amenities?: PlaceAmenity[];
+  tags?: PlaceTag[];
 }
 
 export interface PlaceList {

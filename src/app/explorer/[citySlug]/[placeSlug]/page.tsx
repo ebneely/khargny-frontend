@@ -24,6 +24,55 @@ import { usePlace, useSimilarPlaces } from "@/lib/api/hooks/use-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
+import type { PlaceHour } from "@/lib/api/types";
+import type { HoursRow } from "@/components/explorer/HoursTable";
+
+// Day labels indexed by dayOfWeek (0=Sunday … 6=Saturday — backend convention,
+// Modules/place-hours PlaceHourItemDto). Displayed Saturday-first (Egypt week).
+const DAY_LABELS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_LABELS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5]; // Sat → Fri
+
+/** "HH:mm" (24h) → "9:00 AM". Returns the raw string if it can't parse. */
+function formatTime(hhmm: string, locale: string): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
+  if (!m) return hhmm;
+  const h = Number(m[1]);
+  const min = m[2];
+  if (locale === "ar") {
+    const period = h < 12 ? "ص" : "م";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${min} ${period}`;
+  }
+  const period = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${min} ${period}`;
+}
+
+/** Build the ordered, localized 7-day rows from the backend placeHours array. */
+function buildHoursRows(
+  placeHours: PlaceHour[] | undefined,
+  locale: string,
+  closedLabel: string,
+): { rows: HoursRow[]; hasAnyOpen: boolean } {
+  if (!placeHours?.length) return { rows: [], hasAnyOpen: false };
+  const byDay = new Map(placeHours.map((h) => [h.dayOfWeek, h]));
+  const labels = locale === "ar" ? DAY_LABELS_AR : DAY_LABELS_EN;
+  let hasAnyOpen = false;
+  const rows: HoursRow[] = DISPLAY_ORDER.map((dow) => {
+    const h = byDay.get(dow);
+    const open = h && !h.isClosed && h.openTime && h.closeTime;
+    if (open) hasAnyOpen = true;
+    return {
+      day: labels[dow],
+      open: open ? formatTime(h!.openTime!, locale) : "",
+      close: open ? formatTime(h!.closeTime!, locale) : "",
+      closed: !open,
+      closedLabel,
+    };
+  });
+  return { rows, hasAnyOpen };
+}
 
 function PlaceDetailPage() {
   const { t, locale } = useI18n();
@@ -261,31 +310,43 @@ function PlaceDetailPage() {
           </section>
         )}
 
-        {/* Opening Hours */}
-        <section>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "var(--text-xl)",
-              fontWeight: 600,
-              lineHeight: 1.3,
-              color: "var(--text-primary)",
-              margin: "0 0 var(--space-3)",
-            }}
-          >
-            {t("explorer.hoursTitle")}
-          </h2>
-          <HoursTable hours={[]} />
-          <p
-            style={{
-              fontSize: "var(--text-xs)",
-              color: "var(--text-tertiary)",
-              marginTop: "var(--space-1)",
-            }}
-          >
-            {t("explorer.hoursNA")}
-          </p>
-        </section>
+        {/* Opening Hours — rendered from the backend placeHours aggregation. */}
+        {(() => {
+          const { rows, hasAnyOpen } = buildHoursRows(
+            place.placeHours,
+            locale,
+            t("explorer.hoursClosed"),
+          );
+          return (
+            <section>
+              <h2
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "var(--text-xl)",
+                  fontWeight: 600,
+                  lineHeight: 1.3,
+                  color: "var(--text-primary)",
+                  margin: "0 0 var(--space-3)",
+                }}
+              >
+                {t("explorer.hoursTitle")}
+              </h2>
+              {hasAnyOpen ? (
+                <HoursTable hours={rows} />
+              ) : (
+                <p
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--text-tertiary)",
+                    marginTop: "var(--space-1)",
+                  }}
+                >
+                  {t("explorer.hoursNA")}
+                </p>
+              )}
+            </section>
+          );
+        })()}
 
         {/* What's included — design-kit pattern; rendered only if the place has features */}
         {(place as any).features && (place as any).features.length > 0 && (

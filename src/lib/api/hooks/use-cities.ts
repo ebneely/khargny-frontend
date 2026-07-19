@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
+import { normalizePlaceList } from '@/lib/api/hooks/use-places';
 import type { CityWithAreas, PlaceListByCity } from '@/lib/api/types';
 
 export const citiesKeys = {
@@ -27,11 +28,20 @@ export function useCity(slug: string | null | undefined) {
   });
 }
 
-/** GET /v1/cities/:slug/places */
+/**
+ * GET /v1/cities/:slug/places
+ *
+ * The backend returns the paginated envelope `{ data: Place[], meta }`, NOT
+ * `{ items }`. Reading `.items` off that raw shape yields `undefined` → the city
+ * cards showed "0 مكان" though the city had places. Normalize to `{ items, … }`.
+ */
 export function useCityPlaces(slug: string | null | undefined) {
   return useQuery({
     queryKey: citiesKeys.places(slug ?? ''),
-    queryFn: () => apiRequest<PlaceListByCity>('GET', `/v1/cities/${slug}/places`),
+    queryFn: async (): Promise<PlaceListByCity> =>
+      normalizePlaceList(
+        await apiRequest<unknown>('GET', `/v1/cities/${slug}/places`),
+      ),
     enabled: Boolean(slug),
     staleTime: 60 * 1000,
   });
