@@ -35,8 +35,13 @@ function formatDuration(sec?: number | null): string | null {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** One tile — a photo, or a video poster with a play badge. Posterless videos get a gradient
- *  instead of trying to render the video file as an <img>, which is what showed a broken icon. */
+/** One tile — a photo, or a video thumbnail with a play badge.
+ *
+ *  A video without a poster frame renders its own first frame through a muted, preloaded
+ *  <video> element. Feeding the video URL to an <img> shows a broken icon, and the plain
+ *  gradient that replaced it meant videos had no thumbnail at all on the web while the app
+ *  showed one — the vanished-thumbnail report. The gradient now only backs the element, so
+ *  it still covers a video the browser cannot decode. */
 function Tile({
   item,
   index,
@@ -65,6 +70,18 @@ function Tile({
       {posterSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={posterSrc} alt={item.alt || ""} loading={hero ? "eager" : "lazy"} />
+      ) : item.type === "video" ? (
+        // `preload="metadata"` is enough for the browser to paint the first frame; muted +
+        // playsInline keep it inert and stop iOS from trying to take over the screen.
+        <video
+          className="khg-media-poster-video"
+          src={item.url}
+          preload="metadata"
+          muted
+          playsInline
+          tabIndex={-1}
+          aria-hidden="true"
+        />
       ) : (
         <span className="khg-media-noposter" aria-hidden="true" />
       )}
@@ -161,6 +178,12 @@ export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
         .khg-media-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .khg-media-tile:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
         .khg-media-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* First-frame thumbnail for a posterless video — sized exactly like an <img> tile, on
+           the gradient so a video the browser can't decode still shows something. */
+        .khg-media-poster-video {
+          width: 100%; height: 100%; object-fit: cover; display: block;
+          background: var(--gradient-sunset-radial); pointer-events: none;
+        }
         /* A video with no poster frame: a branded gradient instead of a broken <img>. */
         .khg-media-noposter { width: 100%; height: 100%; background: var(--gradient-sunset-radial); }
         .khg-media-play {
