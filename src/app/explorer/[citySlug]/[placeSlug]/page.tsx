@@ -26,6 +26,7 @@ import { usePlace, useSimilarPlaces } from "@/lib/api/hooks/use-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { icon } from "@/lib/icon-catalog";
 import type { PlaceHour } from "@/lib/api/types";
 import type { HoursRow } from "@/components/explorer/HoursTable";
 
@@ -142,7 +143,12 @@ function PlaceDetailPage() {
     alt: img.alt,
   }));
 
-  const amenities = ((place as any).amenities ?? []) as { id: string; name: string; nameEn: string | null }[];
+  const amenities = ((place as any).amenities ?? []) as {
+    id: string;
+    name: string;
+    nameEn: string | null;
+    icon?: string | null;
+  }[];
   const tags = ((place as any).tags ?? []) as { id: string; name: string; nameEn: string | null }[];
   const { rows: hoursRows, hasAnyOpen } = buildHoursRows(
     place.placeHours,
@@ -345,8 +351,12 @@ function PlaceDetailPage() {
               <section>
                 <h2 className="pd-section-title">{t("place.amenities")}</h2>
                 <div className="pd-chips">
+                  {/* The icon is the one the admin picked in the dashboard, drawn from the
+                      shared lucide catalog — the same glyph the Expo app shows. Amenities
+                      with no icon set simply render as text. */}
                   {amenities.map((a) => (
                     <span key={a.id} className="pd-chip">
+                      {a.icon && icon(a.icon, 15)}
                       {locale === "ar" ? a.name : a.nameEn || a.name}
                     </span>
                   ))}

@@ -7,12 +7,12 @@
  * responsive shell — Home — consumes it, so behavior lives once, independent of layout.
  *
  * Data is REAL (khargny backend): categories from GET /v1/categories, rails from
- * GET /v1/places, city names from GET /v1/cities, saves via POST /v1/saved-places.
+ * GET /v1/home (the sections curated in dashboard/storefront), city names from
+ * GET /v1/cities, saves via POST /v1/saved-places.
  */
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useCategories } from "@/lib/api/hooks/use-categories";
-import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useHomeSections } from "@/lib/api/hooks/use-home";
 import { useSavePlace } from "@/lib/api/hooks/use-saved-places";
@@ -52,7 +52,6 @@ export function useHomeDiscovery() {
 
   const { data: categoryData } = useCategories();
   const { data: cityData } = useCities();
-  const { data: placeData } = usePlaces({ limit: 12 });
   const { data: homeSections } = useHomeSections();
   const savePlace = useSavePlace();
 
@@ -102,27 +101,19 @@ export function useHomeDiscovery() {
       badge,
     });
 
-    // PREFERRED: admin-curated sections (US-admin-STF-001). Each enabled section becomes a rail,
-    // titled by locale, in the admin's order.
-    if (homeSections && homeSections.length > 0) {
-      return homeSections
-        .filter((s) => (s.places?.length ?? 0) > 0)
-        .map((s) => ({
-          title: (locale === "ar" ? s.titleAr : s.titleEn || s.titleAr) || s.key,
-          places: s.places.map((p) => toRail(p, s.kind === "featured" ? t("home.popular") : undefined)),
-        }));
-    }
-
-    // FALLBACK: no curated sections → the built-in Popular / Recommended split.
-    const items = placeData?.items ?? [];
-    const popular = items.slice(0, 6).map((p) => toRail(p, p.featured ? t("home.popular") : undefined));
-    const recommended = items.slice(6, 12).map((p) => toRail(p));
-    const out: Rail[] = [];
-    if (popular.length) out.push({ title: t("home.popular"), places: popular });
-    if (recommended.length)
-      out.push({ title: t("home.recommended"), places: recommended });
-    return out;
-  }, [homeSections, placeData, cityNameById, citySlugById, locale, t]);
+    // Home rails are ENTIRELY admin-curated (US-admin-STF-001): each enabled section from
+    // dashboard/storefront becomes a rail, titled by locale, in the admin's order. There is
+    // deliberately no hardcoded fallback — a "Popular"/"Recommended" split invented here
+    // would appear on the site without existing in the dashboard, so the admin could neither
+    // reorder nor remove it. With no sections configured, the home still shows its hero,
+    // categories and region grid. The Expo app renders the same endpoint the same way.
+    return (homeSections ?? [])
+      .filter((s) => (s.places?.length ?? 0) > 0)
+      .map((s) => ({
+        title: (locale === "ar" ? s.titleAr : s.titleEn || s.titleAr) || s.key,
+        places: s.places.map((p) => toRail(p, s.kind === "featured" ? t("home.popular") : undefined)),
+      }));
+  }, [homeSections, cityNameById, citySlugById, locale, t]);
 
   // Open a place from a home rail card → its detail page (needs the city slug).
   const onOpenPlace = React.useCallback(

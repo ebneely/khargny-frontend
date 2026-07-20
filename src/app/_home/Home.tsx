@@ -8,7 +8,7 @@
  * trees. Consequences of the merge, on purpose:
  *   - mobile is page-scroll, not a 100dvh app shell with an inner scroller
  *   - the region Sheet is gone; the region grid is always present at every width
- *   - BottomNav is a fixed overlay below 1024px, SiteFooter shows everywhere
+ *   - SiteHeader and SiteFooter show at every width; there is no bottom tab bar
  * All state/actions still come from useHomeDiscovery(). Icons are bundled (lucide-react).
  */
 import * as React from "react";
@@ -18,7 +18,7 @@ import { PlaceCard } from "@/components/ds/PlaceCard";
 import { Toast } from "@/components/ds/Toast";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SiteFooter } from "@/components/ds/SiteFooter";
-import { catIcon } from "@/lib/category-icon";
+import { catIcon } from "@/lib/icon-catalog";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
 
