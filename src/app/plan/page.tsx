@@ -46,11 +46,11 @@ type DayGroup = {
   items: SavedPlaceWithPlace[];
 };
 
-function formatDayLabel(iso: string): string {
-  // Use the user's locale (browser default). The plan page is bilingual;
-  // the date label is in the locale the visitor's browser is set to.
+function formatDayLabel(iso: string, locale: string): string {
+  // Follow the app's chosen language, not the browser default, so the date reads Arabic
+  // when Arabic is selected. ar-EG gives the Egyptian Arabic month/day names.
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-GB", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -67,7 +67,7 @@ function daySortKey(iso: string): number {
   return new Date(iso).getTime();
 }
 
-function groupAndSort(data: SavedPlaceWithPlace[]): DayGroup[] {
+function groupAndSort(data: SavedPlaceWithPlace[], locale: string): DayGroup[] {
   const map = new Map<string, DayGroup>();
   for (const sp of data) {
     if (sp.plannedFor) {
@@ -75,7 +75,7 @@ function groupAndSort(data: SavedPlaceWithPlace[]): DayGroup[] {
       if (!map.has(k)) {
         map.set(k, {
           key: k,
-          label: formatDayLabel(sp.plannedFor),
+          label: formatDayLabel(sp.plannedFor, locale),
           sortKey: daySortKey(sp.plannedFor),
           items: [],
         });
@@ -110,10 +110,10 @@ function groupAndSort(data: SavedPlaceWithPlace[]): DayGroup[] {
 
 export default function PlanPage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { data, isLoading, isError, refetch } = useSavedPlaces();
   const { data: cities } = useCities();
-  const groups = React.useMemo(() => (data ? groupAndSort(data) : []), [data]);
+  const groups = React.useMemo(() => (data ? groupAndSort(data, locale) : []), [data, locale]);
   const totalCount = data?.length ?? 0;
 
   // cityId → slug, so a saved place deep-links to the real explorer URL
@@ -207,7 +207,7 @@ export default function PlanPage() {
             margin: 0,
           }}
         >
-          Every place you saved, grouped by the day you planned.
+          {t("plan.subtitle")}
         </p>
       </header>
 
@@ -303,6 +303,7 @@ function PlanDayGroup({
   group: DayGroup;
   onOpenPlace: (place: SavedPlaceWithPlace["place"]) => void;
 }) {
+  const { t } = useI18n();
   const unsave = useUnsavePlace();
   const isUnscheduled = group.key === "unscheduled";
 
@@ -324,7 +325,7 @@ function PlanDayGroup({
             margin: 0,
           }}
         >
-          {group.label}
+          {isUnscheduled ? t("plan.noDay") : group.label}
         </h2>
         <p
           style={{
@@ -335,7 +336,7 @@ function PlanDayGroup({
           }}
         >
           {isUnscheduled
-            ? "These are saved but you haven't picked a day for them yet."
+            ? t("plan.noDayHint")
             : `${group.items.length} place${group.items.length === 1 ? "" : "s"} planned`}
         </p>
       </header>

@@ -116,6 +116,9 @@ const en = {
     remove: "Remove",
     scheduled: "Scheduled",
     unscheduled: "Not scheduled",
+    subtitle: "Every place you saved, grouped by the day you planned.",
+    noDay: "No specific day yet",
+    noDayHint: "These are saved but you haven't picked a day for them yet.",
   },
   search: {
     title: "Search",
@@ -234,6 +237,9 @@ const ar: typeof en = {
     remove: "إزالة",
     scheduled: "مجدول",
     unscheduled: "غير مجدول",
+    subtitle: "كل مكان حفظته، مرتّبًا حسب اليوم الذي خططت له.",
+    noDay: "بدون يوم محدد بعد",
+    noDayHint: "هذه محفوظة لكن لم تختر لها يومًا بعد.",
   },
   search: {
     title: "بحث",
