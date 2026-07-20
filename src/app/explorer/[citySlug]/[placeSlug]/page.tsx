@@ -233,7 +233,10 @@ function PlaceDetailPage() {
 
       <style>{`
         /* ── Shell: safe gutters at every width, capped for readability ───────── */
-        .pd-shell { width:100%; max-width:1200px; margin:0 auto; padding:16px 16px 96px; }
+        /* Bottom padding clears the fixed mobile action bar plus the home-indicator inset,
+           so the last content isn't hidden behind the bar on notched phones. */
+        .pd-shell { width:100%; max-width:1200px; margin:0 auto;
+                    padding:16px 16px calc(104px + env(safe-area-inset-bottom)); }
         @media (min-width:640px){ .pd-shell { padding:20px 24px 96px; } }
         @media (min-width:1024px){ .pd-shell { padding:24px 40px 64px; } }
 
@@ -323,10 +326,14 @@ function PlaceDetailPage() {
 
         /* ── Mobile action bar: same actions, only below the rail breakpoint ─── */
         .pd-bar { position:fixed; inset-inline:0; bottom:0; z-index:30;
-                  background:var(--white); border-top:1px solid var(--border-default); }
-        .pd-bar-inner { max-width:1200px; margin:0 auto; padding:12px 16px;
+                  background:color-mix(in srgb, var(--white) 92%, transparent);
+                  backdrop-filter:blur(10px);
+                  border-top:1px solid var(--border-default); }
+        /* Honour the home-indicator inset so the buttons never sit under it on notched phones. */
+        .pd-bar-inner { max-width:1200px; margin:0 auto;
+                        padding:12px 16px calc(12px + env(safe-area-inset-bottom));
                         display:flex; align-items:center; gap:10px; }
-        @media (min-width:640px){ .pd-bar-inner { padding:12px 24px; } }
+        @media (min-width:640px){ .pd-bar-inner { padding:12px 24px calc(12px + env(safe-area-inset-bottom)); } }
         @media (min-width:1024px){ .pd-bar { display:none; } }
         .pd-bar .pd-btn { flex:1; }
 
