@@ -203,6 +203,20 @@ function PlaceDetailPage() {
           <button
             type="button"
             aria-label={t("explorer.share")}
+            onClick={async () => {
+              // Always share OUR page — never the maps link (that's Directions).
+              const url = `${window.location.origin}/explorer/${citySlug}/${placeSlug}`;
+              const title = locale === "ar" ? place.name : place.nameEn || place.name;
+              try {
+                if (navigator.share) {
+                  await navigator.share({ title, text: title, url });
+                } else {
+                  await navigator.clipboard.writeText(url);
+                }
+              } catch {
+                /* user dismissed the share sheet — nothing to do */
+              }
+            }}
             style={{
               width: 44,
               height: 44,
