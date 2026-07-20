@@ -241,6 +241,7 @@ export default function CityExplorerPage() {
                   area={place.address || ""}
                   image={place.coverImage || undefined}
                   priceRange={place.priceRange}
+                  metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }}
                   onToggleFavorite={() => {}}
                 />
               </div>

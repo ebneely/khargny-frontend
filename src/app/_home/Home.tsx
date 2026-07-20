@@ -177,6 +177,7 @@ export function Home({ d }: { d: HomeDiscovery }) {
                       title={p.title}
                       area={p.area}
                       badge={p.badge}
+                      metrics={p.metrics}
                       favorite={false}
                       onToggleFavorite={() => d.onSavePlace(p.id)}
                     />

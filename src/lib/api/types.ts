@@ -109,6 +109,8 @@ export interface Place {
   priceRange: number | null;
   rating: number;
   viewCount: number;
+  saveCount?: number;
+  directionsCount?: number;
   featured: boolean;
   status: PlaceStatus;
   /** Card cover — small WebP variant of the first image, from the public list. */

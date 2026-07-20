@@ -27,6 +27,7 @@ export type RailPlace = {
   area: string;
   rating: string;
   badge?: string;
+  metrics?: { saves?: number; directions?: number; views?: number };
 };
 export type Rail = { title: string; places: RailPlace[] };
 
@@ -90,6 +91,9 @@ export function useHomeDiscovery() {
       cityId: string;
       rating: number | string;
       featured?: boolean;
+      saveCount?: number;
+      viewCount?: number;
+      directionsCount?: number;
     }, badge?: string): RailPlace => ({
       id: place.id,
       slug: place.slug,
@@ -99,6 +103,11 @@ export function useHomeDiscovery() {
       // Backend serializes numeric rating as a string; coerce before format.
       rating: Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : "—",
       badge,
+      metrics: {
+        saves: place.saveCount,
+        directions: place.directionsCount,
+        views: place.viewCount,
+      },
     });
 
     // Home rails are ENTIRELY admin-curated (US-admin-STF-001): each enabled section from

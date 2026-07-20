@@ -13,6 +13,7 @@
  * For the homepage this pass, the callback is a no-op (heart is a visual only).
  */
 import * as React from "react";
+import { Heart, Navigation, Eye } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 
@@ -67,7 +68,17 @@ type PlaceCardProps = {
   onToggleFavorite?: (saved: boolean) => void;
   size?: "sm" | "md";
   onTitleClick?: () => void;
+  /** Public engagement counts, shown as a small stat row: saves · directions · views. */
+  metrics?: { saves?: number; directions?: number; views?: number };
 };
+
+/** 1234 → "1.2k", 1000000 → "1m". Keeps the stat row compact. */
+function formatCount(n: number | undefined): string {
+  const v = n ?? 0;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}m`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}k`;
+  return String(v);
+}
 
 /**
  * PlaceCard. Renders the design-system PlaceCard. If `placeId` is provided, the
@@ -93,6 +104,7 @@ export function PlaceCard({
   onToggleFavorite,
   size = "md",
   onTitleClick,
+  metrics,
 }: PlaceCardProps) {
   const [hover, setHover] = React.useState(false);
   // If a real placeId is provided, use the saved-places backend for the heart state.
@@ -233,6 +245,36 @@ export function PlaceCard({
             title={area}
           >
             {area}
+          </span>
+        )}
+
+        {/* Public engagement, at a glance: saves · directions · views. Muted so it reads as
+            supporting context under the name, not competing with it. Rendered whenever the
+            card is given metrics, so a brand-new place honestly shows 0s rather than hiding. */}
+        {metrics && (
+          <span
+            aria-label={`${formatCount(metrics.saves)} saves, ${formatCount(metrics.directions)} directions, ${formatCount(metrics.views)} views`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginTop: 2,
+              fontSize: "var(--text-xs)",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Heart size={13} aria-hidden="true" />
+              {formatCount(metrics.saves)}
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Navigation size={13} aria-hidden="true" />
+              {formatCount(metrics.directions)}
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Eye size={13} aria-hidden="true" />
+              {formatCount(metrics.views)}
+            </span>
           </span>
         )}
       </div>
