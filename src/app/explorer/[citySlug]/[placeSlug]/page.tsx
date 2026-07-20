@@ -148,24 +148,31 @@ function PlaceDetailPage() {
         fontFamily: "var(--font-body)",
       }}
     >
-      {/* Desktop: shared nav so the detail page isn't a headerless full-bleed phone screen */}
-      <div className="khg-only-desktop">
-        <SiteHeader active="explore" />
-      </div>
+      {/* One header at every width — no mobile/desktop pair. */}
+      <SiteHeader active="explore" />
       <style>{`
-        @media (min-width:1024px){
-          .khg-detail-hero { aspect-ratio:auto; height:340px; max-width:1120px; margin:0 auto;
-                             border-radius:var(--radius-xl); overflow:hidden; margin-top:20px; }
-        }
+        /* Detail shell: one responsive layout, phone → desktop. */
+        .khg-detail-shell { width:100%; max-width:1120px; margin:0 auto; padding:16px 16px 120px; }
+        @media (min-width:640px){ .khg-detail-shell { padding:20px 24px 120px; } }
+        @media (min-width:1024px){ .khg-detail-shell { padding:24px 32px 140px; } }
+
+        .khg-detail-hero { aspect-ratio:4/3; }
+        @media (min-width:640px){ .khg-detail-hero { aspect-ratio:16/9; border-radius:var(--radius-xl); overflow:hidden; } }
+        @media (min-width:1024px){ .khg-detail-hero { aspect-ratio:auto; height:380px; } }
+
+        /* Action bar spans the same container as the content at every width. */
+        .khg-detail-actionbar-inner { width:100%; max-width:1120px; margin:0 auto;
+                                      padding:12px 16px; display:flex; align-items:center; gap:10px; }
+        @media (min-width:640px){ .khg-detail-actionbar-inner { padding:14px 24px; } }
+        @media (min-width:1024px){ .khg-detail-actionbar-inner { padding:14px 32px; } }
       `}</style>
 
-      {/* Hero image — full-bleed on mobile, capped + centered on desktop */}
+      {/* Hero — one element, responsive aspect from phone to desktop */}
       <div
         className="khg-detail-hero"
         style={{
           position: "relative",
           width: "100%",
-          aspectRatio: "4 / 3",
           background: coverUrl
             ? `center/cover no-repeat url(${coverUrl})`
             : "var(--gradient-sunset-radial)",
@@ -260,13 +267,11 @@ function PlaceDetailPage() {
       </div>
 
       <div
+        className="khg-detail-shell"
         style={{
-          padding: "18px 18px 100px",
           display: "flex",
           flexDirection: "column",
           gap: 16,
-          maxWidth: 800,
-          margin: "0 auto",
         }}
       >
         <div>
@@ -426,15 +431,10 @@ function PlaceDetailPage() {
           right: 0,
           background: "var(--white)",
           borderTop: "1px solid var(--border-default)",
-          padding: 14,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          maxWidth: 800,
-          margin: "0 auto",
           zIndex: 10,
         }}
       >
+        <div className="khg-detail-actionbar-inner">
         <button
           type="button"
           aria-label={t("explorer.directions")}
@@ -488,6 +488,7 @@ function PlaceDetailPage() {
           <Heart size={18} fill={placeSaved ? "var(--brand-600)" : "none"} color={placeSaved ? "var(--brand-600)" : "var(--white)"} />
           {placeSaved ? t("place.saved") : t("place.save")}
         </button>
+        </div>
       </div>
     </div>
   );

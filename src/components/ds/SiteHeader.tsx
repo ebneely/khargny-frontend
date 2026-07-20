@@ -1,15 +1,14 @@
 "use client";
 /**
- * SiteHeader — the shared DESKTOP top nav for every visitor page (home, explorer, plan).
+ * SiteHeader — the shared top nav for every visitor page (home, explorer, plan).
  * One place owns navigation so it can't drift or go missing per-page:
  *   - the logo is a real home button (→ "/")
  *   - Home / Explore / Your plan links, with the current page marked active
  *   - a single, WIRED language switch (globe → toggleLocale)
  *
- * Rendered only on desktop (the shells wrap it in .khg-only-desktop). On mobile the
- * floating LanguageToggle (layout.tsx, lg:hidden) is the single language control, so
- * there is never a duplicate at any width. Icons are bundled (lucide-react), never
- * fetched from a CDN.
+ * RESPONSIVE at every width — from the smallest phone up to desktop — so pages
+ * render one component instead of a mobile/desktop pair. Icons are bundled
+ * (lucide-react), never fetched from a CDN.
  */
 import * as React from "react";
 import Link from "next/link";
@@ -39,14 +38,18 @@ export function SiteHeader({ active }: { active?: Active }) {
         borderBottom: "1px solid var(--gray-200)",
       }}
     >
+      <style>{`
+        .khg-siteheader-inner { padding: 12px 16px; gap: 16px; }
+        @media (min-width: 640px) { .khg-siteheader-inner { padding: 14px 24px; gap: 24px; } }
+        @media (min-width: 1024px) { .khg-siteheader-inner { padding: 14px 32px; gap: 32px; } }
+      `}</style>
       <div
+        className="khg-siteheader-inner"
         style={{
           maxWidth: MAXW,
           margin: "0 auto",
-          padding: "14px 32px",
           display: "flex",
           alignItems: "center",
-          gap: 32,
         }}
       >
         <Link
