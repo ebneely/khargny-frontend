@@ -16,7 +16,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Star, Share, Navigation, Heart, Phone, Globe, MapPin } from "lucide-react";
 import { SiteHeader } from "@/components/ds/SiteHeader";
-import { ImageGallery } from "@/components/explorer/ImageGallery";
+import { MediaShowcase, type ShowcaseItem } from "@/components/explorer/MediaShowcase";
 import { HoursTable } from "@/components/explorer/HoursTable";
 import { SimilarPlaces } from "@/components/explorer/SimilarPlaces";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
@@ -143,6 +143,23 @@ function PlaceDetailPage() {
     url: img.urls?.medium || img.urls?.small || img.url,
     alt: img.alt,
   }));
+
+  // Videos live in the payload but were never rendered — this is the fix. The showcase gets
+  // the gallery photos (cover excluded, it's the hero) followed by every video.
+  const placeVideos = ((place as any).videos ?? []) as {
+    url: string;
+    posterUrl?: string | null;
+    durationSeconds?: number | null;
+  }[];
+  const showcaseItems: ShowcaseItem[] = [
+    ...galleryImages.map((img): ShowcaseItem => ({ type: "image", url: img.url, alt: img.alt })),
+    ...placeVideos.map((v): ShowcaseItem => ({
+      type: "video",
+      url: v.url,
+      poster: v.posterUrl ?? null,
+      durationSeconds: v.durationSeconds ?? null,
+    })),
+  ];
 
   const amenities = ((place as any).amenities ?? []) as {
     id: string;
@@ -394,10 +411,10 @@ function PlaceDetailPage() {
               </section>
             )}
 
-            {galleryImages.length > 0 && (
+            {showcaseItems.length > 0 && (
               <section>
                 <h2 className="pd-section-title">{t("place.gallery")}</h2>
-                <ImageGallery images={galleryImages} />
+                <MediaShowcase items={showcaseItems} />
               </section>
             )}
 
