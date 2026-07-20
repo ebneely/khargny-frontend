@@ -46,7 +46,7 @@ export function usePlaces(filters?: PlaceFilters, enabled: boolean = true) {
         }),
       ),
     enabled,
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -62,7 +62,7 @@ export function usePlace(slug: string | null | undefined) {
     queryKey: placesKeys.detail(slug ?? ''),
     queryFn: () => apiRequest<PlaceDetail>('GET', `/v1/places/${slug}`),
     enabled: Boolean(slug),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -72,6 +72,6 @@ export function useSimilarPlaces(id: string | null | undefined) {
     queryKey: placesKeys.similar(id ?? ''),
     queryFn: () => apiRequest<Place[]>('GET', `/v1/places/${id}/similar`),
     enabled: Boolean(id),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }

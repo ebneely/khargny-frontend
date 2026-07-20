@@ -24,6 +24,6 @@ export function useHomeSections() {
       );
       return Array.isArray(raw) ? raw : raw?.data ?? [];
     },
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }
