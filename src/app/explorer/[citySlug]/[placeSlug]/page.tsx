@@ -1,18 +1,20 @@
 "use client";
 /**
  * Place detail — `/explorer/{citySlug}/{placeSlug}`.
- * Restyled against the Khargny Design System (TASK-0008).
- * See `UI_UX/explorer/structure/explorer-detail/wireframe.md` for the layout spec.
  *
- * The `{placeSlug}` dynamic segment is resolved by the backend (slug-aware endpoint
- * `GET /v1/places/{placeSlug}`) — see the §33 cell named in
- * `UI_UX/explorer/page-tree.md`. The hours/amenities/tags gap is a known carry-forward
- * (see `UI_UX/explorer/drift.md`).
+ * ONE responsive layout, phone → desktop. No mobile/desktop component pair and no
+ * `.khg-only-*` gating: the same markup reflows via breakpoints.
+ *
+ *   < 1024px : single column, compact fixed action bar at the bottom
+ *   ≥ 1024px : content column + sticky action rail (no fixed bar — the rail holds it)
+ *
+ * Structure: constrained hero → identity (name / rating / price / status) → chips →
+ * about → gallery → hours → similar. Actions live in the rail (desktop) or the bar
+ * (mobile), never both.
  */
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Star, Share, Navigation, Heart, Check } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, Star, Share, Navigation, Heart, Phone, Globe, MapPin } from "lucide-react";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { ImageGallery } from "@/components/explorer/ImageGallery";
 import { HoursTable } from "@/components/explorer/HoursTable";
@@ -33,20 +35,19 @@ const DAY_LABELS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_LABELS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5]; // Sat → Fri
 
+// Price as words, not "level 3". Readers understand cheap/expensive instantly.
+const PRICE_EN = ["Cheap", "Moderate", "Pricey", "Expensive"];
+const PRICE_AR = ["رخيص", "متوسط", "مرتفع", "غالي"];
+
 /** "HH:mm" (24h) → "9:00 AM". Returns the raw string if it can't parse. */
 function formatTime(hhmm: string, locale: string): string {
   const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
   if (!m) return hhmm;
   const h = Number(m[1]);
   const min = m[2];
-  if (locale === "ar") {
-    const period = h < 12 ? "ص" : "م";
-    const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:${min} ${period}`;
-  }
-  const period = h < 12 ? "AM" : "PM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${min} ${period}`;
+  if (locale === "ar") return `${h12}:${min} ${h < 12 ? "ص" : "م"}`;
+  return `${h12}:${min} ${h < 12 ? "AM" : "PM"}`;
 }
 
 /** Build the ordered, localized 7-day rows from the backend placeHours array. */
@@ -87,47 +88,48 @@ function PlaceDetailPage() {
 
   const currentCity = cities?.find((c) => c.slug === citySlug);
 
-  // Heart is wired to the saved-places backend (TASK-0009).
-  // No login required — guest cookie auth (khargny_guest_id, HttpOnly, set by backend
-  // middleware on first request). Backend POST /v1/saved-places is idempotent on
-  // (guestId, placeId); the heart toggle is therefore safe to re-tap.
-  const { saved: placeSaved, toggle: toggleSaved, isPending: isSavingPending } = useSaveToggle(
-    place?.id ?? null,
-  );
+  // Heart is wired to the saved-places backend. No login — guest cookie auth
+  // (khargny_guest_id); POST /v1/saved-places is idempotent, so re-tapping is safe.
+  const { saved: placeSaved, toggle: toggleSaved, isPending: isSavingPending } =
+    useSaveToggle(place?.id ?? null);
 
   if (isLoading) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
+        <SiteHeader active="explore" />
         <LoadingSkeleton variant="detail" />
       </div>
     );
   }
 
   if (isError) {
-    if (error && "status" in error && (error as { status: number }).status === 404) {
-      return (
-        <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
+    const notFound = error && "status" in error && (error as { status: number }).status === 404;
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
+        <SiteHeader active="explore" />
+        {notFound ? (
           <NotFoundState
             backHref={`/explorer/${citySlug}`}
             backLabel={t("explorer.backTo", { city: currentCity?.name || t("explorer.places") })}
           />
-        </div>
-      );
-    }
-    return (
-      <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
-        <ErrorState message={t("explorer.loadFailedPlace")} onRetry={() => refetch()} />
+        ) : (
+          <ErrorState message={t("explorer.loadFailedPlace")} onRetry={() => refetch()} />
+        )}
       </div>
     );
   }
 
   if (!place) return null;
 
-  const priceSymbols = place.priceRange ? "$".repeat(Math.min(place.priceRange, 4)) : null;
+  const title = locale === "ar" ? place.name : place.nameEn || place.name;
+  const description = (locale === "en" && (place as any).descriptionEn) || place.description;
+  const rating = Number(place.rating);
+  const hasRating = rating > 0;
+  const priceIdx = place.priceRange ? Math.min(Math.max(place.priceRange, 1), 4) - 1 : null;
+  const priceLabel = priceIdx === null ? null : (locale === "ar" ? PRICE_AR : PRICE_EN)[priceIdx];
 
-  // "Cover" is one concept across the product: the place's FIRST image (ordered in
-  // the dashboard) is the card thumbnail on lists AND the hero here. The gallery
-  // below shows only the remaining photos, so the cover never appears twice.
+  // "Cover" is one concept: the first image is the card thumbnail AND this hero.
+  // The gallery shows only the rest, so the cover never appears twice.
   const allImages = ((place as any).images ?? []) as {
     url: string;
     alt?: string;
@@ -140,354 +142,303 @@ function PlaceDetailPage() {
     alt: img.alt,
   }));
 
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--surface-app)",
-        fontFamily: "var(--font-body)",
-      }}
+  const amenities = ((place as any).amenities ?? []) as { id: string; name: string; nameEn: string | null }[];
+  const tags = ((place as any).tags ?? []) as { id: string; name: string; nameEn: string | null }[];
+  const { rows: hoursRows, hasAnyOpen } = buildHoursRows(
+    place.placeHours,
+    locale,
+    t("explorer.hoursClosed"),
+  );
+
+  const directionsUrl = place.mapsUrl
+    ? place.mapsUrl
+    : place.lat && place.lng
+      ? `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`
+      : null;
+
+  const onShare = async () => {
+    const url = `${window.location.origin}/explorer/${citySlug}/${placeSlug}`;
+    try {
+      if (navigator.share) await navigator.share({ title, text: title, url });
+      else await navigator.clipboard.writeText(url);
+    } catch {
+      /* dismissed */
+    }
+  };
+
+  const saveButton = (
+    <button
+      type="button"
+      onClick={toggleSaved}
+      disabled={isSavingPending}
+      className="pd-btn pd-btn-primary"
+      data-saved={placeSaved || undefined}
     >
-      {/* One header at every width — no mobile/desktop pair. */}
+      <Heart size={18} fill={placeSaved ? "currentColor" : "none"} />
+      {placeSaved ? t("place.saved") : t("place.save")}
+    </button>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
       <SiteHeader active="explore" />
+
       <style>{`
-        /* Detail shell: one responsive layout, phone → desktop. */
-        .khg-detail-shell { width:100%; max-width:1120px; margin:0 auto; padding:16px 16px 120px; }
-        @media (min-width:640px){ .khg-detail-shell { padding:20px 24px 120px; } }
-        @media (min-width:1024px){ .khg-detail-shell { padding:24px 32px 140px; } }
+        /* ── Shell: safe gutters at every width, capped for readability ───────── */
+        .pd-shell { width:100%; max-width:1200px; margin:0 auto; padding:16px 16px 96px; }
+        @media (min-width:640px){ .pd-shell { padding:20px 24px 96px; } }
+        @media (min-width:1024px){ .pd-shell { padding:24px 40px 64px; } }
 
-        .khg-detail-hero { aspect-ratio:4/3; }
-        @media (min-width:640px){ .khg-detail-hero { aspect-ratio:16/9; border-radius:var(--radius-xl); overflow:hidden; } }
-        @media (min-width:1024px){ .khg-detail-hero { aspect-ratio:auto; height:380px; } }
+        /* ── Hero: constrained so content stays above the fold ───────────────── */
+        .pd-hero { position:relative; width:100%; height:clamp(220px, 38vw, 420px);
+                   border-radius:var(--radius-xl); overflow:hidden;
+                   background:var(--gradient-sunset-radial); }
+        .pd-hero-controls { position:absolute; inset:12px 12px auto 12px;
+                            display:flex; align-items:center; justify-content:space-between; }
+        @media (min-width:640px){ .pd-hero-controls { inset:16px 16px auto 16px; } }
 
-        /* Action bar spans the same container as the content at every width. */
-        .khg-detail-actionbar-inner { width:100%; max-width:1120px; margin:0 auto;
-                                      padding:12px 16px; display:flex; align-items:center; gap:10px; }
-        @media (min-width:640px){ .khg-detail-actionbar-inner { padding:14px 24px; } }
-        @media (min-width:1024px){ .khg-detail-actionbar-inner { padding:14px 32px; } }
+        /* ── Body grid: 1 col → content + sticky rail ────────────────────────── */
+        .pd-grid { display:grid; grid-template-columns:1fr; gap:32px; margin-top:24px; }
+        @media (min-width:1024px){
+          .pd-grid { grid-template-columns:minmax(0,1fr) 340px; gap:48px; align-items:start; }
+        }
+        .pd-main { min-width:0; display:flex; flex-direction:column; gap:36px; }
+        .pd-rail { display:none; }
+        @media (min-width:1024px){
+          .pd-rail { display:block; position:sticky; top:88px; }
+        }
+
+        /* ── Identity block ──────────────────────────────────────────────────── */
+        .pd-title { font-family:var(--font-display); font-weight:600; line-height:1.15;
+                    letter-spacing:-0.02em; color:var(--text-primary);
+                    font-size:clamp(1.75rem, 1.2rem + 2vw, 2.75rem); margin:0;
+                    text-wrap:balance; }
+        .pd-meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px;
+                   margin-top:10px; font-size:var(--text-sm); color:var(--text-secondary); }
+        .pd-meta-item { display:inline-flex; align-items:center; gap:6px; }
+        .pd-addr { display:flex; align-items:flex-start; gap:8px; margin-top:12px;
+                   font-size:var(--text-md); line-height:1.5; color:var(--text-secondary);
+                   max-width:65ch; }
+
+        .pd-pill { display:inline-flex; align-items:center; gap:6px; border-radius:var(--radius-full);
+                   padding:4px 10px; font-size:var(--text-xs); font-weight:600; }
+        .pd-pill-open { background:var(--success-bg); color:var(--success); }
+        .pd-pill-price { background:var(--brand-50); color:var(--brand-700); border:1px solid var(--brand-100); }
+
+        /* ── Sections ────────────────────────────────────────────────────────── */
+        .pd-section-title { font-family:var(--font-display); font-size:var(--text-xl);
+                            font-weight:600; line-height:1.3; color:var(--text-primary);
+                            margin:0 0 12px; }
+        .pd-prose { font-size:var(--text-md); line-height:1.7; color:var(--text-secondary);
+                    max-width:70ch; margin:0; text-wrap:pretty; }
+
+        /* ── Chips (amenities + tags) ────────────────────────────────────────── */
+        .pd-chips { display:flex; flex-wrap:wrap; gap:8px; }
+        .pd-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px;
+                   border-radius:var(--radius-full); border:1px solid var(--border-default);
+                   background:var(--white); font-size:var(--text-sm); color:var(--text-secondary); }
+
+        /* ── Buttons: one vocabulary, all states ─────────────────────────────── */
+        .pd-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px;
+                  height:48px; padding:0 18px; border-radius:var(--radius-lg);
+                  font-family:var(--font-display); font-size:var(--text-md); font-weight:600;
+                  cursor:pointer; border:1px solid transparent; width:100%;
+                  transition:background-color 180ms ease, color 180ms ease,
+                             border-color 180ms ease, box-shadow 180ms ease; }
+        .pd-btn:disabled { opacity:.6; cursor:default; }
+        .pd-btn:focus-visible { outline:2px solid var(--brand-600); outline-offset:2px; }
+        .pd-btn-primary { background:var(--brand-600); color:var(--white); }
+        .pd-btn-primary:hover:not(:disabled) { background:var(--brand-700); }
+        .pd-btn-primary[data-saved] { background:var(--white); color:var(--brand-600);
+                                      border-color:var(--brand-600); }
+        .pd-btn-secondary { background:var(--white); color:var(--text-primary);
+                            border-color:var(--border-default); }
+        .pd-btn-secondary:hover { border-color:var(--gray-400); }
+
+        .pd-iconbtn { width:44px; height:44px; border-radius:50%; background:var(--white);
+                      border:1px solid var(--border-default); display:inline-flex;
+                      align-items:center; justify-content:center; cursor:pointer;
+                      transition:background-color 180ms ease, box-shadow 180ms ease; }
+        .pd-iconbtn:hover { box-shadow:var(--shadow-sm); }
+        .pd-iconbtn:focus-visible { outline:2px solid var(--brand-600); outline-offset:2px; }
+
+        /* ── Action rail (desktop) ───────────────────────────────────────────── */
+        .pd-card { border:1px solid var(--border-default); border-radius:var(--radius-xl);
+                   background:var(--white); padding:20px; }
+        .pd-card + .pd-card { margin-top:16px; }
+        .pd-actions { display:flex; flex-direction:column; gap:10px; }
+        .pd-link-row { display:flex; align-items:center; gap:10px; padding:10px 0;
+                       font-size:var(--text-sm); color:var(--text-secondary);
+                       text-decoration:none; border-top:1px solid var(--border-default); }
+        .pd-link-row:first-of-type { border-top:0; }
+        .pd-link-row:hover { color:var(--brand-700); }
+
+        /* ── Mobile action bar: same actions, only below the rail breakpoint ─── */
+        .pd-bar { position:fixed; inset-inline:0; bottom:0; z-index:30;
+                  background:var(--white); border-top:1px solid var(--border-default); }
+        .pd-bar-inner { max-width:1200px; margin:0 auto; padding:12px 16px;
+                        display:flex; align-items:center; gap:10px; }
+        @media (min-width:640px){ .pd-bar-inner { padding:12px 24px; } }
+        @media (min-width:1024px){ .pd-bar { display:none; } }
+        .pd-bar .pd-btn { flex:1; }
+
+        @media (prefers-reduced-motion: reduce){
+          .pd-btn, .pd-iconbtn { transition:none; }
+        }
       `}</style>
 
-      {/* Hero — one element, responsive aspect from phone to desktop */}
-      <div
-        className="khg-detail-hero"
-        style={{
-          position: "relative",
-          width: "100%",
-          background: coverUrl
-            ? `center/cover no-repeat url(${coverUrl})`
-            : "var(--gradient-sunset-radial)",
-        }}
-      >
-        <div style={{ position: "absolute", top: 14, left: 14 }}>
-          <button
-            type="button"
-            aria-label={t("explorer.back")}
-            onClick={() => router.back()}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: "var(--white)",
-              border: "1px solid var(--border-default)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <ArrowLeft size={18} color="var(--gray-900)" />
-          </button>
-        </div>
+      <main className="pd-shell">
+        {/* Hero */}
         <div
-          style={{
-            position: "absolute",
-            top: 14,
-            right: 14,
-            display: "flex",
-            gap: 8,
-          }}
+          className="pd-hero"
+          style={coverUrl ? { background: `center/cover no-repeat url(${coverUrl})` } : undefined}
         >
-          <button
-            type="button"
-            aria-label={t("explorer.share")}
-            onClick={async () => {
-              // Always share OUR page — never the maps link (that's Directions).
-              const url = `${window.location.origin}/explorer/${citySlug}/${placeSlug}`;
-              const title = locale === "ar" ? place.name : place.nameEn || place.name;
-              try {
-                if (navigator.share) {
-                  await navigator.share({ title, text: title, url });
-                } else {
-                  await navigator.clipboard.writeText(url);
-                }
-              } catch {
-                /* user dismissed the share sheet — nothing to do */
-              }
-            }}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: "var(--white)",
-              border: "1px solid var(--border-default)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <Share size={16} color="var(--gray-900)" />
-          </button>
-          <button
-            type="button"
-            aria-label={placeSaved ? `Remove ${place.name} from your plan` : `Add ${place.name} to your plan`}
-            aria-pressed={placeSaved}
-            onClick={toggleSaved}
-            disabled={isSavingPending}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: "var(--white)",
-              border: "1px solid var(--border-default)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: isSavingPending ? "default" : "pointer",
-              transition: "var(--motion-color)",
-            }}
-          >
-            <Heart
-              size={18}
-              color={placeSaved ? "var(--brand-600)" : "var(--gray-500)"}
-              fill={placeSaved ? "var(--brand-600)" : "none"}
-            />
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="khg-detail-shell"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "var(--text-3xl)",
-              fontWeight: 600,
-              lineHeight: 1.3,
-              color: "var(--text-primary)",
-              margin: 0,
-            }}
-          >
-            {locale === "ar" ? place.name : place.nameEn || place.name}
-          </h1>
-          <div
-            style={{
-              fontSize: "var(--text-sm)",
-              color: "var(--text-tertiary)",
-              marginTop: 4,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            {Number(place.rating) > 0 && (
-              <>
-                <Star size={14} fill="var(--brand-600)" color="var(--brand-600)" />
-                {Number(place.rating).toFixed(1)} ·{" "}
-              </>
-            )}
-            {place.address ?? "Egypt"}
-            {priceSymbols && (
-              <>
-                {" · "}
-                <span style={{ color: "var(--text-tertiary)" }}>{priceSymbols}</span>
-              </>
-            )}
+          <div className="pd-hero-controls">
+            <button type="button" aria-label={t("explorer.back")} onClick={() => router.back()} className="pd-iconbtn">
+              <ArrowLeft size={18} color="var(--gray-900)" />
+            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" aria-label={t("explorer.share")} onClick={onShare} className="pd-iconbtn">
+                <Share size={16} color="var(--gray-900)" />
+              </button>
+              <button
+                type="button"
+                aria-label={placeSaved ? `Remove ${title} from your plan` : `Add ${title} to your plan`}
+                aria-pressed={placeSaved}
+                onClick={toggleSaved}
+                disabled={isSavingPending}
+                className="pd-iconbtn"
+              >
+                <Heart
+                  size={18}
+                  color={placeSaved ? "var(--brand-600)" : "var(--gray-500)"}
+                  fill={placeSaved ? "var(--brand-600)" : "none"}
+                />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Gallery */}
-        {/* Gallery = every photo EXCEPT the cover (the cover is the hero above). */}
-        {galleryImages.length > 0 && <ImageGallery images={galleryImages} />}
+        <div className="pd-grid">
+          {/* ── Content ── */}
+          <div className="pd-main">
+            <header>
+              <h1 className="pd-title">{title}</h1>
+              <div className="pd-meta">
+                {hasRating && (
+                  <span className="pd-meta-item">
+                    <Star size={15} fill="var(--brand-600)" color="var(--brand-600)" />
+                    <strong style={{ color: "var(--text-primary)" }}>{rating.toFixed(1)}</strong>
+                  </span>
+                )}
+                {priceLabel && <span className="pd-pill pd-pill-price">{priceLabel}</span>}
+              </div>
+              {place.address && (
+                <p className="pd-addr">
+                  <MapPin size={17} style={{ flexShrink: 0, marginTop: 2 }} color="var(--text-tertiary)" />
+                  <span>{place.address}</span>
+                </p>
+              )}
+            </header>
 
-        {/* Description */}
-        {place.description && (
-          <section>
-            <h2
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "var(--text-xl)",
-                fontWeight: 600,
-                lineHeight: 1.3,
-                color: "var(--text-primary)",
-                margin: "0 0 var(--space-2)",
-              }}
-            >
-              {t("explorer.about")}
-            </h2>
-            <p
-              style={{
-                fontSize: "var(--text-md)",
-                lineHeight: 1.65,
-                color: "var(--text-secondary)",
-                margin: 0,
-              }}
-            >
-              {(locale === "en" && (place as any).descriptionEn) || place.description}
-            </p>
-          </section>
-        )}
+            {(amenities.length > 0 || tags.length > 0) && (
+              <section>
+                <h2 className="pd-section-title">{t("place.amenities")}</h2>
+                <div className="pd-chips">
+                  {amenities.map((a) => (
+                    <span key={a.id} className="pd-chip">
+                      {locale === "ar" ? a.name : a.nameEn || a.name}
+                    </span>
+                  ))}
+                  {tags.map((tg) => (
+                    <span key={tg.id} className="pd-chip">
+                      #{locale === "ar" ? tg.name : tg.nameEn || tg.name}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {/* Opening Hours — rendered from the backend placeHours aggregation. */}
-        {(() => {
-          const { rows, hasAnyOpen } = buildHoursRows(
-            place.placeHours,
-            locale,
-            t("explorer.hoursClosed"),
-          );
-          return (
+            {description && (
+              <section>
+                <h2 className="pd-section-title">{t("explorer.about")}</h2>
+                <p className="pd-prose">{description}</p>
+              </section>
+            )}
+
+            {galleryImages.length > 0 && (
+              <section>
+                <h2 className="pd-section-title">{t("place.gallery")}</h2>
+                <ImageGallery images={galleryImages} />
+              </section>
+            )}
+
             <section>
-              <h2
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: "var(--text-xl)",
-                  fontWeight: 600,
-                  lineHeight: 1.3,
-                  color: "var(--text-primary)",
-                  margin: "0 0 var(--space-3)",
-                }}
-              >
-                {t("explorer.hoursTitle")}
-              </h2>
+              <h2 className="pd-section-title">{t("explorer.hoursTitle")}</h2>
               {hasAnyOpen ? (
-                <HoursTable hours={rows} />
+                <HoursTable hours={hoursRows} />
               ) : (
-                <p
-                  style={{
-                    fontSize: "var(--text-xs)",
-                    color: "var(--text-tertiary)",
-                    marginTop: "var(--space-1)",
-                  }}
-                >
+                <p className="pd-prose" style={{ fontSize: "var(--text-sm)" }}>
                   {t("explorer.hoursNA")}
                 </p>
               )}
             </section>
-          );
-        })()}
 
-        {/* What's included — design-kit pattern; rendered only if the place has features */}
-        {(place as any).features && (place as any).features.length > 0 && (
-          <section>
-            <h2
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "var(--text-xl)",
-                fontWeight: 600,
-                lineHeight: 1.3,
-                color: "var(--text-primary)",
-                margin: "0 0 var(--space-3)",
-              }}
-            >
-              What&apos;s included
-            </h2>
-            {(place as any).features.map((f: string) => (
-              <div
-                key={f}
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  fontSize: "var(--text-base)",
-                  color: "var(--text-secondary)",
-                  marginBottom: 8,
-                }}
-              >
-                <Check size={16} color="var(--success)" /> {f}
+            {similar && similar.length > 0 && <SimilarPlaces places={similar} citySlug={citySlug} />}
+          </div>
+
+          {/* ── Action rail (desktop only; mobile uses the bar below) ── */}
+          <aside className="pd-rail">
+            <div className="pd-card">
+              <div className="pd-actions">
+                {saveButton}
+                {directionsUrl && (
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pd-btn pd-btn-secondary"
+                  >
+                    <Navigation size={18} />
+                    {t("explorer.directions")}
+                  </a>
+                )}
               </div>
-            ))}
-          </section>
-        )}
+              {(place.phone || place.website) && (
+                <div style={{ marginTop: 16 }}>
+                  {place.phone && (
+                    <a href={`tel:${place.phone}`} className="pd-link-row">
+                      <Phone size={16} /> {place.phone}
+                    </a>
+                  )}
+                  {place.website && (
+                    <a href={place.website} target="_blank" rel="noopener noreferrer" className="pd-link-row">
+                      <Globe size={16} /> {t("place.website")}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      </main>
 
-        {/* Similar Places */}
-        {similar && similar.length > 0 && (
-          <SimilarPlaces places={similar} citySlug={citySlug} />
-        )}
-      </div>
-
-      {/* Sticky action bar — discovery product: no price/payment, just save + directions */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "var(--white)",
-          borderTop: "1px solid var(--border-default)",
-          zIndex: 10,
-        }}
-      >
-        <div className="khg-detail-actionbar-inner">
-        <button
-          type="button"
-          aria-label={t("explorer.directions")}
-          onClick={() => {
-            // Prefer the admin-set Google Maps link; fall back to lat/lng directions.
-            const url = place.mapsUrl
-              ? place.mapsUrl
-              : place.lat && place.lng
-                ? `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`
-                : null;
-            if (url) window.open(url, "_blank", "noopener,noreferrer");
-          }}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            background: "var(--white)",
-            border: "1px solid var(--border-default)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-        >
-          <Navigation size={18} color="var(--gray-900)" />
-        </button>
-        <button
-          type="button"
-          onClick={toggleSaved}
-          disabled={isSavingPending}
-          style={{
-            flex: 1,
-            height: 52,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            background: placeSaved ? "var(--white)" : "var(--brand-600)",
-            color: placeSaved ? "var(--brand-600)" : "var(--white)",
-            border: placeSaved ? "1px solid var(--brand-600)" : "1px solid transparent",
-            borderRadius: "var(--radius-xl)",
-            fontFamily: "var(--font-display)",
-            fontSize: "var(--text-md)",
-            fontWeight: 600,
-            cursor: isSavingPending ? "default" : "pointer",
-            boxShadow: "var(--shadow-sm)",
-            transition: "var(--motion-color), var(--motion-shadow)",
-          }}
-        >
-          <Heart size={18} fill={placeSaved ? "var(--brand-600)" : "none"} color={placeSaved ? "var(--brand-600)" : "var(--white)"} />
-          {placeSaved ? t("place.saved") : t("place.save")}
-        </button>
+      {/* Mobile action bar — hidden ≥1024 where the rail takes over */}
+      <div className="pd-bar">
+        <div className="pd-bar-inner">
+          {directionsUrl && (
+            <a
+              href={directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t("explorer.directions")}
+              className="pd-iconbtn"
+              style={{ flexShrink: 0 }}
+            >
+              <Navigation size={18} color="var(--gray-900)" />
+            </a>
+          )}
+          {saveButton}
         </div>
       </div>
     </div>
