@@ -4,7 +4,7 @@ import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { SITE_URL } from "@/lib/config";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { Locale } from "@/i18n/dictionaries";
 
 /**
@@ -52,12 +52,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Read the language the visitor last chose from the cookie, SERVER-SIDE, so the very first
-  // paint — <html lang/dir> and every string — is already in that language. Without this the
-  // server rendered the default (ar) and the client flipped to the stored value on mount,
-  // which is the ar→en→ar flash on refresh the user reported.
+  // The language is decided SERVER-SIDE so the very first paint — <html lang/dir> and every
+  // string — is already correct. Without this the server rendered the default (ar) and the
+  // client flipped on mount: the ar→en→ar flash on refresh.
+  //
+  // The URL is the source of truth (/en/... or /ar/...); middleware puts the segment it
+  // matched on this header. The cookie is only the fallback for a request that somehow
+  // reached the layout unprefixed.
+  const urlLocale = (await headers()).get("x-khargny-locale");
   const cookieLocale = (await cookies()).get("khargny.locale")?.value;
-  const locale: Locale = cookieLocale === "en" ? "en" : "ar";
+  const chosen = urlLocale ?? cookieLocale;
+  const locale: Locale = chosen === "en" ? "en" : "ar";
   const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (

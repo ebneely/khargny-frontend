@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   dictionaries,
   DEFAULT_LOCALE,
   LOCALE_DIR,
+  LOCALES,
   type Dictionary,
   type Locale,
 } from "./dictionaries";
@@ -66,17 +68,33 @@ export function LocaleProvider({
     el.dir = LOCALE_DIR[locale];
   }, [locale]);
 
-  const setLocale = React.useCallback((l: Locale) => {
-    setLocaleState(l);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, l);
-    } catch {
-      /* storage may be unavailable; the in-memory locale still applies */
-    }
-    // Write the cookie so the NEXT server render (a refresh, a hard nav) paints this locale
-    // from the first byte. SameSite=Lax is fine — this is a display preference, not a secret.
-    document.cookie = `${STORAGE_KEY}=${l}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
-  }, []);
+  const router = useRouter();
+
+  const setLocale = React.useCallback(
+    (l: Locale) => {
+      setLocaleState(l);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, l);
+      } catch {
+        /* storage may be unavailable; the in-memory locale still applies */
+      }
+      // Write the cookie so the NEXT server render (a refresh, a hard nav) paints this locale
+      // from the first byte. SameSite=Lax is fine — this is a display preference, not a secret.
+      document.cookie = `${STORAGE_KEY}=${l}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+
+      // The language lives in the URL (/ar/... | /en/...), so switching it is a navigation.
+      // Read the path off `window.location` rather than `usePathname()`: the locale segment
+      // is consumed by a middleware rewrite, so the hook can report the stripped path while
+      // the address bar still shows the prefix. The address bar is what we are swapping.
+      const { pathname, search, hash } = window.location;
+      const first = pathname.split("/")[1];
+      const rest = (LOCALES as string[]).includes(first)
+        ? pathname.slice(first.length + 1) || "/"
+        : pathname;
+      router.push(`/${l}${rest === "/" ? "" : rest}${search}${hash}`);
+    },
+    [router],
+  );
 
   const value = React.useMemo<LocaleContextValue>(() => {
     const dict = dictionaries[locale];

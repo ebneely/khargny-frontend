@@ -24,21 +24,40 @@ async function getJson<T>(path: string): Promise<T[]> {
   }
 }
 
+/**
+ * Every page now lives under a locale segment (/ar/... and /en/...). A bare URL only
+ * redirects, so the sitemap must list the real ones — both languages, cross-linked with
+ * hreflang so search engines treat them as translations rather than duplicates.
+ */
+const LOCALES = ["ar", "en"] as const;
+
+function localized(
+  path: string,
+  rest: Omit<MetadataRoute.Sitemap[number], "url" | "alternates">,
+): MetadataRoute.Sitemap {
+  const languages = Object.fromEntries(LOCALES.map((l) => [l, `${SITE_URL}/${l}${path}`]));
+  return LOCALES.map((l) => ({
+    url: `${SITE_URL}/${l}${path}`,
+    ...rest,
+    alternates: { languages },
+  }));
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const staticPages: MetadataRoute.Sitemap = [
-    { url: `${SITE_URL}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${SITE_URL}/explorer`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
-    { url: `${SITE_URL}/plan`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
-    { url: `${SITE_URL}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
-    { url: `${SITE_URL}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    ...localized("", { lastModified: now, changeFrequency: "daily", priority: 1 }),
+    ...localized("/explorer", { lastModified: now, changeFrequency: "daily", priority: 0.9 }),
+    ...localized("/plan", { lastModified: now, changeFrequency: "weekly", priority: 0.5 }),
+    ...localized("/contact", { lastModified: now, changeFrequency: "monthly", priority: 0.3 }),
+    ...localized("/privacy", { lastModified: now, changeFrequency: "yearly", priority: 0.2 }),
   ];
 
   const cities = await getJson<City>("/v1/cities");
   const cityById = new Map<string, City>();
-  const cityPages: MetadataRoute.Sitemap = cities.map((c) => {
-    return { url: `${SITE_URL}/explorer/${c.slug}`, lastModified: now, changeFrequency: "weekly", priority: 0.7 };
-  });
+  const cityPages: MetadataRoute.Sitemap = cities.flatMap((c) =>
+    localized(`/explorer/${c.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.7 }),
+  );
 
   // place URLs need the city slug — fetch places per city (bounded by the city count).
   const placePages: MetadataRoute.Sitemap = [];
@@ -48,12 +67,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!cid) continue;
     const places = await getJson<Place>(`/v1/places?cityId=${cid}&limit=100`);
     for (const p of places) {
-      placePages.push({
-        url: `${SITE_URL}/explorer/${c.slug}/${p.slug}`,
-        lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
-        changeFrequency: "weekly",
-        priority: 0.6,
-      });
+      placePages.push(
+        ...localized(`/explorer/${c.slug}/${p.slug}`, {
+          lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
+          changeFrequency: "weekly",
+          priority: 0.6,
+        }),
+      );
     }
   }
 

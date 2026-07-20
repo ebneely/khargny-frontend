@@ -96,13 +96,12 @@ export function SiteHeader({ active, extra }: { active?: Active; extra?: React.R
         /* Inline nav + labelled language: desktop only. */
         .khg-nav-inline { display: none; }
         .khg-lang-label { display: none; }
-        .khg-menu-btn { display: inline-flex; }
-        @media (min-width: 768px) {
-          .khg-nav-inline { display: flex; }
-          .khg-lang-label { display: inline; }
-          .khg-menu-btn { display: none; }
-          .khg-menu-panel { display: none !important; }
-        }
+        .khg-iconbtn.khg-menu-btn { display: inline-flex; }
+        /* NOTE: the desktop overrides at the bottom of this block are written with the same
+           two-class specificity as this rule, and declared AFTER the .khg-iconbtn base
+           below. A media query adds NO specificity, so a one-class .khg-menu-btn display:none
+           lost to the later one-class .khg-iconbtn display:inline-flex and the hamburger
+           stayed visible on desktop. Specificity and source order both have to win. */
         .khg-iconbtn {
           display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           min-width: 44px; height: 44px; padding: 0 12px;
@@ -128,6 +127,14 @@ export function SiteHeader({ active, extra }: { active?: Active; extra?: React.R
         .khg-menu-link:active { background: var(--gray-100); }
         @media (prefers-reduced-motion: reduce) {
           .khg-iconbtn:active { transform: none; }
+        }
+        /* Desktop (>= 768px): inline nav shows, hamburger + its panel are gone. Declared
+           last, at matching specificity, so nothing later can re-show the menu button. */
+        @media (min-width: 768px) {
+          .khg-nav-inline { display: flex; }
+          .khg-lang-label { display: inline; }
+          .khg-iconbtn.khg-menu-btn { display: none; }
+          .khg-menu-panel { display: none !important; }
         }
       `}</style>
       <div
