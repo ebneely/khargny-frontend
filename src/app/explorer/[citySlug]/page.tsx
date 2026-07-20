@@ -24,6 +24,7 @@ import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { displayName, displayNameAr } from "@/lib/display-name";
 
 export default function CityExplorerPage() {
   const { t, locale } = useI18n();
@@ -102,7 +103,7 @@ export default function CityExplorerPage() {
               margin: 0,
             }}
           >
-            {currentCity ? (locale === "ar" ? currentCity.name : currentCity.nameEn || currentCity.name) : t("common.loading")}
+            {currentCity ? displayName(currentCity, locale) : t("common.loading")}
           </h1>
           {placesData && (
             <p
@@ -155,10 +156,12 @@ export default function CityExplorerPage() {
               active={activeCategory === null}
               onClick={() => setActiveCategory(null)}
             />
-            {categories.map((cat) => (
+            {/* A category with no name in either language renders nothing rather than
+                leaking its slug — see lib/display-name.ts. */}
+            {categories.filter((cat) => displayNameAr(cat, locale)).map((cat) => (
               <CategoryChip
                 key={cat.id}
-                label={locale === "ar" ? cat.nameAr || cat.nameEn || cat.slug : cat.nameEn || cat.nameAr || cat.slug}
+                label={displayNameAr(cat, locale)}
                 active={activeCategory === cat.id}
                 onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
               />

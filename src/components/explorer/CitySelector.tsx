@@ -5,6 +5,8 @@
  * `UI_UX/explorer/beauty/city-selector/spec.md`.
  */
 import * as React from "react";
+import { useI18n } from "@/i18n/LocaleProvider";
+import { displayName } from "@/lib/display-name";
 import type { City } from "@/lib/api/types";
 
 type CitySelectorProps = {
@@ -15,8 +17,9 @@ type CitySelectorProps = {
 
 export function CitySelector({ cities, currentCitySlug, onChange }: CitySelectorProps) {
   const [open, setOpen] = React.useState(false);
+  const { locale } = useI18n();
   const currentCity = cities.find((c) => c.slug === currentCitySlug);
-  const label = currentCity?.name ?? "Pick a city";
+  const label = displayName(currentCity, locale) || "Pick a city";
 
   return (
     <div style={{ position: "relative" }}>
@@ -98,7 +101,7 @@ export function CitySelector({ cities, currentCitySlug, onChange }: CitySelector
                   cursor: "pointer",
                 }}
               >
-                {c.name}
+                {displayName(c, locale)}
               </button>
             </li>
           ))}
