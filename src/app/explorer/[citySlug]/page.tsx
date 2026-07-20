@@ -10,7 +10,7 @@
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
-import { ExplorerHeader } from "@/components/explorer/ExplorerHeader";
+import { CitySelector } from "@/components/explorer/CitySelector";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SearchBar } from "@/components/explorer/SearchBar";
 import { CategoryChip } from "@/components/ds/CategoryChip";
@@ -71,16 +71,18 @@ export default function CityExplorerPage() {
         fontFamily: "var(--font-body)",
       }}
     >
-      <div className="khg-only-desktop">
-        <SiteHeader active="explore" />
-      </div>
-      <div className="khg-only-mobile">
-        <ExplorerHeader
-          cities={cities || []}
-          currentCitySlug={citySlug}
-          onCityChange={handleCityChange}
-        />
-      </div>
+      {/* One header at every width. The city switcher used to live in a mobile-only
+          ExplorerHeader, so desktop had no way to change city from the header at all. */}
+      <SiteHeader
+        active="explore"
+        extra={
+          <CitySelector
+            cities={cities || []}
+            currentCitySlug={citySlug}
+            onChange={handleCityChange}
+          />
+        }
+      />
 
       <main
         style={{

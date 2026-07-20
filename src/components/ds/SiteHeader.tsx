@@ -25,7 +25,12 @@ const LINKS: { key: Active; href: string; tkey: string }[] = [
   { key: "plan", href: "/plan", tkey: "common.plan" },
 ];
 
-export function SiteHeader({ active }: { active?: Active }) {
+/**
+ * `extra` renders between the nav and the language switch — the explorer pages put their
+ * city switcher there. Before that slot existed those pages shipped a separate mobile-only
+ * ExplorerHeader just to carry it, which is why they had a device-split header at all.
+ */
+export function SiteHeader({ active, extra }: { active?: Active; extra?: React.ReactNode }) {
   const { toggleLocale, dict, t } = useI18n();
   return (
     <header
@@ -102,13 +107,18 @@ export function SiteHeader({ active }: { active?: Active }) {
             </Link>
           ))}
         </nav>
+        {extra && (
+          <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", minWidth: 0 }}>
+            {extra}
+          </div>
+        )}
         <button
           type="button"
           onClick={toggleLocale}
           aria-label="Switch language"
           data-trace-id="language-toggle-desktop"
           style={{
-            marginInlineStart: "auto",
+            marginInlineStart: extra ? "var(--space-3)" : "auto",
             display: "inline-flex",
             alignItems: "center",
             gap: 8,

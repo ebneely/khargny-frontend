@@ -222,7 +222,7 @@ export function Home({ d }: { d: HomeDiscovery }) {
           d.rails.map((rail) => (
             <section key={rail.title} className="khg-anim-in-2" style={{ margin: "clamp(24px, 5vw, 36px) 0" }}>
               <h2 className="khg-section-title">{rail.title}</h2>
-              <div className="khg-place-grid no-scrollbar">
+              <div className="khg-home-rail no-scrollbar">
                 {rail.places.map((p) => (
                   <div key={p.id} onClick={() => d.onOpenPlace(p)} style={{ cursor: "pointer", width: "100%" }}>
                     <PlaceCard

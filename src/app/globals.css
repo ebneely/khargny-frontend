@@ -200,17 +200,6 @@
   }
 }
 
-/* ── Device-split presentation (LEGACY — being removed) ─────────────────────────────────
-   Pages used to ship two React trees (mobile + desktop) with exactly one shown by CSS.
-   Home no longer does this; explorer and plan are the last holdouts. Delete these rules
-   once those migrate — do not add new usages. */
-.khg-only-mobile { display: block; }
-.khg-only-desktop { display: none; }
-@media (min-width: 1024px) {
-  .khg-only-mobile { display: none; }
-  .khg-only-desktop { display: block; }
-}
-
 /* ── Unified responsive shell (home; scenario US-VISITOR-CIT-001) ───────────────────────
    One document flow at every width. The only real layout differences are expressed here
    as media queries rather than as a second component tree. Breakpoint = 1024px. */
@@ -245,27 +234,43 @@
   }
 }
 
-/* Places: a swipeable rail on phones, a grid on desktop. Rail children are sized here so
-   PlaceCard itself stays fluid (a fixed card width left dead clickable space in 1fr cells). */
-.khg-place-grid {
+/* Home rails: a swipeable rail on phones, a grid on desktop. Rail children are sized here so
+   PlaceCard itself stays fluid (a fixed card width left dead clickable space in 1fr cells).
+   Distinct from .khg-place-grid — browsing results are a grid at EVERY width, because a
+   horizontal rail hides most of them and can't be scanned. */
+.khg-home-rail {
   display: flex;
   gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
 }
-.khg-place-grid > * {
+.khg-home-rail > * {
   flex: 0 0 auto;
   width: min(72vw, 260px);
   scroll-snap-align: start;
 }
 @media (min-width: 1024px) {
-  .khg-place-grid {
+  .khg-home-rail {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 20px;
     overflow-x: visible;
   }
-  .khg-place-grid > * { width: 100%; }
+  .khg-home-rail > * { width: 100%; }
+}
+
+/* Browsing results (explorer city page): a responsive grid, one column on the narrowest
+   phones. This class was previously unstyled, so results stacked as plain blocks. */
+.khg-place-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 16px;
+}
+@media (min-width: 1024px) {
+  .khg-place-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
 }
 
 /* BottomNav is a fixed overlay below 1024px and absent above it (SiteHeader owns nav
@@ -339,21 +344,8 @@
     gap: var(--space-4);
   }
 }
-/* Desktop top nav (Explore / Your plan) shown in the plan top bar; the mobile BottomNav is
-   hidden ≥1024 via .khg-only-mobile. */
-.khg-plan-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-}
-.khg-plan-nav a {
-  font-family: var(--font-body);
-  font-size: var(--text-md);
-  color: var(--text-secondary);
-  text-decoration: none;
-}
-.khg-plan-nav a:hover { color: var(--brand-600); }
-.khg-plan-nav a[data-active="true"] { color: var(--brand-600); font-weight: 600; }
+/* (The .khg-plan-nav rules lived here. /plan now uses the shared SiteHeader at every
+   width, so nothing referenced them.) */
 
 /* Desktop home interaction polish */
 .khg-navlink:hover { color: var(--brand-700); background: var(--brand-50); }
