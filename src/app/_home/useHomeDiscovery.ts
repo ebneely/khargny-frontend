@@ -27,6 +27,7 @@ export type RailPlace = {
   area: string;
   rating: string;
   badge?: string;
+  image?: string;
   metrics?: { saves?: number; directions?: number; views?: number };
 };
 export type Rail = { title: string; places: RailPlace[] };
@@ -94,6 +95,7 @@ export function useHomeDiscovery() {
       saveCount?: number;
       viewCount?: number;
       directionsCount?: number;
+      coverImage?: string | null;
     }, badge?: string): RailPlace => ({
       id: place.id,
       slug: place.slug,
@@ -103,6 +105,7 @@ export function useHomeDiscovery() {
       // Backend serializes numeric rating as a string; coerce before format.
       rating: Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : "—",
       badge,
+      image: place.coverImage ?? undefined,
       metrics: {
         saves: place.saveCount,
         directions: place.directionsCount,

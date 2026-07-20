@@ -3,7 +3,6 @@ import "./globals.css";
 import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
-import { LanguageToggle } from "@/components/ds/LanguageToggle";
 import { SITE_URL } from "@/lib/config";
 
 /**
@@ -59,7 +58,9 @@ export default function RootLayout({
         <LocaleProvider>
           <QueryProvider>
             {children}
-            <LanguageToggle />
+            {/* The floating LanguageToggle was removed: SiteHeader already carries a language
+                control, so on mobile the language switch rendered TWICE (once in the nav, once
+                floating at the bottom). The header is now the single place to switch. */}
             <Toaster />
           </QueryProvider>
         </LocaleProvider>

@@ -174,6 +174,7 @@ export function Home({ d }: { d: HomeDiscovery }) {
                         always 0 and rendering it published a score nobody gave. */}
                     <PlaceCard
                       size="md"
+                      image={p.image}
                       title={p.title}
                       area={p.area}
                       badge={p.badge}
