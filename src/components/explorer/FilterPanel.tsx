@@ -46,7 +46,9 @@ export function FilterPanel({
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          height: 36,
+          // 44px — the tap-target minimum, and it matches the SearchBar's height beside it
+          // (was 36px: a small target and visibly shorter than the input next to it).
+          height: 44,
           padding: "0 16px",
           background: "var(--white)",
           color: "var(--text-primary)",
