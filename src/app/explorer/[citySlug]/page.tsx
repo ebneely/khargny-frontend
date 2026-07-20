@@ -34,6 +34,7 @@ export default function CityExplorerPage() {
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeRegion, setActiveRegion] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>({});
 
@@ -47,6 +48,7 @@ export default function CityExplorerPage() {
     {
       cityId: currentCity?.id,
       categoryId: activeCategory || undefined,
+      region: activeRegion || undefined,
       // visitor filters → query params (arrays comma-joined). Options come from the admin taxonomy.
       priceRange: filters.priceRange?.length ? filters.priceRange.join(",") : undefined,
       featured: filters.featured || undefined,
@@ -56,6 +58,21 @@ export default function CityExplorerPage() {
     // gate: only query once we have a real cityId, so it never returns ALL places
     Boolean(currentCity?.id),
   );
+  // Unfiltered fetch for the SAME city, used only to work out which areas exist. Kept
+  // separate from the filtered list above so selecting a region doesn't collapse the chip
+  // row down to the one region you just picked.
+  const { data: cityPlaces } = usePlaces(
+    { cityId: currentCity?.id, limit: 200 },
+    Boolean(currentCity?.id),
+  );
+  const regionOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of cityPlaces?.items ?? []) {
+      if (p.region) set.add(p.region);
+    }
+    return Array.from(set).sort();
+  }, [cityPlaces]);
+
   const { data: searchData } = useSearchPlaces({ q: search || undefined });
 
   const displayedPlaces = search ? searchData?.items : placesData?.items;
@@ -139,6 +156,35 @@ export default function CityExplorerPage() {
             <PlaceFilters value={filters} onChange={setFilters} />
           </FilterPanel>
         </div>
+
+        {/* Areas inside this city. Derived from an unfiltered fetch of the city's places, so
+            the row only ever offers regions that actually have something in them — offering
+            all ~180 catalog areas would be mostly dead ends. */}
+        {regionOptions.length > 0 && (
+          <div
+            className="no-scrollbar"
+            style={{
+              display: "flex",
+              gap: "var(--space-2)",
+              overflowX: "auto",
+              paddingBottom: "var(--space-3)",
+            }}
+          >
+            <CategoryChip
+              label={t("explorer.allAreas")}
+              active={activeRegion === null}
+              onClick={() => setActiveRegion(null)}
+            />
+            {regionOptions.map((r) => (
+              <CategoryChip
+                key={r}
+                label={r}
+                active={activeRegion === r}
+                onClick={() => setActiveRegion(activeRegion === r ? null : r)}
+              />
+            ))}
+          </div>
+        )}
 
         {categories && categories.length > 0 && (
           <div

@@ -96,6 +96,8 @@ export interface Place {
   description: string | null;
   descriptionEn: string | null;
   address: string | null;
+  /** Area inside the city ("Zamalek"), from the dashboard catalog. What visitors browse by. */
+  region: string | null;
   lat: number | null;
   lng: number | null;
   phone: string | null;
@@ -163,6 +165,8 @@ export interface PlaceList {
 export interface PlaceFilters {
   cityId?: string;
   categoryId?: string;
+  /** Area inside the city — exact match against the dashboard catalog value. */
+  region?: string;
   status?: PlaceStatus;
   // visitor filters (comma-joined for the query string)
   priceRange?: string;
