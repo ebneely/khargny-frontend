@@ -25,7 +25,6 @@ import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName, displayNameAr } from "@/lib/display-name";
-import { regionLabel } from "@/lib/egypt-regions";
 import { RegionSelector } from "@/components/explorer/RegionSelector";
 
 export default function CityExplorerPage() {
@@ -91,27 +90,36 @@ export default function CityExplorerPage() {
         fontFamily: "var(--font-body)",
       }}
     >
-      {/* One header at every width. The city switcher used to live in a mobile-only
-          ExplorerHeader, so desktop had no way to change city from the header at all. */}
-      {/* City then area — the two levels of "where", in that order, at every width. The
-          area picker is disabled until the city has areas with places in them. */}
-      <SiteHeader
-        active="explore"
-        extra={
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
-            <CitySelector
-              cities={cities || []}
-              currentCitySlug={citySlug}
-              onChange={handleCityChange}
-            />
-            <RegionSelector
-              regions={regionOptions}
-              value={activeRegion}
-              onChange={setActiveRegion}
-            />
-          </div>
-        }
-      />
+      <SiteHeader active="explore" />
+
+      {/* Location filters live in their own bar under the header, not crammed into the top
+          nav. City then area — the two levels of "where", in that order. Cramming both
+          selectors plus the language and menu buttons onto one header line overflowed a
+          phone; a dedicated bar reads cleanly at every width and is the right home for a
+          filter anyway. It scrolls horizontally rather than wrapping if a label is long. */}
+      <div
+        className="no-scrollbar"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--space-2)",
+          overflowX: "auto",
+          padding: "var(--space-2) clamp(16px, 4vw, 32px)",
+          background: "var(--surface-app)",
+          borderBottom: "1px solid var(--gray-200)",
+        }}
+      >
+        <CitySelector
+          cities={cities || []}
+          currentCitySlug={citySlug}
+          onChange={handleCityChange}
+        />
+        <RegionSelector
+          regions={regionOptions}
+          value={activeRegion}
+          onChange={setActiveRegion}
+        />
+      </div>
 
       <main
         style={{
@@ -168,37 +176,9 @@ export default function CityExplorerPage() {
           </FilterPanel>
         </div>
 
-        {/* Areas inside this city. Derived from an unfiltered fetch of the city's places, so
-            the row only ever offers regions that actually have something in them — offering
-            all ~180 catalog areas would be mostly dead ends. */}
-        {regionOptions.length > 0 && (
-          <div
-            className="no-scrollbar"
-            style={{
-              display: "flex",
-              gap: "var(--space-2)",
-              overflowX: "auto",
-              paddingBottom: "var(--space-3)",
-            }}
-          >
-            <CategoryChip
-              label={t("explorer.allAreas")}
-              active={activeRegion === null}
-              onClick={() => setActiveRegion(null)}
-            />
-            {/* The chip's VALUE stays the stored English key (it is what the API filters
-                on); only the label is localized, from the shared catalog. */}
-            {regionOptions.map((r) => (
-              <CategoryChip
-                key={r}
-                label={regionLabel(r, locale)}
-                active={activeRegion === r}
-                onClick={() => setActiveRegion(activeRegion === r ? null : r)}
-              />
-            ))}
-          </div>
-        )}
-
+        {/* The area filter is the RegionSelector in the header (next to the city), so the
+            old horizontal chip row here was a second control for the same state — removed to
+            avoid two area pickers that could disagree. Category chips stay. */}
         {categories && categories.length > 0 && (
           <div
             className="no-scrollbar"
