@@ -31,7 +31,12 @@ export function lucideByName(
 ): React.ComponentType<IconProps> | null {
   if (!name) return null;
   const Comp = (Lucide as unknown as Record<string, unknown>)[toPascalCase(name.trim())];
-  return typeof Comp === "function" ? (Comp as React.ComponentType<IconProps>) : null;
+  // Lucide icons are forwardRef OBJECTS, not plain functions. Checking for 'function' here
+  // rejected every icon and rendered the entire catalog as the MapPin fallback.
+  const renderable =
+    typeof Comp === "function" ||
+    (typeof Comp === "object" && Comp !== null && "$$typeof" in Comp);
+  return renderable ? (Comp as React.ComponentType<IconProps>) : null;
 }
 
 /**
