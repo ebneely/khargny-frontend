@@ -4,48 +4,52 @@
  * Shared between the homepage (Discover tab) and the /plan page (My Plan tab).
  * 4 items: Discover / Saved / My Plan / Profile.
  *
- * The active item is rendered in var(--brand-600) with a CSS filter that maps the
- * Lucide icon to brand-orange. Inactive items are var(--text-tertiary) at 0.55 opacity.
- * The container is pinned to the screen bottom with safe-area-inset-bottom padding.
+ * A fixed overlay below 1024px and hidden above it (SiteHeader owns navigation at desktop
+ * widths) — see .khg-bottomnav in globals.css. Pages that render it add .khg-has-bottomnav
+ * so their last row isn't covered. Safe-area inset is honoured for notched phones.
+ *
+ * Icons are bundled via lucide-react. They used to be <img> tags pointing at unpkg.com,
+ * which put four blocking third-party requests in front of the primary navigation and
+ * broke it entirely offline or under a strict CSP.
  */
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Compass, Heart, Bookmark, User } from "lucide-react";
 import { useI18n } from "@/i18n/LocaleProvider";
 
 type Tab = "discover" | "saved" | "plan" | "profile";
 
-const ITEMS: { key: Tab; labelKey: string; icon: string; href: string }[] = [
-  { key: "discover", labelKey: "nav.discover", icon: "compass", href: "/" },
-  { key: "saved", labelKey: "nav.saved", icon: "heart", href: "/saved" },
-  { key: "plan", labelKey: "nav.plan", icon: "bookmark", href: "/plan" },
-  { key: "profile", labelKey: "nav.profile", icon: "user", href: "/profile" },
+const ITEMS: {
+  key: Tab;
+  labelKey: string;
+  Icon: React.ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
+  href: string;
+}[] = [
+  { key: "discover", labelKey: "nav.discover", Icon: Compass, href: "/" },
+  { key: "saved", labelKey: "nav.saved", Icon: Heart, href: "/saved" },
+  { key: "plan", labelKey: "nav.plan", Icon: Bookmark, href: "/plan" },
+  { key: "profile", labelKey: "nav.profile", Icon: User, href: "/profile" },
 ];
-
-// CSS filter that maps a neutral Lucide icon to the brand orange, matching the
-// design system's BottomNav.jsx line 39.
-const BRAND_ICON_FILTER =
-  "invert(38%) sepia(64%) saturate(1657%) hue-rotate(346deg) brightness(97%) contrast(93%)";
 
 export function BottomNav({ active }: { active: Tab }) {
   const router = useRouter();
   const { t } = useI18n();
   return (
     <nav
-      aria-label="Primary"
+      // SiteHeader is the "Primary" landmark; this one needs its own name so screen
+      // readers don't announce two identically-labelled navs on the same page.
+      aria-label="Quick navigation"
+      className="khg-bottomnav"
       style={{
         display: "flex",
         borderTop: "1px solid var(--gray-200)",
         background: "var(--white)",
         padding: "8px 4px calc(8px + env(safe-area-inset-bottom))",
-        position: "sticky",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
       }}
     >
       {ITEMS.map((it) => {
         const isActive = it.key === active;
+        const { Icon } = it;
         return (
           <button
             type="button"
@@ -66,20 +70,12 @@ export function BottomNav({ active }: { active: Tab }) {
               border: "none",
               cursor: "pointer",
               color: isActive ? "var(--brand-600)" : "var(--text-tertiary)",
+              opacity: isActive ? 1 : 0.65,
               transition: "var(--motion-color)",
               fontFamily: "var(--font-body)",
             }}
           >
-            <img
-              src={`https://unpkg.com/lucide-static@0.462.0/icons/${it.icon}.svg`}
-              width={22}
-              height={22}
-              alt=""
-              style={{
-                opacity: isActive ? 1 : 0.55,
-                filter: isActive ? BRAND_ICON_FILTER : "none",
-              }}
-            />
+            <Icon size={22} aria-hidden={true} />
             <span style={{ fontSize: 11, fontWeight: isActive ? 600 : 400 }}>{t(it.labelKey)}</span>
           </button>
         );

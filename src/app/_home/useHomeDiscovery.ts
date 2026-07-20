@@ -3,9 +3,8 @@
  * useHomeDiscovery — the single source of truth for the home discovery scenario
  * (US-VISITOR-CIT-001: "pick a region → routes to /explorer/{citySlug}").
  *
- * Container/presenter split: this hook holds ALL state, data, and actions. The two
- * presentational shells — HomeMobile / HomeDesktop — consume it, so behavior lives
- * once and can never drift between the two device experiences.
+ * Container/presenter split: this hook holds ALL state, data, and actions. The single
+ * responsive shell — Home — consumes it, so behavior lives once, independent of layout.
  *
  * Data is REAL (khargny backend): categories from GET /v1/categories, rails from
  * GET /v1/places, city names from GET /v1/cities, saves via POST /v1/saved-places.

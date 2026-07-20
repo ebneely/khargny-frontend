@@ -200,14 +200,88 @@
   }
 }
 
-/* ── Device-split presentation (container/presenter home; scenario US-VISITOR-CIT-001) ──
-   Both HomeMobile and HomeDesktop render; exactly one shows. SSR-safe, no JS, no layout
-   shift. Desktop breakpoint = 1024px. Reused by any route that ships distinct shells. */
+/* ── Device-split presentation (LEGACY — being removed) ─────────────────────────────────
+   Pages used to ship two React trees (mobile + desktop) with exactly one shown by CSS.
+   Home no longer does this; explorer and plan are the last holdouts. Delete these rules
+   once those migrate — do not add new usages. */
 .khg-only-mobile { display: block; }
 .khg-only-desktop { display: none; }
 @media (min-width: 1024px) {
   .khg-only-mobile { display: none; }
   .khg-only-desktop { display: block; }
+}
+
+/* ── Unified responsive shell (home; scenario US-VISITOR-CIT-001) ───────────────────────
+   One document flow at every width. The only real layout differences are expressed here
+   as media queries rather than as a second component tree. Breakpoint = 1024px. */
+
+/* Section headings scale with the viewport instead of switching size per shell. */
+.khg-section-title {
+  font-family: var(--font-display);
+  font-size: clamp(var(--text-xl), 3.2vw, var(--text-3xl));
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 clamp(10px, 2vw, 18px);
+}
+
+/* Category row: a horizontal scroller on phones, a centered wrap once there's room. */
+.khg-cat-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  padding: 16px 0 4px;
+  scroll-padding-inline: 16px;
+}
+@media (min-width: 1024px) {
+  .khg-cat-row {
+    overflow-x: visible;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 28px 0 4px;
+  }
+}
+
+/* Places: a swipeable rail on phones, a grid on desktop. Rail children are sized here so
+   PlaceCard itself stays fluid (a fixed card width left dead clickable space in 1fr cells). */
+.khg-place-grid {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+.khg-place-grid > * {
+  flex: 0 0 auto;
+  width: min(72vw, 260px);
+  scroll-snap-align: start;
+}
+@media (min-width: 1024px) {
+  .khg-place-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    overflow-x: visible;
+  }
+  .khg-place-grid > * { width: 100%; }
+}
+
+/* BottomNav is a fixed overlay below 1024px and absent above it (SiteHeader owns nav
+   there). Pages that render it reserve room so the last row isn't sitting under it. */
+.khg-bottomnav {
+  position: fixed;
+  bottom: 0;
+  inset-inline: 0;
+  z-index: 30;
+}
+@media (min-width: 1024px) {
+  .khg-bottomnav { display: none; }
+}
+.khg-has-bottomnav { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .khg-has-bottomnav { padding-bottom: 0; }
 }
 
 /* ── Motion polish ──────────────────────────────────────────────────────────────────────
