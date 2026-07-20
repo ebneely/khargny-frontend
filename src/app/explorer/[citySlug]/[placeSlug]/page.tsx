@@ -14,7 +14,7 @@
  */
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Star, Share, Navigation, Heart, Phone, Globe, MapPin } from "lucide-react";
+import { ArrowLeft, Star, Share, Navigation, Heart, Phone, Globe, MapPin, Eye } from "lucide-react";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { MediaShowcase, type ShowcaseItem } from "@/components/explorer/MediaShowcase";
 import { HoursTable } from "@/components/explorer/HoursTable";
@@ -39,6 +39,13 @@ const DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5]; // Sat → Fri
 
 // Price as words, not "level 3". Readers understand cheap/expensive instantly.
 const PRICE_EN = ["Cheap", "Moderate", "Pricey", "Expensive"];
+function fmtCount(n?: number): string {
+  const v = n ?? 0;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}m`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}k`;
+  return String(v);
+}
+
 const PRICE_AR = ["رخيص", "متوسط", "مرتفع", "غالي"];
 
 /** "HH:mm" (24h) → "9:00 AM". Returns the raw string if it can't parse. */
@@ -380,6 +387,31 @@ function PlaceDetailPage() {
                   <span>{place.address}</span>
                 </p>
               )}
+
+              {/* Public engagement: saves · directions · views — the same three the cards show. */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 18,
+                  marginTop: 14,
+                  fontSize: "var(--text-sm)",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <Heart size={15} aria-hidden="true" />
+                  {fmtCount((place as { saveCount?: number }).saveCount)}
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <Navigation size={15} aria-hidden="true" />
+                  {fmtCount((place as { directionsCount?: number }).directionsCount)}
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <Eye size={15} aria-hidden="true" />
+                  {fmtCount(place.viewCount)}
+                </span>
+              </div>
             </header>
 
             {(amenities.length > 0 || tags.length > 0) && (
