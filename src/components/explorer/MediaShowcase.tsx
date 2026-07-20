@@ -35,6 +35,56 @@ function formatDuration(sec?: number | null): string | null {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** One tile — a photo, or a video poster with a play badge. Posterless videos get a gradient
+ *  instead of trying to render the video file as an <img>, which is what showed a broken icon. */
+function Tile({
+  item,
+  index,
+  total,
+  onOpen,
+  hero,
+  moreCount = 0,
+}: {
+  item: ShowcaseItem;
+  index: number;
+  total: number;
+  onOpen: (i: number) => void;
+  hero?: boolean;
+  moreCount?: number;
+}) {
+  const dur = item.type === "video" ? formatDuration(item.durationSeconds) : null;
+  const posterSrc = item.type === "video" ? item.poster : item.url;
+  const showMore = moreCount > 0;
+  return (
+    <button
+      type="button"
+      className={`khg-media-tile${hero ? " khg-media-hero" : ""}`}
+      onClick={() => onOpen(index)}
+      aria-label={item.type === "video" ? `Play video ${index + 1}` : `View photo ${index + 1} of ${total}`}
+    >
+      {posterSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={posterSrc} alt={item.alt || ""} loading={hero ? "eager" : "lazy"} />
+      ) : (
+        <span className="khg-media-noposter" aria-hidden="true" />
+      )}
+      {item.type === "video" && !showMore && (
+        <span className="khg-media-play" aria-hidden="true">
+          <span className="khg-media-play-btn">
+            <Play size={hero ? 26 : 20} fill="#fff" />
+          </span>
+        </span>
+      )}
+      {dur && !showMore && <span className="khg-media-dur">{dur}</span>}
+      {showMore && (
+        <span className="khg-media-more" aria-hidden="true">
+          +{moreCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
   const [openAt, setOpenAt] = React.useState<number | null>(null);
 
@@ -87,23 +137,23 @@ export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
   return (
     <>
       <style>{`
-        .khg-media-mosaic {
+        /* Hero + thumbnail strip. A fixed-row mosaic cropped the lead photo hard on desktop
+           (a wide 2:1 cell over a normal 4:3 photo). The hero now keeps a real 4/3 ratio on
+           phones and a gentler 16/9 on desktop, so the main image reads whole; the rest sit
+           in a strip below at a consistent square-ish ratio. */
+        .khg-media-showcase { display: flex; flex-direction: column; gap: 8px; }
+        .khg-media-hero { aspect-ratio: 4 / 3; }
+        @media (min-width: 768px) { .khg-media-hero { aspect-ratio: 16 / 9; } }
+        .khg-media-strip {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          grid-auto-rows: 120px;
+          grid-template-columns: repeat(3, 1fr);
           gap: 8px;
         }
-        /* The first tile is the focal point: two columns wide, two rows tall. */
-        .khg-media-mosaic > :first-child { grid-column: span 2; grid-row: span 2; }
-        @media (min-width: 640px) {
-          .khg-media-mosaic { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 130px; }
-          .khg-media-mosaic > :first-child { grid-column: span 2; grid-row: span 2; }
-        }
-        @media (min-width: 1024px) {
-          .khg-media-mosaic { grid-auto-rows: 150px; }
-        }
+        @media (min-width: 768px) { .khg-media-strip { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1024px) { .khg-media-strip { grid-template-columns: repeat(5, 1fr); } }
+        .khg-media-strip .khg-media-tile { aspect-ratio: 1 / 1; }
         .khg-media-tile {
-          position: relative; overflow: hidden; cursor: pointer;
+          position: relative; overflow: hidden; cursor: pointer; width: 100%;
           border-radius: var(--radius-lg); border: none; padding: 0;
           background: var(--gray-100);
           transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
@@ -111,6 +161,8 @@ export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
         .khg-media-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .khg-media-tile:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
         .khg-media-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* A video with no poster frame: a branded gradient instead of a broken <img>. */
+        .khg-media-noposter { width: 100%; height: 100%; background: var(--gradient-sunset-radial); }
         .khg-media-play {
           position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
           background: linear-gradient(to top, rgba(0,0,0,0.35), rgba(0,0,0,0.05));
@@ -159,46 +211,28 @@ export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
         }
       `}</style>
 
-      {/* Cap the visible tiles so a huge set doesn't dominate the page; the rest are one
-          click away behind a "+N" overlay on the last visible tile. */}
-      <div className="khg-media-mosaic">
-        {items.slice(0, 5).map((item, i) => {
-          const isLastVisible = i === 4 && items.length > 5;
-          const dur = item.type === "video" ? formatDuration(item.durationSeconds) : null;
-          return (
-            <button
-              key={i}
-              type="button"
-              className="khg-media-tile"
-              onClick={() => setOpenAt(i)}
-              aria-label={
-                item.type === "video"
-                  ? `Play video ${i + 1}`
-                  : `View photo ${i + 1} of ${items.length}`
-              }
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.type === "video" ? item.poster || item.url : item.url}
-                alt={item.alt || ""}
-                loading={i === 0 ? "eager" : "lazy"}
-              />
-              {item.type === "video" && !isLastVisible && (
-                <span className="khg-media-play" aria-hidden="true">
-                  <span className="khg-media-play-btn">
-                    <Play size={20} fill="#fff" />
-                  </span>
-                </span>
-              )}
-              {dur && !isLastVisible && <span className="khg-media-dur">{dur}</span>}
-              {isLastVisible && (
-                <span className="khg-media-more" aria-hidden="true">
-                  +{items.length - 5}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Hero = first item; the rest tile below. A large set is capped, the overflow folding
+          behind a "+N" on the last visible thumbnail rather than flooding the page. */}
+      <div className="khg-media-showcase">
+        <Tile item={items[0]} index={0} total={items.length} onOpen={setOpenAt} hero />
+        {items.length > 1 && (
+          <div className="khg-media-strip">
+            {items.slice(1, 6).map((item, idx) => {
+              const i = idx + 1;
+              const moreCount = idx === 4 && items.length > 6 ? items.length - 6 : 0;
+              return (
+                <Tile
+                  key={i}
+                  item={item}
+                  index={i}
+                  total={items.length}
+                  onOpen={setOpenAt}
+                  moreCount={moreCount}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {active && (
