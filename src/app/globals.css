@@ -14,6 +14,36 @@
   }
 }
 
+/* ── Global scrollbar chrome ────────────────────────────────────────────────────────────
+   Hide the scrollbar everywhere — the page scroller included — while keeping every area
+   scrollable by wheel, touch, keyboard and programmatic scroll.
+
+   layout.tsx put a `scrollbar-hide` class on <html>, but nothing ever defined that class
+   (no tailwind-scrollbar-hide plugin is installed), so it did nothing and the main page
+   scrollbar stayed visible. These rules are the actual implementation, applied to the
+   document scroller and any element that scrolls.
+
+   NOTE: hiding the scrollbar removes the only visual cue that content continues below the
+   fold, so long scrollable regions still need their own affordance (a peeking card edge,
+   a chevron) to look scrollable. */
+html,
+body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / old Edge */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+/* Nested scroll containers (modals, sheets, rails) inherit the same treatment. */
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+* {
+  scrollbar-width: none;
+}
+
 /* Khargny Design System tokens — sourced verbatim from
    design/builds/Khargny Design System/tokens/{colors,spacing,typography}.css.
    See UI_UX/{feature}/styling.md for per-feature citation. */

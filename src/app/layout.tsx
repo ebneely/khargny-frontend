@@ -52,7 +52,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className="scrollbar-hide" suppressHydrationWarning>
+    // Scrollbars are hidden globally in globals.css. The `scrollbar-hide` class that used to
+    // sit on <html> was never defined by any stylesheet or plugin, so it did nothing.
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body>
         <LocaleProvider>
           <QueryProvider>
