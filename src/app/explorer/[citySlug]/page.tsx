@@ -139,6 +139,7 @@ export default function CityExplorerPage() {
 
         {categories && categories.length > 0 && (
           <div
+            className="no-scrollbar"
             style={{
               display: "flex",
               gap: "var(--space-2)",
@@ -187,6 +188,7 @@ export default function CityExplorerPage() {
                   title={locale === "ar" ? place.name : place.nameEn || place.name}
                   area={place.address || ""}
                   image={place.coverImage || undefined}
+                  priceRange={place.priceRange}
                   rating={Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : undefined}
                   onToggleFavorite={() => {}}
                 />

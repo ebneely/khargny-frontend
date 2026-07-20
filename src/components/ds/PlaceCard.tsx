@@ -56,6 +56,8 @@ type PlaceCardProps = {
   title: string;
   area: string;
   rating?: string;
+  /** Price tier 1-4 — rendered as a word (Cheap … Expensive), never "level 3". */
+  priceRange?: number | null;
   badge?: string;
   /** Optional — if provided, the heart icon wires to the saved-places backend. */
   placeId?: string;
@@ -74,11 +76,17 @@ type PlaceCardProps = {
  * data, no real `placeId`), the heart is a visual no-op and `onToggleFavorite`
  * is the caller-supplied callback (homepage uses this to fire a Toast).
  */
+// Price tiers read as words. Locale-agnostic here (the DS card takes plain props);
+// callers on Arabic surfaces can pass a translated label via `priceLabel` upstream
+// if that's ever needed — today both locales use these short English words.
+const PRICE_WORDS = ["Cheap", "Moderate", "Pricey", "Expensive"];
+
 export function PlaceCard({
   image,
   title,
   area,
   rating,
+  priceRange,
   badge,
   placeId,
   favorite = false,
@@ -95,13 +103,20 @@ export function PlaceCard({
   const [localSaved, setLocalSaved] = React.useState(favorite);
   const [bump, setBump] = React.useState(0); // re-triggers the pop animation on each toggle
   const saved = useBackend ? backend.saved : localSaved;
-  const w = size === "sm" ? 168 : 220;
+  // Fluid: fills its grid cell (a fixed width left dead, still-clickable space in
+  // 1fr cells). `size` sets the floor so horizontal rails keep their rhythm.
+  const minW = size === "sm" ? 168 : 200;
+  const priceWord =
+    typeof priceRange === "number" && priceRange >= 1 && priceRange <= 4
+      ? PRICE_WORDS[priceRange - 1]
+      : null;
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        width: w,
+        width: "100%",
+        minWidth: minW,
         fontFamily: "var(--font-body)",
         cursor: "pointer",
         transition: "var(--motion-shadow)",
@@ -165,34 +180,61 @@ export function PlaceCard({
       </div>
       <div
         onClick={onTitleClick}
-        style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 2 }}
+        style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        {/* Name owns the line — it's the thing being scanned. */}
+        <span
+          style={{
+            fontSize: "var(--text-base)",
+            fontWeight: "var(--weight-medium)",
+            color: "var(--text-primary)",
+            lineHeight: 1.35,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={title}
+        >
+          {title}
+        </span>
+
+        {/* Meta: rating + price, the two things that drive the choice. */}
+        {(rating || priceWord) && (
           <span
             style={{
-              fontSize: "var(--text-base)",
-              fontWeight: "var(--weight-medium)",
-              color: "var(--text-primary)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: "var(--text-sm)",
+              color: "var(--text-secondary)",
             }}
           >
-            {title}
+            {rating && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+                <StarIcon />
+                <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{rating}</span>
+              </span>
+            )}
+            {rating && priceWord && <span aria-hidden style={{ color: "var(--gray-300)" }}>·</span>}
+            {priceWord && <span>{priceWord}</span>}
           </span>
-          {rating && (
-            <span
-              style={{
-                fontSize: "var(--text-base)",
-                color: "var(--text-primary)",
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-                flexShrink: 0,
-              }}
-            >
-              <StarIcon /> {rating}
-            </span>
-          )}
-        </div>
-        <span style={{ fontSize: "var(--text-sm)", color: "var(--text-tertiary)" }}>{area}</span>
+        )}
+
+        {/* Area is context, not the headline — one line, never a 3-line address dump. */}
+        {area && (
+          <span
+            style={{
+              fontSize: "var(--text-sm)",
+              color: "var(--text-tertiary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={area}
+          >
+            {area}
+          </span>
+        )}
       </div>
     </div>
   );

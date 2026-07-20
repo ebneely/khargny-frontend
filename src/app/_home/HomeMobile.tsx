@@ -40,7 +40,7 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
         <SearchBar area={t("home.anywhere")} onOpen={d.openFilters} />
       </div>
 
-      <div style={{ display: "flex", gap: 4, padding: "0 12px 10px", overflowX: "auto" }}>
+      <div className="no-scrollbar" style={{ display: "flex", gap: 4, padding: "0 12px 10px", overflowX: "auto" }}>
         {d.categories.map((c) => (
           <CategoryChip key={c.key} label={c.label} active={d.cat === c.key} onClick={() => d.setCat(c.key)} icon={catIcon(c.icon)} />
         ))}
@@ -52,7 +52,7 @@ export function HomeMobile({ d }: { d: HomeDiscovery }) {
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-xl)", fontWeight: 600, lineHeight: 1.3, color: "var(--text-primary)", padding: "4px 16px 10px", margin: 0 }}>
               {rail.title}
             </h2>
-            <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "0 16px" }}>
+            <div className="no-scrollbar" style={{ display: "flex", gap: 12, overflowX: "auto", padding: "0 16px" }}>
               {rail.places.map((p) => (
                 <div key={p.id} onClick={() => d.onOpenPlace(p)} style={{ cursor: "pointer" }}>
                   <PlaceCard size="sm" title={p.title} area={p.area} rating={p.rating} badge={p.badge} favorite={false} onToggleFavorite={() => d.onSavePlace(p.id)} />

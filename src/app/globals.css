@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide the scrollbar on horizontal rails (chips, place rails) while keeping the
+   area scrollable — swipe/wheel/keyboard all still work, the chrome just goes. */
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE / old Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+  }
+}
+
 /* Khargny Design System tokens — sourced verbatim from
    design/builds/Khargny Design System/tokens/{colors,spacing,typography}.css.
    See UI_UX/{feature}/styling.md for per-feature citation. */

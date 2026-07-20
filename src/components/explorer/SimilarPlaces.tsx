@@ -34,6 +34,7 @@ export function SimilarPlaces({ places, citySlug }: SimilarPlacesProps) {
         Similar places
       </h2>
       <div
+        className="no-scrollbar"
         style={{
           display: "flex",
           gap: "var(--space-3)",
