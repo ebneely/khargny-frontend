@@ -62,6 +62,8 @@ export interface City {
   lng: number | null;
   featured: boolean;
   status: CityStatus;
+  /** Admin-uploaded cover photo (WebP, optimized). */
+  imageUrl?: string | null;
   parentCityId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -107,6 +109,8 @@ export interface Place {
   viewCount: number;
   featured: boolean;
   status: PlaceStatus;
+  /** Card cover — small WebP variant of the first image, from the public list. */
+  coverImage?: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;

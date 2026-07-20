@@ -68,8 +68,15 @@ export function CityGrid({ cities }: CityGridProps) {
             className="khg-city-card"
             data-trace-id={`city-card-${city.slug}`}
           >
-            <div className="khg-city-thumb">
-              <span className="khg-city-initial">{initial}</span>
+            <div
+              className="khg-city-thumb"
+              style={
+                city.imageUrl
+                  ? { background: `center/cover no-repeat url(${city.imageUrl})` }
+                  : undefined
+              }
+            >
+              {!city.imageUrl && <span className="khg-city-initial">{initial}</span>}
               <MapPin size={18} className="khg-city-pin" aria-hidden />
             </div>
             <div className="khg-city-body">

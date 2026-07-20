@@ -186,6 +186,7 @@ export default function CityExplorerPage() {
                   placeId={place.id}
                   title={locale === "ar" ? place.name : place.nameEn || place.name}
                   area={place.address || ""}
+                  image={place.coverImage || undefined}
                   rating={Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : undefined}
                   onToggleFavorite={() => {}}
                 />
