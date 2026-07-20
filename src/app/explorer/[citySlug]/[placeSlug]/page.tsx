@@ -130,8 +130,16 @@ function PlaceDetailPage() {
 
   if (!place) return null;
 
-  const title = locale === "ar" ? place.name : place.nameEn || place.name;
-  const description = (locale === "en" && (place as any).descriptionEn) || place.description;
+  // Prefer the chosen language, fall back to the other so a place with only one side filled
+  // is never blank. (In Arabic the title used to read place.name with NO fallback, and the
+  // description only fell back English→Arabic, not the reverse.)
+  const pick = (ar?: string | null, en?: string | null) => {
+    const a = (ar ?? "").trim();
+    const e = (en ?? "").trim();
+    return (locale === "ar" ? a || e : e || a) || "";
+  };
+  const title = pick(place.name, place.nameEn);
+  const description = pick(place.description, (place as any).descriptionEn);
   const rating = Number(place.rating);
   const hasRating = rating > 0;
   const priceIdx = place.priceRange ? Math.min(Math.max(place.priceRange, 1), 4) - 1 : null;
@@ -431,12 +439,12 @@ function PlaceDetailPage() {
                   {amenities.map((a) => (
                     <span key={a.id} className="pd-chip">
                       {a.icon && icon(a.icon, 15)}
-                      {locale === "ar" ? a.name : a.nameEn || a.name}
+                      {pick(a.name, a.nameEn)}
                     </span>
                   ))}
                   {tags.map((tg) => (
                     <span key={tg.id} className="pd-chip">
-                      #{locale === "ar" ? tg.name : tg.nameEn || tg.name}
+                      #{pick(tg.name, tg.nameEn)}
                     </span>
                   ))}
                 </div>
