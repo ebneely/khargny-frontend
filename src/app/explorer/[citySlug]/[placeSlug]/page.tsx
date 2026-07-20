@@ -125,6 +125,21 @@ function PlaceDetailPage() {
 
   const priceSymbols = place.priceRange ? "$".repeat(Math.min(place.priceRange, 4)) : null;
 
+  // "Cover" is one concept across the product: the place's FIRST image (ordered in
+  // the dashboard) is the card thumbnail on lists AND the hero here. The gallery
+  // below shows only the remaining photos, so the cover never appears twice.
+  const allImages = ((place as any).images ?? []) as {
+    url: string;
+    alt?: string;
+    urls?: { thumb?: string; small?: string; medium?: string; large?: string };
+  }[];
+  const cover = allImages[0];
+  const coverUrl = cover ? cover.urls?.large || cover.urls?.medium || cover.url : null;
+  const galleryImages = allImages.slice(1).map((img) => ({
+    url: img.urls?.medium || img.urls?.small || img.url,
+    alt: img.alt,
+  }));
+
   return (
     <div
       style={{
@@ -151,7 +166,9 @@ function PlaceDetailPage() {
           position: "relative",
           width: "100%",
           aspectRatio: "4 / 3",
-          background: "var(--gradient-sunset-radial)",
+          background: coverUrl
+            ? `center/cover no-repeat url(${coverUrl})`
+            : "var(--gradient-sunset-radial)",
         }}
       >
         <div style={{ position: "absolute", top: 14, left: 14 }}>
@@ -278,9 +295,8 @@ function PlaceDetailPage() {
         </div>
 
         {/* Gallery */}
-        <ImageGallery
-          images={(place as any).images?.map((img: any) => ({ url: img.url, alt: img.alt })) || []}
-        />
+        {/* Gallery = every photo EXCEPT the cover (the cover is the hero above). */}
+        {galleryImages.length > 0 && <ImageGallery images={galleryImages} />}
 
         {/* Description */}
         {place.description && (
