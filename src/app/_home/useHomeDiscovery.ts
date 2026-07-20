@@ -159,7 +159,16 @@ export function useHomeDiscovery() {
     [savePlace, t],
   );
 
+  // The raw active City records, so the home can render the SAME CityGrid the explorer uses
+  // instead of a second, near-identical card. regionCities stays for anything that only
+  // needs the mapped label/slug shape.
+  const activeCities = React.useMemo(
+    () => (cityData ?? []).filter((c) => c.status !== "draft"),
+    [cityData],
+  );
+
   return {
+    activeCities,
     regionCities,
     categories,
     rails,

@@ -27,6 +27,7 @@ import { useCities } from "@/lib/api/hooks/use-cities";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { icon } from "@/lib/icon-catalog";
+import { API_BASE_URL } from "@/lib/config";
 import type { PlaceHour } from "@/lib/api/types";
 import type { HoursRow } from "@/components/explorer/HoursTable";
 
@@ -161,6 +162,23 @@ function PlaceDetailPage() {
     : place.lat && place.lng
       ? `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`
       : null;
+
+  // Record the tap, then let the link do its normal thing. Fire-and-forget and errors are
+  // swallowed on purpose: a metrics write must never delay or block someone getting
+  // directions, and sendBeacon survives the page being backgrounded on mobile.
+  const onDirections = () => {
+    if (!place?.id) return;
+    const url = `${API_BASE_URL}/v1/places/${place.id}/directions`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        navigator.sendBeacon(url);
+      } else {
+        void fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+      }
+    } catch {
+      /* metrics are best-effort */
+    }
+  };
 
   const onShare = async () => {
     const url = `${window.location.origin}/explorer/${citySlug}/${placeSlug}`;
@@ -408,6 +426,7 @@ function PlaceDetailPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="pd-btn pd-btn-secondary"
+                    onClick={onDirections}
                   >
                     <Navigation size={18} />
                     {t("explorer.directions")}
@@ -444,6 +463,7 @@ function PlaceDetailPage() {
               aria-label={t("explorer.directions")}
               className="pd-iconbtn"
               style={{ flexShrink: 0 }}
+              onClick={onDirections}
             >
               <Navigation size={18} color="var(--gray-900)" />
             </a>

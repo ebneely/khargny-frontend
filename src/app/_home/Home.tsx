@@ -18,6 +18,7 @@ import { PlaceCard } from "@/components/ds/PlaceCard";
 import { Toast } from "@/components/ds/Toast";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SiteFooter } from "@/components/ds/SiteFooter";
+import { CityGrid } from "@/components/explorer/CityGrid";
 import { catIcon } from "@/lib/icon-catalog";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
@@ -125,73 +126,17 @@ function Hero() {
 
 function RegionGrid({ d }: { d: HomeDiscovery }) {
   const { t } = useI18n();
-  if (d.regionCities.length === 0) return null;
+  if (d.activeCities.length === 0) return null;
   return (
     <section id="khg-regions" className="khg-anim-in" style={{ margin: "clamp(24px, 5vw, 40px) 0 8px", scrollMarginTop: 80 }}>
       <h2 className="khg-section-title">{t("home.exploreRegion")}</h2>
       <p style={{ color: "var(--text-secondary)", margin: "0 0 18px", fontSize: "var(--text-base)" }}>
         {t("home.exploreRegionSub")}
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
-        {d.regionCities.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => d.onCitySelect(c.slug)}
-            className="khg-region"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              textAlign: "start",
-              padding: "clamp(16px, 3vw, 22px) 20px",
-              borderRadius: "var(--radius-xl)",
-              border: "1px solid var(--gray-200)",
-              background: "linear-gradient(135deg, var(--brand-50), var(--white))",
-              cursor: "pointer",
-              transition: "var(--motion-color), var(--motion-shadow), var(--motion-transform)",
-            }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 40,
-                  height: 40,
-                  borderRadius: "var(--radius-full)",
-                  background: "var(--brand-100)",
-                  color: "var(--brand-700)",
-                  flexShrink: 0,
-                }}
-              >
-                <MapPin size={20} aria-hidden="true" />
-              </span>
-              <span style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }}>
-                <span
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontSize: "var(--text-lg)",
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {c.label}
-                </span>
-                {c.region && <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{c.region}</span>}
-              </span>
-            </span>
-            <span style={{ color: "var(--brand-600)", display: "inline-flex", flexShrink: 0 }}>
-              <ArrowRight size={18} aria-hidden="true" />
-            </span>
-          </button>
-        ))}
-      </div>
+      {/* The same CityGrid the explorer renders. The home used to draw its own pill-shaped
+          card — same data, different component, so city photos and place counts appeared in
+          one place and not the other, and the two drifted apart on every change. */}
+      <CityGrid cities={d.activeCities} />
     </section>
   );
 }
@@ -225,11 +170,12 @@ export function Home({ d }: { d: HomeDiscovery }) {
               <div className="khg-home-rail no-scrollbar">
                 {rail.places.map((p) => (
                   <div key={p.id} onClick={() => d.onOpenPlace(p)} style={{ cursor: "pointer", width: "100%" }}>
+                    {/* No `rating` prop: there is no review system yet, so places.rating is
+                        always 0 and rendering it published a score nobody gave. */}
                     <PlaceCard
                       size="md"
                       title={p.title}
                       area={p.area}
-                      rating={p.rating}
                       badge={p.badge}
                       favorite={false}
                       onToggleFavorite={() => d.onSavePlace(p.id)}

@@ -233,6 +233,7 @@ export default function CityExplorerPage() {
                 onClick={() => router.push(`/explorer/${citySlug}/${place.slug}`)}
                 style={{ cursor: "pointer" }}
               >
+                {/* No `rating` prop: no review system yet — places.rating is always 0. */}
                 <PlaceCard
                   size="md"
                   placeId={place.id}
@@ -240,7 +241,6 @@ export default function CityExplorerPage() {
                   area={place.address || ""}
                   image={place.coverImage || undefined}
                   priceRange={place.priceRange}
-                  rating={Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : undefined}
                   onToggleFavorite={() => {}}
                 />
               </div>
