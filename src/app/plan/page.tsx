@@ -16,7 +16,6 @@ import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { Star, Bookmark } from "lucide-react";
-import { BottomNav } from "@/components/ds/BottomNav";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { SiteHeader } from "@/components/ds/SiteHeader";
@@ -145,35 +144,21 @@ export default function PlanPage() {
         flexDirection: "column",
       }}
     >
-      {/* Desktop: the shared site header (logo=home, nav, one wired language switch) */}
-      <div className="khg-only-desktop">
-        <SiteHeader active="plan" />
-      </div>
+      {/* One header at every width. This page used to show SiteHeader on desktop and a
+          logo-only bar on mobile, relying on the BottomNav for mobile navigation — with the
+          BottomNav removed, that left phones with no way out of the page. */}
+      <SiteHeader active="plan" />
 
-      {/* Mobile: compact top bar (logo + saved count); the BottomNav carries nav */}
       <div
-        className="khg-plan-container khg-only-mobile"
+        className="khg-plan-container"
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          padding: "14px 0",
+          justifyContent: "flex-end",
+          padding: "14px 0 0",
           flexShrink: 0,
         }}
       >
-        <Link
-          href="/"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "var(--text-xl)",
-            fontWeight: 600,
-            lineHeight: 1.3,
-            color: "var(--brand-600)",
-            textDecoration: "none",
-          }}
-        >
-          Khargny
-        </Link>
         <span
           aria-label={`${totalCount} saved`}
           style={{
@@ -307,9 +292,6 @@ export default function PlanPage() {
         )}
       </main>
 
-      <div className="khg-only-mobile">
-        <BottomNav active="plan" />
-      </div>
     </div>
   );
 }

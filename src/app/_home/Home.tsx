@@ -18,7 +18,6 @@ import { PlaceCard } from "@/components/ds/PlaceCard";
 import { Toast } from "@/components/ds/Toast";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SiteFooter } from "@/components/ds/SiteFooter";
-import { BottomNav } from "@/components/ds/BottomNav";
 import { catIcon } from "@/lib/category-icon";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
@@ -202,7 +201,6 @@ export function Home({ d }: { d: HomeDiscovery }) {
   const hasPlaces = d.rails.length > 0;
   return (
     <div
-      className="khg-has-bottomnav"
       style={{ minHeight: "100dvh", background: "var(--surface-app)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}
     >
       <SiteHeader active="home" />
@@ -261,7 +259,6 @@ export function Home({ d }: { d: HomeDiscovery }) {
       </div>
 
       <SiteFooter />
-      <BottomNav active="discover" />
 
       {d.toast && <Toast message={d.toast.message} tone={d.toast.tone} onDismiss={d.dismissToast} />}
     </div>
