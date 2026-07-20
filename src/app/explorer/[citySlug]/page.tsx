@@ -26,6 +26,7 @@ import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName, displayNameAr } from "@/lib/display-name";
 import { regionLabel } from "@/lib/egypt-regions";
+import { RegionSelector } from "@/components/explorer/RegionSelector";
 
 export default function CityExplorerPage() {
   const { t, locale } = useI18n();
@@ -92,14 +93,23 @@ export default function CityExplorerPage() {
     >
       {/* One header at every width. The city switcher used to live in a mobile-only
           ExplorerHeader, so desktop had no way to change city from the header at all. */}
+      {/* City then area — the two levels of "where", in that order, at every width. The
+          area picker is disabled until the city has areas with places in them. */}
       <SiteHeader
         active="explore"
         extra={
-          <CitySelector
-            cities={cities || []}
-            currentCitySlug={citySlug}
-            onChange={handleCityChange}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
+            <CitySelector
+              cities={cities || []}
+              currentCitySlug={citySlug}
+              onChange={handleCityChange}
+            />
+            <RegionSelector
+              regions={regionOptions}
+              value={activeRegion}
+              onChange={setActiveRegion}
+            />
+          </div>
         }
       />
 
