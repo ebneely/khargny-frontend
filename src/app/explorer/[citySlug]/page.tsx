@@ -25,6 +25,7 @@ import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName, displayNameAr } from "@/lib/display-name";
+import { regionLabel } from "@/lib/egypt-regions";
 
 export default function CityExplorerPage() {
   const { t, locale } = useI18n();
@@ -175,10 +176,12 @@ export default function CityExplorerPage() {
               active={activeRegion === null}
               onClick={() => setActiveRegion(null)}
             />
+            {/* The chip's VALUE stays the stored English key (it is what the API filters
+                on); only the label is localized, from the shared catalog. */}
             {regionOptions.map((r) => (
               <CategoryChip
                 key={r}
-                label={r}
+                label={regionLabel(r, locale)}
                 active={activeRegion === r}
                 onClick={() => setActiveRegion(activeRegion === r ? null : r)}
               />

@@ -17,6 +17,7 @@ import { useCities } from "@/lib/api/hooks/use-cities";
 import { useHomeSections } from "@/lib/api/hooks/use-home";
 import { useSavePlace } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { regionLabel } from "@/lib/egypt-regions";
 
 export type Category = { key: string; label: string; icon: string };
 export type RailPlace = {
@@ -145,7 +146,8 @@ export function useHomeDiscovery() {
           id: c.id,
           slug: c.slug,
           label: locale === "ar" ? c.name : c.nameEn || c.name,
-          region: c.region ?? "",
+          // Localized from the shared catalog: the column stores the English name as a key.
+          region: regionLabel(c.region, locale),
         })),
     [cityData, locale],
   );
