@@ -26,6 +26,7 @@ import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName, displayNameAr } from "@/lib/display-name";
 import { RegionSelector } from "@/components/explorer/RegionSelector";
+import { icon } from "@/lib/icon-catalog";
 
 export default function CityExplorerPage() {
   const { t, locale } = useI18n();
@@ -201,6 +202,9 @@ export default function CityExplorerPage() {
               <CategoryChip
                 key={cat.id}
                 label={displayNameAr(cat, locale)}
+                // Render the category's own icon (from the dashboard) when it has one, so the
+                // rail matches the app's icon chips.
+                icon={cat.icon ? icon(cat.icon, 20) : undefined}
                 active={activeCategory === cat.id}
                 onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
               />
