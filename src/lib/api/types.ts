@@ -56,6 +56,8 @@ export interface City {
   nameEn: string | null;
   slug: string;
   region: string | null;
+  /** Dashboard-curated list of area (region) keys for this city. Null/empty = not curated. */
+  areaKeys?: string[] | null;
   descriptionAr: string | null;
   descriptionEn: string | null;
   lat: number | null;

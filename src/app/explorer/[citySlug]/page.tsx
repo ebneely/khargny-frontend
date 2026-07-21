@@ -69,13 +69,20 @@ export default function CityExplorerPage() {
   // to the parent-only query, so the area dropdown came up empty on web while the app — which
   // already hits this endpoint — populated it. This mirrors the app's region-picker exactly.
   const { data: cityPlaces } = useCityPlaces(citySlug, { limit: 200 });
+  // Area options = the dashboard-curated list on the city (`areaKeys`), which is what the
+  // admin actually submits, UNION any region that a live place already carries. The curated
+  // list is the source of truth (so an area shows even before it has a place); the derived
+  // set is a safety net so a place whose region wasn't curated still gets a filter chip.
   const regionOptions = useMemo(() => {
     const set = new Set<string>();
+    for (const k of currentCity?.areaKeys ?? []) {
+      if (k) set.add(k);
+    }
     for (const p of cityPlaces?.items ?? []) {
       if (p.region) set.add(p.region);
     }
     return Array.from(set).sort();
-  }, [cityPlaces]);
+  }, [currentCity, cityPlaces]);
 
   const { data: searchData } = useSearchPlaces({ q: search || undefined });
 
