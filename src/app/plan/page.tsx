@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { displayName } from "@/lib/display-name";
 import { Star, Bookmark } from "lucide-react";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
@@ -29,6 +30,7 @@ type SavedPlaceWithPlace = {
   place: {
     id: string;
     name: string;
+    nameEn: string | null;
     slug: string;
     address: string | null;
     rating: number;
@@ -372,6 +374,8 @@ function PlanItemCard({
   onRemove: () => void;
   removing: boolean;
 }) {
+  const { locale } = useI18n();
+  const placeName = displayName(sp.place, locale) || sp.place.name;
   return (
     <div
       onClick={onOpen}
@@ -418,7 +422,7 @@ function PlanItemCard({
             textOverflow: "ellipsis",
           }}
         >
-          {sp.place.name}
+          {placeName}
         </div>
         {sp.place.address && (
           <div
@@ -452,7 +456,7 @@ function PlanItemCard({
       </div>
       <button
         type="button"
-        aria-label={`Remove ${sp.place.name} from your plan`}
+        aria-label={`Remove ${placeName} from your plan`}
         disabled={removing}
         onClick={(e) => {
           e.stopPropagation();

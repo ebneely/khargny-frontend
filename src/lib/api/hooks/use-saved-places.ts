@@ -32,6 +32,7 @@ export interface SavedPlaceWithPlace extends SavedPlace {
   place: {
     id: string;
     name: string;
+    nameEn: string | null;
     slug: string;
     address: string | null;
     rating: number;
