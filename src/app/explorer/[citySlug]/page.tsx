@@ -19,7 +19,7 @@ import { ErrorState } from "@/components/explorer/ErrorState";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { FilterPanel, type ActiveFilters } from "@/components/explorer/FilterPanel";
 import { PlaceFilters } from "@/components/explorer/PlaceFilters";
-import { useCities } from "@/lib/api/hooks/use-cities";
+import { useCities, useCityPlaces } from "@/lib/api/hooks/use-cities";
 import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useSearchPlaces } from "@/lib/api/hooks/use-search";
@@ -63,10 +63,12 @@ export default function CityExplorerPage() {
   // Unfiltered fetch for the SAME city, used only to work out which areas exist. Kept
   // separate from the filtered list above so selecting a region doesn't collapse the chip
   // row down to the one region you just picked.
-  const { data: cityPlaces } = usePlaces(
-    { cityId: currentCity?.id, limit: 200 },
-    Boolean(currentCity?.id),
-  );
+  //
+  // Uses the city-slug endpoint (city + its sub-area cities), NOT /v1/places?cityId (which
+  // only sees places whose cityId is the parent). Places assigned to a sub-area were invisible
+  // to the parent-only query, so the area dropdown came up empty on web while the app — which
+  // already hits this endpoint — populated it. This mirrors the app's region-picker exactly.
+  const { data: cityPlaces } = useCityPlaces(citySlug, { limit: 200 });
   const regionOptions = useMemo(() => {
     const set = new Set<string>();
     for (const p of cityPlaces?.items ?? []) {

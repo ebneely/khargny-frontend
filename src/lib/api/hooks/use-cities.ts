@@ -35,12 +35,17 @@ export function useCity(slug: string | null | undefined) {
  * `{ items }`. Reading `.items` off that raw shape yields `undefined` → the city
  * cards showed "0 مكان" though the city had places. Normalize to `{ items, … }`.
  */
-export function useCityPlaces(slug: string | null | undefined) {
+export function useCityPlaces(
+  slug: string | null | undefined,
+  opts?: { limit?: number },
+) {
   return useQuery({
-    queryKey: citiesKeys.places(slug ?? ''),
+    queryKey: [...citiesKeys.places(slug ?? ''), opts?.limit ?? null] as const,
     queryFn: async (): Promise<PlaceListByCity> =>
       normalizePlaceList(
-        await apiRequest<unknown>('GET', `/v1/cities/${slug}/places`),
+        await apiRequest<unknown>('GET', `/v1/cities/${slug}/places`, {
+          params: opts?.limit ? { limit: opts.limit } : undefined,
+        }),
       ),
     enabled: Boolean(slug),
     staleTime: 60 * 1000,
