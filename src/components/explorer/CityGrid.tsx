@@ -98,8 +98,11 @@ export function CityGrid({ cities }: CityGridProps) {
         }
         .khg-city-card:hover { box-shadow:var(--shadow-md); transform:translateY(-3px); }
         .khg-city-thumb {
-          position:relative; height:96px;
+          /* A landscape photo well (16:10), not a thin 96px strip, so the city photo reads
+             as a photo. background-size:cover fills it without distortion. */
+          position:relative; aspect-ratio:16 / 10; width:100%;
           background:linear-gradient(135deg, var(--brand-500), var(--brand-700));
+          background-size:cover; background-position:center;
           display:flex; align-items:center; justify-content:center;
         }
         .khg-city-initial {
