@@ -16,6 +16,7 @@ import * as React from "react";
 import { Heart, Navigation, Eye } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
+import { useI18n } from "@/i18n/LocaleProvider";
 
 // Bookmark (save-to-plan) icon — clearer intent than a heart for "add to my plan".
 const SaveIcon = ({ filled }: { filled: boolean }) => (
@@ -87,10 +88,10 @@ function formatCount(n: number | undefined): string {
  * data, no real `placeId`), the heart is a visual no-op and `onToggleFavorite`
  * is the caller-supplied callback (homepage uses this to fire a Toast).
  */
-// Price tiers read as words. Locale-agnostic here (the DS card takes plain props);
-// callers on Arabic surfaces can pass a translated label via `priceLabel` upstream
-// if that's ever needed — today both locales use these short English words.
-const PRICE_WORDS = ["Cheap", "Moderate", "Pricey", "Expensive"];
+// Price tiers read as words, in the reader's language — so an Arabic card shows مرتفع, not
+// "Pricey". Kept in step with the app's price.* strings and the place-detail PRICE_AR/EN.
+const PRICE_WORDS_EN = ["Cheap", "Moderate", "Pricey", "Expensive"];
+const PRICE_WORDS_AR = ["رخيص", "متوسط", "مرتفع", "غالي"];
 
 export function PlaceCard({
   image,
@@ -106,6 +107,7 @@ export function PlaceCard({
   onTitleClick,
   metrics,
 }: PlaceCardProps) {
+  const { locale } = useI18n();
   const [hover, setHover] = React.useState(false);
   // If a real placeId is provided, use the saved-places backend for the heart state.
   // Otherwise (homepage placeholder data), fall back to the external `favorite` prop
@@ -120,7 +122,7 @@ export function PlaceCard({
   const minW = size === "sm" ? 168 : 200;
   const priceWord =
     typeof priceRange === "number" && priceRange >= 1 && priceRange <= 4
-      ? PRICE_WORDS[priceRange - 1]
+      ? (locale === "ar" ? PRICE_WORDS_AR : PRICE_WORDS_EN)[priceRange - 1]
       : null;
   return (
     <div
