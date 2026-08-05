@@ -13,13 +13,11 @@
  */
 import * as React from "react";
 import { Search, ArrowRight, MapPin } from "lucide-react";
-import { CategoryChip } from "@/components/ds/CategoryChip";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { Toast } from "@/components/ds/Toast";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SiteFooter } from "@/components/ds/SiteFooter";
 import { CityGrid } from "@/components/explorer/CityGrid";
-import { catIcon } from "@/lib/icon-catalog";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
 
@@ -152,13 +150,9 @@ export function Home({ d }: { d: HomeDiscovery }) {
       <Hero />
 
       <div style={{ maxWidth: MAXW, margin: "0 auto", width: "100%", padding: "0 clamp(16px, 4vw, 32px)", flex: 1 }}>
-        {d.categories.length > 0 && (
-          <div className="khg-cat-row no-scrollbar">
-            {d.categories.map((c) => (
-              <CategoryChip key={c.key} label={c.label} active={d.cat === c.key} onClick={() => d.setCat(c.key)} icon={catIcon(c.icon, 22)} />
-            ))}
-          </div>
-        )}
+        {/* Categories deliberately do not appear here. Browsing starts with "where", and a
+            category strip above the regions asked visitors to filter a set they had not chosen
+            yet. The strip now lives on the city page, where a category is a real narrowing. */}
 
         {/* Regions — always present at every width, so home is never an empty page */}
         <RegionGrid d={d} />

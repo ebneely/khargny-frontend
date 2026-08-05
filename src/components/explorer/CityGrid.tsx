@@ -18,13 +18,14 @@ function CountPill({ slug }: { slug: string }) {
   const { data, isLoading } = useCityPlaces(slug);
   if (isLoading) {
     return (
-      <span aria-hidden style={{ display: "inline-block", width: 56, height: 20, borderRadius: 999, background: "var(--gray-100)" }} />
+      <span aria-hidden className="khg-city-count" style={{ display: "inline-block", width: 56, height: 22, borderRadius: 999, background: "var(--gray-100)" }} />
     );
   }
   const n = data?.items?.length ?? 0;
   return (
     <span
       data-trace-id={`city-card-count-${slug}`}
+      className="khg-city-count"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -36,6 +37,8 @@ function CountPill({ slug }: { slug: string }) {
         border: "1px solid var(--brand-100)",
         borderRadius: 999,
         padding: "3px 10px",
+        // The count must never be the thing that gives way — it is the card's only datum.
+        whiteSpace: "nowrap",
       }}
     >
       {t("explorer.placeCount", { count: n })}
@@ -80,7 +83,7 @@ export function CityGrid({ cities }: CityGridProps) {
               <MapPin size={18} className="khg-city-pin" aria-hidden />
             </div>
             <div className="khg-city-body">
-              <h3 className="khg-city-name">{name}</h3>
+              <h3 className="khg-city-name" title={name}>{name}</h3>
               <CountPill slug={city.slug} />
             </div>
           </Link>
@@ -110,8 +113,27 @@ export function CityGrid({ cities }: CityGridProps) {
           color:var(--white); opacity:.9; line-height:1;
         }
         .khg-city-pin { position:absolute; inset-block-end:10px; inset-inline-end:12px; color:rgba(255,255,255,.85); }
-        .khg-city-body { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:14px 16px; }
-        .khg-city-name { font-family:var(--font-display); font-size:var(--text-lg); font-weight:600; line-height:1.3; color:var(--text-primary); margin:0; }
+        /* The name yields, the count never does. Without min-width:0 a flex child refuses to
+           shrink below its content, so a long city name pushed the pill out of alignment
+           instead of truncating. A fixed body height also keeps the name baselines level
+           across a row, which is what makes the grid read as a set. */
+        .khg-city-body {
+          display:flex; align-items:center; justify-content:space-between;
+          gap:10px; padding:14px 16px; min-height:58px;
+        }
+        .khg-city-name {
+          font-family:var(--font-display); font-size:var(--text-lg); font-weight:600;
+          line-height:1.3; color:var(--text-primary); margin:0;
+          min-width:0; flex:1 1 auto;
+          overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        }
+        .khg-city-count { flex:0 0 auto; }
+        /* Below ~380px the pill and a truncated name both become unreadable, so stack them
+           and let the name have the full width. */
+        @media (max-width:379px) {
+          .khg-city-body { flex-direction:column; align-items:flex-start; gap:6px; min-height:0; }
+          .khg-city-name { white-space:normal; overflow-wrap:anywhere; }
+        }
       `}</style>
     </div>
   );

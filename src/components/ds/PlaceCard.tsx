@@ -117,9 +117,11 @@ export function PlaceCard({
   const [localSaved, setLocalSaved] = React.useState(favorite);
   const [bump, setBump] = React.useState(0); // re-triggers the pop animation on each toggle
   const saved = useBackend ? backend.saved : localSaved;
-  // Fluid: fills its grid cell (a fixed width left dead, still-clickable space in
-  // 1fr cells). `size` sets the floor so horizontal rails keep their rhythm.
-  const minW = size === "sm" ? 168 : 200;
+  // Fully fluid: the card fills whatever cell it is given and never sets its own floor.
+  // It used to carry minWidth 200, which is a grid item's min-content — so a `1fr` track
+  // could not shrink below it and the results grid overflowed the page on any viewport
+  // narrower than columns x 200 + gaps. Containers own width: .khg-home-rail sizes its
+  // children explicitly, and .khg-place-grid uses minmax(min(100%, 200px), 1fr).
   const priceWord =
     typeof priceRange === "number" && priceRange >= 1 && priceRange <= 4
       ? (locale === "ar" ? PRICE_WORDS_AR : PRICE_WORDS_EN)[priceRange - 1]
@@ -130,7 +132,7 @@ export function PlaceCard({
       onMouseLeave={() => setHover(false)}
       style={{
         width: "100%",
-        minWidth: minW,
+        minWidth: 0,
         fontFamily: "var(--font-body)",
         cursor: "pointer",
         transition: "var(--motion-shadow)",

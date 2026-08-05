@@ -131,11 +131,16 @@ export default function CityExplorerPage() {
         />
       </div>
 
+      {/* Same measure and inset as the home page and the header (1120 + clamp), so the page
+          edge is one continuous line from the logo down to the last card. This used to be
+          1200 wide with a flat 16px inset, which disagreed with the filter bar directly above
+          it and made the grid look like it had slipped out of the page. */}
       <main
         style={{
-          maxWidth: 1200,
+          maxWidth: 1120,
           margin: "0 auto",
-          padding: "var(--space-6) var(--space-4)",
+          width: "100%",
+          padding: "var(--space-6) clamp(16px, 4vw, 32px)",
         }}
       >
         <div style={{ marginBottom: "var(--space-6)" }}>
@@ -189,17 +194,12 @@ export default function CityExplorerPage() {
         {/* The area filter is the RegionSelector in the header (next to the city), so the
             old horizontal chip row here was a second control for the same state — removed to
             avoid two area pickers that could disagree. Category chips stay. */}
+        {/* .khg-cat-row is the shared strip: a swipeable rail on phones, and a centred block
+            that wraps onto as many rows as it needs from 1024px up. This page previously
+            re-implemented the scroller inline, so it never wrapped on desktop and the last
+            categories stayed hidden off the right edge with nothing to suggest they existed. */}
         {categories && categories.length > 0 && (
-          <div
-            className="no-scrollbar"
-            style={{
-              display: "flex",
-              gap: "var(--space-2)",
-              overflowX: "auto",
-              paddingBottom: "var(--space-4)",
-              marginBottom: "var(--space-2)",
-            }}
-          >
+          <div className="khg-cat-row no-scrollbar">
             <CategoryChip
               label={t("explorer.all")}
               active={activeCategory === null}
@@ -252,11 +252,6 @@ export default function CityExplorerPage() {
                 />
               </div>
             ))}
-            <style>{`
-              .khg-place-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:var(--space-4); }
-              @media (min-width:640px){ .khg-place-grid { grid-template-columns:repeat(3,1fr); } }
-              @media (min-width:1024px){ .khg-place-grid { grid-template-columns:repeat(4,1fr); } }
-            `}</style>
           </div>
         ) : (
           <div
