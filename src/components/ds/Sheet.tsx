@@ -120,26 +120,22 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
           line-height: 1.3; color: var(--text-primary); margin: 0 0 16px;
         }
 
-        /* From tablet up the sheet comes in from the page's outer edge as a column, which
-           suits a filter list far better than a wide, short tray at the bottom. */
+        /* It stays a bottom sheet at every width. On a wide screen it holds the page's own
+           measure and sits centred rather than stretching across the full viewport, so the
+           filter list keeps a readable column instead of becoming a very wide, very short
+           tray. It still rises from below the bottom edge — the direction never changes. */
         @media (min-width: 768px) {
-          .khg-sheet { flex-direction: row; justify-content: flex-end; }
+          .khg-sheet { align-items: center; }
           .khg-sheet-panel {
-            width: min(420px, 100%);
-            max-height: none;
-            height: 100dvh;
-            padding: 20px 24px calc(24px + env(safe-area-inset-bottom));
-            border-radius: 0;
-            border-start-start-radius: var(--radius-2xl);
-            border-end-start-radius: var(--radius-2xl);
-            transform: translateX(100%);
-            box-shadow: -16px 0 40px -16px rgba(36, 28, 22, 0.28);
+            width: min(560px, calc(100% - 32px));
+            margin: 0 auto 16px;
+            border-radius: var(--radius-2xl);
+            padding: 16px 24px calc(24px + env(safe-area-inset-bottom));
+            max-height: 82dvh;
+            /* It rests 16px above the edge, so it has to travel that bit further to be
+               fully out of sight before it rises. */
+            transform: translateY(calc(100% + 16px));
           }
-          /* In RTL the inline-end edge is the left one, so it must travel the other way. */
-          [dir="rtl"] .khg-sheet-panel { transform: translateX(-100%); }
-          .khg-sheet[data-state="open"] .khg-sheet-panel,
-          [dir="rtl"] .khg-sheet[data-state="open"] .khg-sheet-panel { transform: translateX(0); }
-          .khg-sheet-grip { display: none; }
         }
 
         @media (prefers-reduced-motion: reduce) {
