@@ -75,15 +75,15 @@ export function CityGrid({ cities }: CityGridProps) {
             className="khg-city-card"
             data-trace-id={`city-card-${city.slug}`}
           >
-            <div
-              className="khg-city-thumb"
-              style={
-                city.imageUrl
-                  ? { background: `center/cover no-repeat url(${city.imageUrl})` }
-                  : undefined
-              }
-            >
-              {!city.imageUrl && <span className="khg-city-initial">{initial}</span>}
+            <div className="khg-city-thumb">
+              {/* A real <img> so the city photo is indexable and carries alt text; as a CSS
+                  background it was invisible to image search. */}
+              {city.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={city.imageUrl} alt={name} loading="lazy" decoding="async" className="khg-city-img" />
+              ) : (
+                <span className="khg-city-initial">{initial}</span>
+              )}
               <MapPin size={18} className="khg-city-pin" aria-hidden />
               {/* The count rides on the photo so the name below gets the full card width.
                   Sharing one row, the two competed and the name lost. */}
@@ -113,6 +113,10 @@ export function CityGrid({ cities }: CityGridProps) {
           background:linear-gradient(135deg, var(--brand-500), var(--brand-700));
           background-size:cover; background-position:center;
           display:flex; align-items:center; justify-content:center;
+        }
+        .khg-city-img {
+          position:absolute; inset:0; width:100%; height:100%;
+          object-fit:cover; display:block;
         }
         .khg-city-initial {
           font-family:var(--font-display); font-size:2.4rem; font-weight:700;

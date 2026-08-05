@@ -25,19 +25,51 @@ async function getJson<T>(path: string): Promise<T[]> {
 }
 
 /**
+ * Every page of a list, not just the first.
+ *
+ * This used to ask for `limit=100` once per city and stop. Cairo has 147 places, so 47 of
+ * them were absent from the sitemap entirely — pages that exist, are linked, and were never
+ * offered to a crawler. The API caps a page at 100, so more than one request is the only way.
+ */
+async function getAll<T>(pathBase: string, cap = 2000): Promise<T[]> {
+  const out: T[] = [];
+  const size = 100;
+  for (let skip = 0; skip < cap; skip += size) {
+    const sep = pathBase.includes("?") ? "&" : "?";
+    const page = await getJson<T>(`${pathBase}${sep}skip=${skip}&limit=${size}`);
+    out.push(...page);
+    if (page.length < size) break;
+  }
+  return out;
+}
+
+/**
  * Every page now lives under a locale segment (/ar/... and /en/...). A bare URL only
  * redirects, so the sitemap must list the real ones — both languages, cross-linked with
  * hreflang so search engines treat them as translations rather than duplicates.
  */
 const LOCALES = ["ar", "en"] as const;
 
+/**
+ * next.config sets `trailingSlash: true`, so `/en/explorer/cairo` 308-redirects to
+ * `/en/explorer/cairo/`. Listing the un-slashed form made every single sitemap entry cost a
+ * redirect hop, which crawlers discount and which wasted the crawl budget of a 900-URL map.
+ */
+function urlFor(path: string, locale: string): string {
+  const clean = path ? `/${path.replace(/^\/+|\/+$/g, "")}` : "";
+  return `${SITE_URL}/${locale}${clean}/`;
+}
+
 function localized(
   path: string,
   rest: Omit<MetadataRoute.Sitemap[number], "url" | "alternates">,
 ): MetadataRoute.Sitemap {
-  const languages = Object.fromEntries(LOCALES.map((l) => [l, `${SITE_URL}/${l}${path}`]));
+  const languages: Record<string, string> = {};
+  for (const l of LOCALES) languages[l === "ar" ? "ar-EG" : "en"] = urlFor(path, l);
+  languages["x-default"] = urlFor(path, "ar");
+
   return LOCALES.map((l) => ({
-    url: `${SITE_URL}/${l}${path}`,
+    url: urlFor(path, l),
     ...rest,
     alternates: { languages },
   }));
@@ -47,8 +79,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const staticPages: MetadataRoute.Sitemap = [
     ...localized("", { lastModified: now, changeFrequency: "daily", priority: 1 }),
+    // /plan is deliberately absent: it is one guest's saved list, not a page anyone should
+    // reach from a search result. robots.txt disallows it too.
     ...localized("/explorer", { lastModified: now, changeFrequency: "daily", priority: 0.9 }),
-    ...localized("/plan", { lastModified: now, changeFrequency: "weekly", priority: 0.5 }),
     ...localized("/contact", { lastModified: now, changeFrequency: "monthly", priority: 0.3 }),
     ...localized("/privacy", { lastModified: now, changeFrequency: "yearly", priority: 0.2 }),
   ];
@@ -65,7 +98,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const c of cities) {
     const cid = (c as unknown as { id?: string }).id;
     if (!cid) continue;
-    const places = await getJson<Place>(`/v1/places?cityId=${cid}&limit=100`);
+    const places = await getAll<Place>(`/v1/places?cityId=${cid}`);
     for (const p of places) {
       placePages.push(
         ...localized(`/explorer/${c.slug}/${p.slug}`, {

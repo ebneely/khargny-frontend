@@ -13,7 +13,7 @@
  * For the homepage this pass, the callback is a no-op (heart is a visual only).
  */
 import * as React from "react";
-import { Heart, Navigation, Eye } from "lucide-react";
+import { Heart, Navigation, Eye, Star } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
@@ -25,15 +25,10 @@ const SaveIcon = ({ filled }: { filled: boolean }) => (
   </svg>
 );
 
-const StarIcon = () => (
-  <img
-    src="https://unpkg.com/lucide-static@0.462.0/icons/star.svg"
-    width={14}
-    height={14}
-    alt=""
-    style={{ filter: "invert(0)" }}
-  />
-);
+// Bundled, not fetched from unpkg.com at runtime: a third-party request on the render path
+// fails offline, fails behind a strict CSP, and costs a DNS + TLS round trip before an icon
+// appears. lucide-react is already a dependency.
+const StarIcon = () => <Star size={14} aria-hidden />;
 
 type BadgeProps = { children: React.ReactNode; tone?: "white" };
 const Badge = ({ children, tone = "white" }: BadgeProps) => (
@@ -145,12 +140,33 @@ export function PlaceCard({
           aspectRatio: "1 / 1",
           borderRadius: "var(--radius-xl)",
           overflow: "hidden",
-          background: image ? `center/cover no-repeat url(${image})` : "var(--gradient-sunset)",
+          background: "var(--gradient-sunset)",
           boxShadow: hover ? "var(--shadow-md)" : "none",
           transition: "var(--motion-shadow), var(--motion-transform)",
           transform: hover ? "translateY(-2px)" : "none",
         }}
       >
+        {/* A real <img>, not a CSS background. As a background none of these photos could be
+            indexed by image search and no alt text existed for them — on a directory whose
+            content IS the places, that was the whole photo library invisible. The gradient
+            behind stays as the fallback for a place with no photo. */}
+        {image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        )}
         <div
           style={{
             position: "absolute",

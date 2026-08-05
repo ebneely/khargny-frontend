@@ -18,6 +18,7 @@ import { LOCALES, DEFAULT_LOCALE, type Locale } from "@/i18n/dictionaries";
 
 const COOKIE = "khargny.locale";
 const LOCALE_HEADER = "x-khargny-locale";
+const PATH_HEADER = "x-khargny-path";
 
 // Paths that must never be locale-prefixed: API routes, Next internals, the SEO files, and
 // anything that looks like a static asset (has a file extension).
@@ -42,6 +43,11 @@ export function middleware(req: NextRequest) {
 
     const headers = new Headers(req.headers);
     headers.set(LOCALE_HEADER, urlLocale);
+    // The locale segment is stripped before routing, so a layout can no longer tell which
+    // depth it is rendering at. A city layout that emits breadcrumbs needs to know whether
+    // it is the city page or a place page nested inside it — otherwise both emit one and a
+    // place page ships two competing BreadcrumbLists.
+    headers.set(PATH_HEADER, rest);
     const res = NextResponse.rewrite(url, { request: { headers } });
     // Keep the cookie in step so a later bare URL redirects to the language they are reading.
     if (req.cookies.get(COOKIE)?.value !== urlLocale) {

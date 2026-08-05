@@ -5,6 +5,7 @@
  * Visual tokens from `UI_UX/explorer/beauty/filter-panel/spec.md`.
  */
 import * as React from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { Sheet } from "@/components/ds/Sheet";
 import { useI18n } from "@/i18n/LocaleProvider";
 
@@ -62,12 +63,9 @@ export function FilterPanel({
           position: "relative",
         }}
       >
-        <img
-          src="https://unpkg.com/lucide-static@0.462.0/icons/sliders-horizontal.svg"
-          width={16}
-          height={16}
-          alt=""
-        />
+        {/* Bundled icon. This one was even <link rel=preload>ed, so every page paid a
+            third-party round trip before first paint. */}
+        <SlidersHorizontal size={16} aria-hidden />
         Filters
         {hasFilters && (
           <span

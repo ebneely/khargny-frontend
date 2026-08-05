@@ -252,7 +252,9 @@ function PlaceDetailPage() {
         .pd-hero { position:relative; width:100%; height:clamp(220px, 38vw, 420px);
                    border-radius:var(--radius-xl); overflow:hidden;
                    background:var(--gradient-sunset-radial); }
-        .pd-hero-controls { position:absolute; inset:12px 12px auto 12px;
+        .pd-hero-img { position:absolute; inset:0; width:100%; height:100%;
+                       object-fit:cover; display:block; }
+        .pd-hero-controls { position:absolute; inset:12px 12px auto 12px; z-index:1;
                             display:flex; align-items:center; justify-content:space-between; }
         @media (min-width:640px){ .pd-hero-controls { inset:16px 16px auto 16px; } }
 
@@ -352,10 +354,20 @@ function PlaceDetailPage() {
 
       <main className="pd-shell">
         {/* Hero */}
-        <div
-          className="pd-hero"
-          style={coverUrl ? { background: `center/cover no-repeat url(${coverUrl})` } : undefined}
-        >
+        <div className="pd-hero">
+          {/* The page's primary image, as a real <img> with the place's name as alt. As a
+              CSS background it could not be indexed by image search and announced nothing
+              to a screen reader — on a place page, that is the main content. */}
+          {coverUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={coverUrl}
+              alt={title}
+              fetchPriority="high"
+              decoding="async"
+              className="pd-hero-img"
+            />
+          )}
           <div className="pd-hero-controls">
             <button type="button" aria-label={t("explorer.back")} onClick={() => router.back()} className="pd-iconbtn">
               <ArrowLeft size={18} color="var(--gray-900)" />

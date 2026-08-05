@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 /**
  * Privacy policy — restyled against `design/builds/Khargny Design System`
@@ -97,13 +98,7 @@ export function PrivacyPolicyContent() {
             transition: "transform 100ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1))",
           }}
         >
-          <img
-            src="https://unpkg.com/lucide-static@0.462.0/icons/arrow-left.svg"
-            width={16}
-            height={16}
-            alt=""
-            style={{ filter: "invert(48%) sepia(64%) saturate(1657%) hue-rotate(346deg)" }}
-          />
+          <ArrowLeft size={16} color="var(--brand-600)" aria-hidden />
           Back to home
         </Link>
         <span

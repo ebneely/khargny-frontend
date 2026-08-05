@@ -10,6 +10,7 @@
  * var(--shadow-md) shadow, the trailing search-icon circle in var(--brand-600).
  */
 import * as React from "react";
+import { Search } from "lucide-react";
 
 type SearchBarProps = {
   area?: string;
@@ -70,13 +71,8 @@ export function SearchBar({ area, when, onOpen, ariaLabel = "Open search filters
           flexShrink: 0,
         }}
       >
-        <img
-          src="https://unpkg.com/lucide-static@0.462.0/icons/search.svg"
-          alt=""
-          width={16}
-          height={16}
-          style={{ filter: "invert(1)" }}
-        />
+        {/* Bundled icon — this used to be fetched from unpkg.com on every render. */}
+        <Search size={16} color="var(--white)" aria-hidden />
       </span>
     </button>
   );

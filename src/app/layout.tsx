@@ -4,6 +4,7 @@ import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { SITE_URL } from "@/lib/config";
+import { alternatesFor, currentLocale, urlFor, ogLocale, ogAlternateLocale, graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
 import { cookies, headers } from "next/headers";
 import type { Locale } from "@/i18n/dictionaries";
 
@@ -17,35 +18,56 @@ import type { Locale } from "@/i18n/dictionaries";
  * style on hydration. Keeping the attribute so the streaming render doesn't
  * throw a hydration mismatch.
  */
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "Khargny — Find your next outing in Egypt",
-    template: "%s · Khargny",
-  },
-  description:
-    "Curated places worth the trip across Egypt — beaches, ruins, oases and tables. Discover where to go next.",
-  applicationName: "Khargny",
-  icons: { icon: "/images/logo-en.png" },
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    siteName: "Khargny",
-    title: "Khargny — Find your next outing in Egypt",
-    description:
-      "Curated places worth the trip across Egypt — beaches, ruins, oases and tables.",
-    url: SITE_URL,
-    images: [{ url: "/images/logo-en.png", width: 1200, height: 630, alt: "Khargny" }],
-    locale: "ar_EG",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Khargny — Find your next outing in Egypt",
-    description: "Curated places worth the trip across Egypt.",
-    images: ["/images/logo-en.png"],
-  },
-  robots: { index: true, follow: true },
-};
+const TITLE_AR = "خرجني — اكتشف أماكن تستحق الزيارة في مصر";
+const TITLE_EN = "Khargny — Find your next outing in Egypt";
+const DESC_AR =
+  "دليل مختار لأفضل الأماكن في مصر: مطاعم، مقاهي، شواطئ، فنادق ومعالم تاريخية في القاهرة والإسكندرية والأقصر وأسوان والغردقة والإسماعيلية.";
+const DESC_EN =
+  "A curated guide to Egypt's best places — restaurants, cafes, beaches, hotels and historic landmarks across Cairo, Alexandria, Luxor, Aswan, Hurghada and Ismailia.";
+
+/**
+ * Root metadata is per-request because the canonical depends on the locale segment the
+ * middleware matched. As a static object it hardcoded `canonical: "/"`, and since Next
+ * inherits metadata wholesale into any route that exports none, EVERY page without its own
+ * metadata — the home page, /explorer, every city page, /plan, /contact, /privacy — told
+ * search engines its canonical was the site root. That is an instruction to drop them.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await currentLocale();
+  const isAr = locale === "ar";
+  const title = isAr ? TITLE_AR : TITLE_EN;
+  const description = isAr ? DESC_AR : DESC_EN;
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: { default: title, template: isAr ? "%s · خرجني" : "%s · Khargny" },
+    description,
+    applicationName: "Khargny",
+    icons: { icon: "/images/logo-en.png" },
+    alternates: alternatesFor("/", locale),
+    openGraph: {
+      type: "website",
+      siteName: "Khargny",
+      title,
+      description,
+      url: urlFor("/", locale),
+      images: [{ url: "/images/logo-en.png", width: 1200, height: 630, alt: "Khargny" }],
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocale(locale),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/images/logo-en.png"],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -70,6 +92,14 @@ export default async function RootLayout({
     // sit on <html> was never defined by any stylesheet or plugin, so it did nothing.
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <body>
+        {/* Publisher and site identity, declared once. Every other page's schema refers to
+            these by @id rather than repeating them. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLdScript(graph(organizationSchema(locale), webSiteSchema(locale))),
+          }}
+        />
         <LocaleProvider initialLocale={locale}>
           <QueryProvider>
             {children}
