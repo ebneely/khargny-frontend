@@ -35,6 +35,8 @@ type SavedPlaceWithPlace = {
     address: string | null;
     rating: number;
     cityId: string;
+    /** attachCovers() has always sent this; the row just never read it. */
+    coverImage?: string | null;
   };
 };
 

@@ -39,7 +39,16 @@ export function SearchBar({ value, onChange, placeholder = "Search places..." }:
           color: "var(--text-tertiary)",
         }}
       />
+      {/* type=search keeps the semantics (and the Escape-to-clear behaviour), but Chrome
+          and Safari draw their own grey clear button on top of ours — two crosses, only one
+          of which matches the design. Hide theirs, keep ours. */}
+      <style>{`
+        .khg-searchbar-input::-webkit-search-cancel-button,
+        .khg-searchbar-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+        .khg-searchbar-input::-ms-clear { display: none; width: 0; height: 0; }
+      `}</style>
       <input
+        className="khg-searchbar-input"
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
