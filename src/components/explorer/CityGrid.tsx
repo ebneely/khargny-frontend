@@ -31,13 +31,14 @@ function CountPill({ slug }: { slug: string }) {
         alignItems: "center",
         gap: 4,
         fontSize: "var(--text-xs)",
-        fontWeight: 500,
+        fontWeight: 600,
         color: "var(--brand-700)",
-        background: "var(--brand-50)",
-        border: "1px solid var(--brand-100)",
+        // Solid, not translucent: the pill sits on a photograph now, and a tinted panel
+        // over an unknown image is a contrast gamble.
+        background: "var(--white)",
         borderRadius: 999,
-        padding: "3px 10px",
-        // The count must never be the thing that gives way — it is the card's only datum.
+        padding: "4px 10px",
+        boxShadow: "0 2px 8px -2px rgba(36, 28, 22, 0.45)",
         whiteSpace: "nowrap",
       }}
     >
@@ -81,10 +82,12 @@ export function CityGrid({ cities }: CityGridProps) {
             >
               {!city.imageUrl && <span className="khg-city-initial">{initial}</span>}
               <MapPin size={18} className="khg-city-pin" aria-hidden />
+              {/* The count rides on the photo so the name below gets the full card width.
+                  Sharing one row, the two competed and the name lost. */}
+              <CountPill slug={city.slug} />
             </div>
             <div className="khg-city-body">
-              <h3 className="khg-city-name" title={name}>{name}</h3>
-              <CountPill slug={city.slug} />
+              <h3 className="khg-city-name">{name}</h3>
             </div>
           </Link>
         );
@@ -113,26 +116,21 @@ export function CityGrid({ cities }: CityGridProps) {
           color:var(--white); opacity:.9; line-height:1;
         }
         .khg-city-pin { position:absolute; inset-block-end:10px; inset-inline-end:12px; color:rgba(255,255,255,.85); }
-        /* The name yields, the count never does. Without min-width:0 a flex child refuses to
-           shrink below its content, so a long city name pushed the pill out of alignment
-           instead of truncating. A fixed body height also keeps the name baselines level
-           across a row, which is what makes the grid read as a set. */
-        .khg-city-body {
-          display:flex; align-items:center; justify-content:space-between;
-          gap:10px; padding:14px 16px; min-height:58px;
+        /* The count sits on the photo, so the name owns the full width of the row and reads
+           in full. Sharing the row meant "Alexandria" and "Port Said" both truncated to
+           three letters and an ellipsis — the pill won a fight it should never have been in. */
+        .khg-city-count {
+          position:absolute; inset-block-end:10px; inset-inline-start:12px;
         }
+        .khg-city-body { padding:14px 16px; }
         .khg-city-name {
           font-family:var(--font-display); font-size:var(--text-lg); font-weight:600;
           line-height:1.3; color:var(--text-primary); margin:0;
-          min-width:0; flex:1 1 auto;
-          overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-        }
-        .khg-city-count { flex:0 0 auto; }
-        /* Below ~380px the pill and a truncated name both become unreadable, so stack them
-           and let the name have the full width. */
-        @media (max-width:379px) {
-          .khg-city-body { flex-direction:column; align-items:flex-start; gap:6px; min-height:0; }
-          .khg-city-name { white-space:normal; overflow-wrap:anywhere; }
+          /* Two lines is enough for every governorate name in both languages, and holding
+             the height steady keeps the cards in a row aligned. */
+          display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+          overflow:hidden; overflow-wrap:anywhere;
+          min-height:calc(2 * 1.3em);
         }
       `}</style>
     </div>
