@@ -7,7 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const isAr = locale === "ar";
   const title = isAr ? "تواصل معنا" : "Contact us";
   const description = isAr
-    ? "اقترح مكانًا، أبلغ عن معلومة غير دقيقة، أو تواصل مع فريق خرجني."
+    ? "اقترح مكان، أو بلّغنا عن معلومة غلط، أو كلّم فريق خرجني."
     : "Suggest a place, report something inaccurate, or get in touch with the Khargny team.";
 
   return {

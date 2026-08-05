@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: isAr ? "خطتي" : "My plan",
     description: isAr
-      ? "الأماكن التي حفظتها، مرتبة حسب اليوم."
+      ? "الأماكن اللي حفظتها، مترتبة حسب اليوم."
       : "Every place you saved, grouped by the day you planned.",
     alternates: alternatesFor("/plan", locale),
     robots: { index: false, follow: true, googleBot: { index: false, follow: true } },

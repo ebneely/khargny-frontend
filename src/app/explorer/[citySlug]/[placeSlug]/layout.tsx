@@ -159,7 +159,7 @@ export async function generateMetadata({
     clampDescription(editorial || '') ||
     clampDescription(
       isAr
-        ? `${name}${categoryName ? ` — ${categoryName}` : ''} في ${where || cityName}. العنوان ومواعيد العمل والصور والاتجاهات على خرجني.`
+        ? `${name}${categoryName ? ` — ${categoryName}` : ''} في ${where || cityName}. العنوان ومواعيد الشغل والصور والطريق على خرجني.`
         : `${name}${categoryName ? `, ${categoryName}` : ''} in ${where || cityName}. Address, opening hours, photos and directions on Khargny.`,
     );
 

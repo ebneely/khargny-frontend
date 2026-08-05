@@ -7,7 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const isAr = locale === "ar";
   const title = isAr ? "سياسة الخصوصية" : "Privacy policy";
   const description = isAr
-    ? "كيف يتعامل خرجني مع بياناتك: ما نحفظه، ولماذا، وكيف تتحكم فيه."
+    ? "خرجني بيتعامل إزاي مع بياناتك: إحنا بنحفظ إيه، وليه، وإنت بتتحكم فيها إزاي."
     : "How Khargny handles your data — what is stored, why, and how you control it.";
 
   return {

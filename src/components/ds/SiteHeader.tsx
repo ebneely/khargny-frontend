@@ -141,11 +141,15 @@ export function SiteHeader({ active, extra }: { active?: Active; extra?: React.R
         className="khg-siteheader-inner"
         style={{ maxWidth: MAXW, margin: "0 auto", display: "flex", alignItems: "center", position: "relative" }}
       >
-        <Link href="/" aria-label="Khargny — home" style={{ display: "inline-flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+        {/* The wordmark reads in the visitor's language. It was the Latin "Khargny" on every
+            page, so on the Arabic site the brand name خرجني existed only inside <title> and
+            the schema — never as visible text, on any page. For a brand query that is the
+            signal that matters most, and it was missing sitewide. */}
+        <Link href="/" aria-label={`${t("common.appName")} — ${t("common.home")}`} style={{ display: "inline-flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-en.png" alt="Khargny" width={34} height={44} style={{ height: 40, width: "auto", display: "block" }} />
+          <img src="/images/logo-en.png" alt={t("common.appName")} width={34} height={44} style={{ height: 40, width: "auto", display: "block" }} />
           <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--brand-700)", letterSpacing: "-0.01em" }}>
-            Khargny
+            {t("common.appName")}
           </span>
         </Link>
 

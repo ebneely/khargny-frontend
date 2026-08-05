@@ -65,9 +65,9 @@ export function SiteFooter() {
       >
         <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-en.png" alt="Khargny" style={{ height: 40, width: "auto" }} />
+          <img src="/images/logo-en.png" alt={t("common.appName")} style={{ height: 40, width: "auto" }} />
           <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--brand-700)" }}>
-            Khargny
+            {t("common.appName")}
           </span>
         </Link>
 
@@ -130,7 +130,7 @@ export function SiteFooter() {
             textAlign: "center",
           }}
         >
-          © 2026 Khargny · {t("home.subtitle")}
+          © 2026 {t("common.appName")} · {t("home.subtitle")}
         </div>
       </div>
 

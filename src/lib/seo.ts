@@ -79,8 +79,9 @@ export function organizationSchema(locale: Locale) {
   return {
     '@type': 'Organization',
     '@id': `${SITE_URL}/#organization`,
-    name: 'Khargny',
-    alternateName: 'خرجني',
+    // On the Arabic site the Arabic name is the name, not a footnote to the Latin one.
+    name: locale === 'ar' ? 'خرجني' : 'Khargny',
+    alternateName: locale === 'ar' ? 'Khargny' : 'خرجني',
     url: urlFor('/', locale),
     logo: { '@type': 'ImageObject', url: `${SITE_URL}/images/logo-en.png` },
   };
@@ -92,7 +93,8 @@ export function webSiteSchema(locale: Locale) {
     '@type': 'WebSite',
     '@id': `${SITE_URL}/#website`,
     url: urlFor('/', locale),
-    name: 'Khargny',
+    name: locale === 'ar' ? 'خرجني' : 'Khargny',
+    alternateName: locale === 'ar' ? 'Khargny' : 'خرجني',
     inLanguage: locale === 'ar' ? 'ar-EG' : 'en',
     publisher: { '@id': `${SITE_URL}/#organization` },
     potentialAction: {

@@ -18,10 +18,10 @@ import type { Locale } from "@/i18n/dictionaries";
  * style on hydration. Keeping the attribute so the streaming render doesn't
  * throw a hydration mismatch.
  */
-const TITLE_AR = "خرجني — اكتشف أماكن تستحق الزيارة في مصر";
+const TITLE_AR = "خرجني — اكتشف أحلى أماكن تخرج فيها في مصر";
 const TITLE_EN = "Khargny — Find your next outing in Egypt";
 const DESC_AR =
-  "دليل مختار لأفضل الأماكن في مصر: مطاعم، مقاهي، شواطئ، فنادق ومعالم تاريخية في القاهرة والإسكندرية والأقصر وأسوان والغردقة والإسماعيلية.";
+  "خرجني دليلك لأحلى الأماكن في مصر: مطاعم وكافيهات وشواطئ وفنادق ومعالم في القاهرة والإسكندرية والأقصر وأسوان والغردقة والإسماعيلية وبورسعيد ومطروح.";
 const DESC_EN =
   "A curated guide to Egypt's best places — restaurants, cafes, beaches, hotels and historic landmarks across Cairo, Alexandria, Luxor, Aswan, Hurghada and Ismailia.";
 

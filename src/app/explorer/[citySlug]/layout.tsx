@@ -83,14 +83,14 @@ export async function generateMetadata({
   // The title carries the words someone actually types: the city, what they want, and the
   // country. "Cairo" alone competes with the whole internet.
   const title = isAr
-    ? `أماكن ${name} — مطاعم ومقاهي وأنشطة${count ? ` (${count} مكان)` : ''}`
+    ? `أماكن ${name} — مطاعم وكافيهات وخروجات${count ? ` (${count} مكان)` : ''}`
     : `Things to do in ${name}${count ? ` — ${count} places` : ''}`;
 
   const editorial = isAr ? city?.descriptionAr : city?.descriptionEn;
   const description =
     clampDescription(editorial || '') ||
     (isAr
-      ? `اكتشف أفضل الأماكن في ${name}: مطاعم، مقاهي، شواطئ، فنادق ومعالم${count ? ` — ${count} مكان مختار` : ''}. تصفح حسب المنطقة والتصنيف على خرجني.`
+      ? `اكتشف أحلى الأماكن في ${name}: مطاعم وكافيهات وشواطئ وفنادق ومعالم${count ? ` — ${count} مكان مختار` : ''}. اتفرج حسب المنطقة والنوع على خرجني.`
       : `Discover the best places in ${name} — restaurants, cafes, beaches, hotels and landmarks${count ? `, ${count} curated spots` : ''}. Browse by area and category on Khargny.`);
 
   const image = city?.imageUrl || '/images/logo-en.png';
