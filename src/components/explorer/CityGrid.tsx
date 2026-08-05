@@ -15,13 +15,16 @@ type CityGridProps = { cities: City[] };
 
 function CountPill({ slug }: { slug: string }) {
   const { t } = useI18n();
-  const { data, isLoading } = useCityPlaces(slug);
+  // limit:1 because this only ever needed the count. Asking for the default page and
+  // counting the rows meant every city reported "20 places" — the page size — no matter
+  // how many it actually had. Cairo has 147.
+  const { data, isLoading } = useCityPlaces(slug, { limit: 1 });
   if (isLoading) {
     return (
       <span aria-hidden className="khg-city-count" style={{ display: "inline-block", width: 56, height: 22, borderRadius: 999, background: "var(--gray-100)" }} />
     );
   }
-  const n = data?.items?.length ?? 0;
+  const n = data?.total ?? data?.items?.length ?? 0;
   return (
     <span
       data-trace-id={`city-card-count-${slug}`}

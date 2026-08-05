@@ -83,6 +83,8 @@ export interface PlaceListByCity {
   items: Place[];
   skip: number;
   limit: number;
+  /** How many the city has in total, which is not how many this page returned. */
+  total?: number;
 }
 
 // ── Places ───────────────────────────────────────────────────────────────────
