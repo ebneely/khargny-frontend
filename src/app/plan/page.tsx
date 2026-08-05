@@ -400,15 +400,23 @@ function PlanItemCard({
         boxShadow: "var(--shadow-sm)",
       }}
     >
+      {/* The place's own photo. The backend has always attached coverImage here; this row
+          drew a gradient block regardless, so every saved place looked like a missing
+          image. The gradient stays as the fallback for a place with no photo yet. */}
       <div
-        aria-hidden
         style={{
           width: 72,
           height: 72,
           flexShrink: 0,
           borderRadius: "var(--radius-lg)",
-          background: "var(--gradient-sunset)",
+          overflow: "hidden",
+          background: sp.place.coverImage
+            ? `center/cover no-repeat url(${sp.place.coverImage}), var(--gradient-sunset)`
+            : "var(--gradient-sunset)",
         }}
+        role={sp.place.coverImage ? "img" : undefined}
+        aria-label={sp.place.coverImage ? placeName : undefined}
+        aria-hidden={sp.place.coverImage ? undefined : true}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div

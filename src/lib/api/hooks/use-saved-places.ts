@@ -38,6 +38,9 @@ export interface SavedPlaceWithPlace extends SavedPlace {
     rating: number;
     /** cityId is the FK the backend returns; used to derive the explorer URL. */
     cityId: string;
+    /** The first image's small WebP variant. attachCovers() has always sent this; the
+     *  type simply never declared it, so the plan drew a gradient block instead. */
+    coverImage?: string | null;
   };
 }
 

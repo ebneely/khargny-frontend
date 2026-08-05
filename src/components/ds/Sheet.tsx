@@ -30,10 +30,18 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
   React.useEffect(() => {
     if (open) {
       setMounted(true);
-      // Paint once at the closed position, then flip — otherwise the browser coalesces
-      // mount and state change into one frame and there is nothing to animate from.
-      const raf = requestAnimationFrame(() => setState("open"));
-      return () => cancelAnimationFrame(raf);
+      // Two frames, not one. A single rAF can still land in the same paint as the mount,
+      // and the browser then has no "before" to interpolate from — the very first open
+      // would snap into place while every later one animated. The second frame guarantees
+      // the closed position has been painted before the state flips.
+      let inner = 0;
+      const outer = requestAnimationFrame(() => {
+        inner = requestAnimationFrame(() => setState("open"));
+      });
+      return () => {
+        cancelAnimationFrame(outer);
+        cancelAnimationFrame(inner);
+      };
     }
     setState("closed");
     const timer = setTimeout(() => setMounted(false), DURATION);
