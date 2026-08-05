@@ -27,9 +27,29 @@ import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName, displayNameAr } from "@/lib/display-name";
 import { RegionSelector } from "@/components/explorer/RegionSelector";
 import { icon } from "@/lib/icon-catalog";
+import { ChevronRight } from "lucide-react";
 
-/** The API caps a page at 100, so that is the largest honest first page. */
-const PAGE_SIZE = 100;
+/** Grid-friendly page size: divides evenly by 2, 3 and 4 columns. */
+const PAGE_SIZE = 24;
+
+/**
+ * Page numbers to show: the first, the last, and a window around the current one, with the
+ * gaps elided. The same shape as the dashboard's list.
+ */
+function pageWindow(current: number, total: number): (number | null)[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+  const pages = new Set<number>([0, total - 1, current]);
+  for (const n of [current - 1, current + 1]) if (n > 0 && n < total - 1) pages.add(n);
+  const sorted = [...pages].sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  let previous: number | null = null;
+  for (const n of sorted) {
+    if (previous !== null && n - previous > 1) out.push(null);
+    out.push(n);
+    previous = n;
+  }
+  return out;
+}
 
 export default function CityExplorerPage() {
   const { t, locale } = useI18n();
@@ -41,10 +61,10 @@ export default function CityExplorerPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // The list used to send no limit at all, so the backend's default of 20 applied and "All"
-  // showed the first twenty places of a city as though they were the whole set — picking a
-  // category then revealed places that "All" had never listed. 100 is the server's ceiling.
-  const [shown, setShown] = useState(PAGE_SIZE);
+  // The list used to send no limit or skip at all, so the backend's default of 20 applied and
+  // "All" showed a city's first twenty places as though they were the whole set — Cairo has
+  // 147. Paged properly now, with the page reported from the server's total.
+  const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<ActiveFilters>({});
 
   const { data: cities, isLoading: loadingCities } = useCities();
@@ -63,7 +83,8 @@ export default function CityExplorerPage() {
       featured: filters.featured || undefined,
       amenityIds: filters.amenityIds?.length ? filters.amenityIds.join(",") : undefined,
       tagIds: filters.tagIds?.length ? filters.tagIds.join(",") : undefined,
-      limit: shown,
+      skip: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
     },
     // gate: only query once we have a real cityId, so it never returns ALL places
     Boolean(currentCity?.id),
@@ -96,15 +117,20 @@ export default function CityExplorerPage() {
 
   const displayedPlaces = search ? searchData?.items : placesData?.items;
   // Only meaningful for the browse list; search has its own endpoint and its own paging.
-  const totalMatching = placesData?.total;
-  const canLoadMore =
-    !search && typeof totalMatching === "number" && (displayedPlaces?.length ?? 0) < totalMatching;
+  const totalMatching = placesData?.total ?? 0;
+  const totalPages = search ? 0 : Math.ceil(totalMatching / PAGE_SIZE);
+  const pageNumbers = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
 
   // A new filter is a new list; keep the window at one page so it does not inherit a
   // large size from whatever was being browsed before.
   useEffect(() => {
-    setShown(PAGE_SIZE);
-  }, [activeCategory, activeRegion, filters, citySlug]);
+    setPage(0);
+  }, [activeCategory, activeRegion, filters, citySlug, search]);
+
+  // Moving between pages should start you at the top of the new one, not halfway down it.
+  useEffect(() => {
+    if (page > 0) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page]);
 
   const handleCityChange = (slug: string) => {
     router.push(`/explorer/${slug}`);
@@ -271,28 +297,76 @@ export default function CityExplorerPage() {
                 />
               </div>
             ))}
-            {canLoadMore && (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: "var(--space-6)" }}>
+            {totalPages > 1 && (
+              <nav className="khg-pager" aria-label={t("explorer.pagination")}>
                 <button
                   type="button"
-                  onClick={() => setShown((n) => n + PAGE_SIZE)}
-                  style={{
-                    padding: "12px 28px",
-                    borderRadius: "var(--radius-full)",
-                    border: "1px solid var(--gray-300)",
-                    background: "var(--white)",
-                    color: "var(--text-primary)",
-                    fontFamily: "var(--font-body)",
-                    fontSize: "var(--text-base)",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    transition: "var(--motion-shadow)",
-                  }}
+                  className="khg-page-btn"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                  aria-label={t("explorer.prevPage")}
                 >
-                  {t("explorer.loadMore")}
+                  <ChevronRight className="khg-page-prev" size={18} aria-hidden />
                 </button>
-              </div>
+
+                {pageNumbers.map((n, i) =>
+                  n === null ? (
+                    <span key={`gap-${i}`} className="khg-page-gap">…</span>
+                  ) : (
+                    <button
+                      key={n}
+                      type="button"
+                      className="khg-page-btn"
+                      data-current={n === page ? "true" : undefined}
+                      aria-current={n === page ? "page" : undefined}
+                      onClick={() => setPage(n)}
+                    >
+                      {n + 1}
+                    </button>
+                  ),
+                )}
+
+                <button
+                  type="button"
+                  className="khg-page-btn"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                  aria-label={t("explorer.nextPage")}
+                >
+                  <ChevronRight className="khg-page-next" size={18} aria-hidden />
+                </button>
+              </nav>
             )}
+            <style>{`
+              .khg-pager {
+                grid-column: 1 / -1;
+                display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+                gap: 8px; margin-top: var(--space-8);
+              }
+              .khg-page-btn {
+                min-width: 40px; height: 40px; padding: 0 12px;
+                display: inline-flex; align-items: center; justify-content: center;
+                border-radius: var(--radius-full);
+                border: 1px solid var(--gray-300);
+                background: var(--white); color: var(--text-primary);
+                font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500;
+                font-variant-numeric: tabular-nums;
+                cursor: pointer;
+                transition: background var(--duration-fast) var(--ease-standard),
+                            border-color var(--duration-fast) var(--ease-standard);
+              }
+              .khg-page-btn:hover:not(:disabled) { background: var(--brand-50); border-color: var(--brand-200); }
+              .khg-page-btn:disabled { opacity: .45; cursor: default; }
+              .khg-page-btn[data-current="true"] {
+                background: var(--brand-600); border-color: var(--brand-600); color: var(--white);
+              }
+              .khg-page-gap { padding: 0 2px; color: var(--text-tertiary); user-select: none; }
+              /* One chevron glyph, turned. The arrows must follow reading direction, so in
+                 Arabic "previous" points right and "next" points left. */
+              .khg-page-prev { transform: rotate(180deg); }
+              [dir="rtl"] .khg-page-prev { transform: none; }
+              [dir="rtl"] .khg-page-next { transform: rotate(180deg); }
+            `}</style>
           </div>
         ) : (
           <div
