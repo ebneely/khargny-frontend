@@ -80,7 +80,20 @@ export function SelectPill({
     const el = triggerRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setAnchor({ top: r.bottom + 6, left: r.left, width: Math.max(r.width, 220) });
+    const width = Math.max(r.width, 220);
+
+    // The panel is wider than its pill, so it has to grow away from the page edge it sits
+    // nearest. Anchoring everything to the pill's left edge worked in English and pushed the
+    // panel off the right-hand side in Arabic, where the pill starts at the right.
+    const rtl = getComputedStyle(el).direction === "rtl";
+    const preferred = rtl ? r.right - width : r.left;
+
+    // Clamp inside the viewport either way, so a pill near either edge still opens fully.
+    const margin = 8;
+    const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+    const left = Math.min(Math.max(margin, preferred), maxLeft);
+
+    setAnchor({ top: r.bottom + 6, left, width });
   }, []);
 
   const close = React.useCallback((refocus = true) => {

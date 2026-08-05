@@ -164,6 +164,8 @@ export interface PlaceList {
   items: Place[];
   skip: number;
   limit: number;
+  /** How many match the filter in total, which is not how many were returned. */
+  total?: number;
 }
 
 export interface PlaceFilters {

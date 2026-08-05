@@ -9,7 +9,7 @@
  */
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { CitySelector } from "@/components/explorer/CitySelector";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SearchBar } from "@/components/explorer/SearchBar";
@@ -28,6 +28,9 @@ import { displayName, displayNameAr } from "@/lib/display-name";
 import { RegionSelector } from "@/components/explorer/RegionSelector";
 import { icon } from "@/lib/icon-catalog";
 
+/** The API caps a page at 100, so that is the largest honest first page. */
+const PAGE_SIZE = 100;
+
 export default function CityExplorerPage() {
   const { t, locale } = useI18n();
   const params = useParams();
@@ -38,6 +41,10 @@ export default function CityExplorerPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // The list used to send no limit at all, so the backend's default of 20 applied and "All"
+  // showed the first twenty places of a city as though they were the whole set — picking a
+  // category then revealed places that "All" had never listed. 100 is the server's ceiling.
+  const [shown, setShown] = useState(PAGE_SIZE);
   const [filters, setFilters] = useState<ActiveFilters>({});
 
   const { data: cities, isLoading: loadingCities } = useCities();
@@ -56,6 +63,7 @@ export default function CityExplorerPage() {
       featured: filters.featured || undefined,
       amenityIds: filters.amenityIds?.length ? filters.amenityIds.join(",") : undefined,
       tagIds: filters.tagIds?.length ? filters.tagIds.join(",") : undefined,
+      limit: shown,
     },
     // gate: only query once we have a real cityId, so it never returns ALL places
     Boolean(currentCity?.id),
@@ -87,6 +95,16 @@ export default function CityExplorerPage() {
   const { data: searchData } = useSearchPlaces({ q: search || undefined });
 
   const displayedPlaces = search ? searchData?.items : placesData?.items;
+  // Only meaningful for the browse list; search has its own endpoint and its own paging.
+  const totalMatching = placesData?.total;
+  const canLoadMore =
+    !search && typeof totalMatching === "number" && (displayedPlaces?.length ?? 0) < totalMatching;
+
+  // A new filter is a new list; keep the window at one page so it does not inherit a
+  // large size from whatever was being browsed before.
+  useEffect(() => {
+    setShown(PAGE_SIZE);
+  }, [activeCategory, activeRegion, filters, citySlug]);
 
   const handleCityChange = (slug: string) => {
     router.push(`/explorer/${slug}`);
@@ -164,7 +182,8 @@ export default function CityExplorerPage() {
                 marginTop: "var(--space-1)",
               }}
             >
-              {t("explorer.placesFound", { count: placesData.items.length })}
+              {/* The count of what matches, not the count of what this page returned. */}
+              {t("explorer.placesFound", { count: placesData.total ?? placesData.items.length })}
             </p>
           )}
         </div>
@@ -252,6 +271,28 @@ export default function CityExplorerPage() {
                 />
               </div>
             ))}
+            {canLoadMore && (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "var(--space-6)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShown((n) => n + PAGE_SIZE)}
+                  style={{
+                    padding: "12px 28px",
+                    borderRadius: "var(--radius-full)",
+                    border: "1px solid var(--gray-300)",
+                    background: "var(--white)",
+                    color: "var(--text-primary)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: "var(--text-base)",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "var(--motion-shadow)",
+                  }}
+                >
+                  {t("explorer.loadMore")}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div

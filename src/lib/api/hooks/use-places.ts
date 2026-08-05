@@ -16,20 +16,25 @@ export const placesKeys = {
  */
 export function normalizePlaceList(raw: unknown): PlaceList {
   if (Array.isArray(raw)) {
-    return { items: raw as Place[], skip: 0, limit: (raw as Place[]).length };
+    const items = raw as Place[];
+    return { items, skip: 0, limit: items.length, total: items.length };
   }
   const r = (raw ?? {}) as {
     items?: Place[];
     data?: Place[];
     skip?: number;
     limit?: number;
-    meta?: { skip?: number; limit?: number };
+    total?: number;
+    meta?: { skip?: number; limit?: number; total?: number };
   };
   const items = r.items ?? r.data ?? [];
   return {
     items,
     skip: r.skip ?? r.meta?.skip ?? 0,
     limit: r.limit ?? r.meta?.limit ?? items.length,
+    // Dropping total meant a caller could not tell a full page from the whole set, so
+    // "All" silently showed the first page and called it everything.
+    total: r.total ?? r.meta?.total,
   };
 }
 
