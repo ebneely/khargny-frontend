@@ -2,11 +2,65 @@ import { withSentryConfig } from "@sentry/nextjs";
 // Force reload
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+
+// Security headers, same baseline as MiniRue's storefront (security level Medium).
+// frame-ancestors/object-src/base-uri/form-action are strict: they do not affect rendering.
+// script-src still allows 'unsafe-inline' because the App Router injects inline hydration
+// scripts (JSON-LD blocks are data, not script, and are unaffected); a nonce-based
+// script-src is the High-level follow-up. Dev adds 'unsafe-eval' + ws/http for HMR.
+// connect-src https: covers the API origin (NEXT_PUBLIC_API_URL) and Sentry ingestion.
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  // Place/city photos: storage.5argny.com, img.5argny.com (imgproxy), Google place photos.
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' https:",
+  "font-src 'self' data:",
+  "worker-src 'self' blob:",
+  `connect-src 'self' https:${isProd ? "" : " ws: wss: http:"}`,
+  "frame-src 'none'",
+  ...(isProd ? ["upgrade-insecure-requests"] : []),
+].join("; ");
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    // The directions button may ask for the visitor's position on this site only.
+    value: "camera=(), microphone=(), geolocation=(self), browsing-topics=()",
+  },
+  ...(isProd
+    ? [
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        },
+      ]
+    : []),
+];
+
 const nextConfig: NextConfig = {
   // SSR mode enabled (no static export)
   trailingSlash: true,
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   images: {
     remotePatterns: [
+      // Our own media: stored objects and imgproxy renditions. Without these, next/image
+      // answers 400 for every place photo (seen live on 2026-09-30).
+      { protocol: "https", hostname: "storage.5argny.com" },
+      { protocol: "https", hostname: "img.5argny.com" },
       {
         protocol: "https",
         hostname: "img.heroui.chat",
