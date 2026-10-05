@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { SITE_URL } from "@/lib/config";
 import { alternatesFor, currentLocale, urlFor, ogLocale, ogAlternateLocale, graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
@@ -107,6 +108,7 @@ export default async function RootLayout({
                 control, so on mobile the language switch rendered TWICE (once in the nav, once
                 floating at the bottom). The header is now the single place to switch. */}
             <Toaster />
+            <PageViewTracker />
           </QueryProvider>
         </LocaleProvider>
       </body>

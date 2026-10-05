@@ -28,6 +28,7 @@ import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { icon } from "@/lib/icon-catalog";
 import { API_BASE_URL } from "@/lib/config";
+import { trackPlaceAction, trackPlaceView } from "@/lib/analytics/track";
 import type { PlaceHour } from "@/lib/api/types";
 import type { HoursRow } from "@/components/explorer/HoursTable";
 
@@ -101,6 +102,16 @@ function PlaceDetailPage() {
   // (khargny_guest_id); POST /v1/saved-places is idempotent, so re-tapping is safe.
   const { saved: placeSaved, toggle: toggleSaved, isPending: isSavingPending } =
     useSaveToggle(place?.id ?? null);
+
+  // Audience analytics: one place view per opened place (the backend dedupes repeats).
+  const viewedPlaceId = place?.id;
+  React.useEffect(() => {
+    trackPlaceView(viewedPlaceId);
+  }, [viewedPlaceId]);
+  const onToggleSaved = () => {
+    if (!placeSaved) trackPlaceAction("save", place?.id);
+    toggleSaved();
+  };
 
   if (isLoading) {
     return (
@@ -200,6 +211,7 @@ function PlaceDetailPage() {
   // directions, and sendBeacon survives the page being backgrounded on mobile.
   const onDirections = () => {
     if (!place?.id) return;
+    trackPlaceAction("directions", place.id);
     const url = `${API_BASE_URL}/v1/places/${place.id}/directions`;
     try {
       if (typeof navigator !== "undefined" && navigator.sendBeacon) {
@@ -214,6 +226,7 @@ function PlaceDetailPage() {
 
   const onShare = async () => {
     const url = `${window.location.origin}/explorer/${citySlug}/${placeSlug}`;
+    trackPlaceAction("share", place?.id);
     try {
       if (navigator.share) await navigator.share({ title, text: title, url });
       else await navigator.clipboard.writeText(url);
@@ -225,7 +238,7 @@ function PlaceDetailPage() {
   const saveButton = (
     <button
       type="button"
-      onClick={toggleSaved}
+      onClick={onToggleSaved}
       disabled={isSavingPending}
       className="pd-btn pd-btn-primary"
       data-saved={placeSaved || undefined}
@@ -380,7 +393,7 @@ function PlaceDetailPage() {
                 type="button"
                 aria-label={placeSaved ? `Remove ${title} from your plan` : `Add ${title} to your plan`}
                 aria-pressed={placeSaved}
-                onClick={toggleSaved}
+                onClick={onToggleSaved}
                 disabled={isSavingPending}
                 className="pd-iconbtn"
               >
