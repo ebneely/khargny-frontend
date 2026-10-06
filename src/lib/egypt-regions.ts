@@ -241,6 +241,7 @@ export const EGYPT_REGIONS: EgyptRegion[] = [
   { value: 'El Manakh', nameAr: 'حي المناخ', town: 'Port Said', governorate: 'Port Said' },
   { value: 'El Dawahy', nameAr: 'حي الضواحي', town: 'Port Said', governorate: 'Port Said' },
   { value: 'Ismailia City Centre', nameAr: 'وسط الإسماعيلية', town: 'Ismailia', governorate: 'Ismailia' },
+  { value: 'El Sheikh Zayed', nameAr: 'الشيخ زايد', town: 'Ismailia', governorate: 'Ismailia', keywords: ['hay el sheikh zayed', 'third district'] },
   { value: 'Numra Sitta', nameAr: 'نمرة ٦', town: 'Ismailia', governorate: 'Ismailia' },
   { value: 'Temsah', nameAr: 'التمساح', town: 'Ismailia', governorate: 'Ismailia', keywords: ['lake timsah'] },
   { value: 'Fayed', nameAr: 'فايد', town: 'Fayed', governorate: 'Ismailia' },
