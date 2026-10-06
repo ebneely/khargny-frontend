@@ -116,6 +116,8 @@ const en = {
     call: "Call",
     website: "Website",
     directions: "Directions",
+    go: "5argny",
+    goDirections: "5argny: directions to {place}",
   },
   plan: {
     title: "My visit plan",
@@ -248,6 +250,8 @@ const ar: typeof en = {
     call: "اتصل",
     website: "الموقع",
     directions: "الطريق",
+    go: "خرجني",
+    goDirections: "خرجني: الطريق إلى {place}",
   },
   plan: {
     title: "خطة خروجتي",

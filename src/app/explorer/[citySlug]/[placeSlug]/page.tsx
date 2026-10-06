@@ -193,7 +193,6 @@ function PlaceDetailPage() {
     nameEn: string | null;
     icon?: string | null;
   }[];
-  const tags = ((place as any).tags ?? []) as { id: string; name: string; nameEn: string | null }[];
   const { rows: hoursRows, hasAnyOpen } = buildHoursRows(
     place.placeHours,
     locale,
@@ -235,18 +234,52 @@ function PlaceDetailPage() {
     }
   };
 
-  const saveButton = (
+  const saveLabel = placeSaved ? t("place.saved") : t("place.save");
+  const renderSaveButton = (variant: "primary" | "secondary" | "icon") => (
     <button
       type="button"
       onClick={onToggleSaved}
       disabled={isSavingPending}
-      className="pd-btn pd-btn-primary"
+      className={variant === "icon" ? "pd-iconbtn" : `pd-btn pd-btn-${variant}`}
       data-saved={placeSaved || undefined}
+      aria-label={saveLabel}
+      aria-pressed={placeSaved}
     >
-      <Heart size={18} fill={placeSaved ? "currentColor" : "none"} />
-      {placeSaved ? t("place.saved") : t("place.save")}
+      <Heart size={18} fill={placeSaved ? "currentColor" : "none"} aria-hidden="true" />
+      {variant !== "icon" && saveLabel}
     </button>
   );
+
+  const primaryAction = directionsUrl ? "directions" : place.phone ? "call" : place.website ? "website" : "save";
+  const primaryButton = primaryAction === "directions" ? (
+    <a
+      href={directionsUrl!}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="pd-btn pd-btn-primary"
+      aria-label={t("place.goDirections", { place: title })}
+      onClick={onDirections}
+    >
+      <Navigation size={18} aria-hidden="true" />
+      {t("place.go")}
+    </a>
+  ) : primaryAction === "call" ? (
+    <a href={`tel:${place.phone}`} className="pd-btn pd-btn-primary" aria-label={t("place.call")}>
+      <Phone size={18} aria-hidden="true" />
+      {t("place.call")}
+    </a>
+  ) : primaryAction === "website" ? (
+    <a
+      href={place.website!}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="pd-btn pd-btn-primary"
+      aria-label={t("place.website")}
+    >
+      <Globe size={18} aria-hidden="true" />
+      {t("place.website")}
+    </a>
+  ) : renderSaveButton("primary");
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
@@ -306,7 +339,7 @@ function PlaceDetailPage() {
         .pd-prose { font-size:var(--text-md); line-height:1.7; color:var(--text-secondary);
                     max-width:70ch; margin:0; text-wrap:pretty; }
 
-        /* ── Chips (amenities + tags) ────────────────────────────────────────── */
+        /* ── Chips (amenities) ───────────────────────────────────────────────── */
         .pd-chips { display:flex; flex-wrap:wrap; gap:8px; }
         .pd-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px;
                    border-radius:var(--radius-full); border:1px solid var(--border-default);
@@ -323,17 +356,20 @@ function PlaceDetailPage() {
         .pd-btn:focus-visible { outline:2px solid var(--brand-600); outline-offset:2px; }
         .pd-btn-primary { background:var(--brand-600); color:var(--white); }
         .pd-btn-primary:hover:not(:disabled) { background:var(--brand-700); }
-        .pd-btn-primary[data-saved] { background:var(--white); color:var(--brand-600);
-                                      border-color:var(--brand-600); }
+        .pd-btn[data-saved] { background:var(--white); color:var(--brand-600);
+                             border-color:var(--brand-600); }
         .pd-btn-secondary { background:var(--white); color:var(--text-primary);
                             border-color:var(--border-default); }
         .pd-btn-secondary:hover { border-color:var(--gray-400); }
 
-        .pd-iconbtn { width:44px; height:44px; border-radius:50%; background:var(--white);
+        .pd-iconbtn { width:44px; height:44px; flex-shrink:0; border-radius:50%; background:var(--white);
+                      color:var(--gray-900);
                       border:1px solid var(--border-default); display:inline-flex;
                       align-items:center; justify-content:center; cursor:pointer;
                       transition:background-color 180ms ease, box-shadow 180ms ease; }
         .pd-iconbtn:hover { box-shadow:var(--shadow-sm); }
+        .pd-iconbtn:disabled { opacity:.6; cursor:default; }
+        .pd-iconbtn[data-saved] { color:var(--brand-600); border-color:var(--brand-600); }
         .pd-iconbtn:focus-visible { outline:2px solid var(--brand-600); outline-offset:2px; }
 
         /* ── Action rail (desktop) ───────────────────────────────────────────── */
@@ -358,7 +394,8 @@ function PlaceDetailPage() {
                         display:flex; align-items:center; gap:10px; }
         @media (min-width:640px){ .pd-bar-inner { padding:12px 24px calc(12px + env(safe-area-inset-bottom)); } }
         @media (min-width:1024px){ .pd-bar { display:none; } }
-        .pd-bar .pd-btn { flex:1; }
+        .pd-bar .pd-btn { flex:1; width:auto; min-inline-size:0; padding-inline:12px; }
+        .pd-bar .pd-btn svg { flex-shrink:0; }
 
         @media (prefers-reduced-motion: reduce){
           .pd-btn, .pd-iconbtn { transition:none; }
@@ -454,7 +491,7 @@ function PlaceDetailPage() {
               </div>
             </header>
 
-            {(amenities.length > 0 || tags.length > 0) && (
+            {amenities.length > 0 && (
               <section>
                 <h2 className="pd-section-title">{t("place.amenities")}</h2>
                 <div className="pd-chips">
@@ -465,11 +502,6 @@ function PlaceDetailPage() {
                     <span key={a.id} className="pd-chip">
                       {a.icon && icon(a.icon, 15)}
                       {pick(a.name, a.nameEn)}
-                    </span>
-                  ))}
-                  {tags.map((tg) => (
-                    <span key={tg.id} className="pd-chip">
-                      #{pick(tg.name, tg.nameEn)}
                     </span>
                   ))}
                 </div>
@@ -508,19 +540,8 @@ function PlaceDetailPage() {
           <aside className="pd-rail">
             <div className="pd-card">
               <div className="pd-actions">
-                {saveButton}
-                {directionsUrl && (
-                  <a
-                    href={directionsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="pd-btn pd-btn-secondary"
-                    onClick={onDirections}
-                  >
-                    <Navigation size={18} />
-                    {t("explorer.directions")}
-                  </a>
-                )}
+                {primaryButton}
+                {primaryAction !== "save" && renderSaveButton("secondary")}
               </div>
               {(place.phone || place.website) && (
                 <div style={{ marginTop: 16 }}>
@@ -544,20 +565,28 @@ function PlaceDetailPage() {
       {/* Mobile action bar — hidden ≥1024 where the rail takes over */}
       <div className="pd-bar">
         <div className="pd-bar-inner">
-          {directionsUrl && (
+          {primaryAction !== "save" && renderSaveButton("icon")}
+          {place.website && primaryAction !== "website" && (
             <a
-              href={directionsUrl}
+              href={place.website}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={t("explorer.directions")}
+              aria-label={t("place.website")}
               className="pd-iconbtn"
-              style={{ flexShrink: 0 }}
-              onClick={onDirections}
             >
-              <Navigation size={18} color="var(--gray-900)" />
+              <Globe size={18} aria-hidden="true" />
             </a>
           )}
-          {saveButton}
+          {place.phone && primaryAction !== "call" && (
+            <a
+              href={`tel:${place.phone}`}
+              aria-label={t("place.call")}
+              className="pd-iconbtn"
+            >
+              <Phone size={18} aria-hidden="true" />
+            </a>
+          )}
+          {primaryButton}
         </div>
       </div>
     </div>
