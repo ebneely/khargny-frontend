@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { regionLabel } from '@/lib/egypt-regions';
 import { API_BASE_URL, SITE_URL } from '@/lib/config';
 import {
   alternatesFor,
@@ -148,7 +149,7 @@ export async function generateMetadata({
   ]);
   const cityName =
     resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
-  const area = place.region || undefined;
+  const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || resolvedCity || citySlug);
 
   // Name, what it is, and where — the three things a search for this place contains.
   const where = [area, cityName].filter(Boolean).join(', ');
@@ -209,6 +210,7 @@ export default async function PlaceDetailLayout({
     resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
   const path = `/explorer/${citySlug}/${placeSlug}`;
   const url = urlFor(path, locale);
+  const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || resolvedCity || citySlug);
 
   const lat = Number(place.lat);
   const lng = Number(place.lng);
@@ -239,7 +241,7 @@ export default async function PlaceDetailLayout({
     address: {
       '@type': 'PostalAddress',
       ...(place.address ? { streetAddress: place.address } : {}),
-      ...(place.region ? { addressRegion: place.region } : {}),
+      ...(area ? { addressRegion: area } : {}),
       addressLocality: cityName,
       addressCountry: 'EG',
     },

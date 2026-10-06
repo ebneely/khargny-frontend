@@ -26,6 +26,7 @@ import { usePlace, useSimilarPlaces } from "@/lib/api/hooks/use-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { regionLocation } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
 import { API_BASE_URL } from "@/lib/config";
 import { trackPlaceAction, trackPlaceView } from "@/lib/analytics/track";
@@ -150,6 +151,13 @@ function PlaceDetailPage() {
     return (locale === "ar" ? a || e : e || a) || "";
   };
   const title = pick(place.name, place.nameEn);
+  const placeCity = cities?.find((city) => city.id === place.cityId);
+  const location = regionLocation(
+    place.region,
+    place.address,
+    locale,
+    placeCity?.nameEn || placeCity?.name || citySlug,
+  );
   const description = pick(place.description, (place as any).descriptionEn);
   const rating = Number(place.rating);
   const hasRating = rating > 0;
@@ -458,10 +466,10 @@ function PlaceDetailPage() {
                 )}
                 {priceLabel && <span className="pd-pill pd-pill-price">{priceLabel}</span>}
               </div>
-              {place.address && (
+              {location && (
                 <p className="pd-addr">
                   <MapPin size={17} style={{ flexShrink: 0, marginTop: 2 }} color="var(--text-tertiary)" />
-                  <span>{place.address}</span>
+                  <span>{location}</span>
                 </p>
               )}
 

@@ -7,6 +7,8 @@ import * as React from "react";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName } from "@/lib/display-name";
+import { regionLabel } from "@/lib/egypt-regions";
+import { useCities } from "@/lib/api/hooks/use-cities";
 import type { Place } from "@/lib/api/types";
 
 type SimilarPlacesProps = {
@@ -16,6 +18,8 @@ type SimilarPlacesProps = {
 
 export function SimilarPlaces({ places, citySlug }: SimilarPlacesProps) {
   const { locale } = useI18n();
+  const { data: cities } = useCities();
+  const cityNameById = new Map((cities ?? []).map((city) => [city.id, city.nameEn || city.name || city.slug]));
   if (places.length === 0) return null;
   return (
     <section
@@ -51,7 +55,10 @@ export function SimilarPlaces({ places, citySlug }: SimilarPlacesProps) {
             placeId={p.id}
             size="sm"
             title={displayName(p, locale)}
-            area={p.address || ""}
+            area={[
+              regionLabel(p.region, locale, cityNameById.get(p.cityId) || p.cityId),
+              p.address,
+            ].filter(Boolean).join(" · ")}
             rating={p.rating > 0 ? p.rating.toString() : undefined}
             onTitleClick={() => {
               window.location.href = `/explorer/${citySlug}/${p.slug}`;

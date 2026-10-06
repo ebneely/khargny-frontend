@@ -147,7 +147,7 @@ export function useHomeDiscovery() {
           slug: c.slug,
           label: locale === "ar" ? c.name : c.nameEn || c.name,
           // Localized from the shared catalog: the column stores the English name as a key.
-          region: regionLabel(c.region, locale),
+          region: regionLabel(c.region, locale, c.nameEn || c.name || c.slug),
         })),
     [cityData, locale],
   );

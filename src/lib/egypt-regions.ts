@@ -360,12 +360,30 @@ export function regionsForCity(city: string): EgyptRegion[] {
 
 export const REGION_VALUES = EGYPT_REGIONS.map((r) => r.value);
 
-export function findRegion(value: string | null | undefined) {
+export function findRegion(
+  value: string | null | undefined,
+  governorate?: string | null,
+) {
   if (!value) return undefined;
   const needle = value.trim().toLowerCase();
-  return EGYPT_REGIONS.find(
-    (r) => r.value.toLowerCase() === needle || r.nameAr === value.trim(),
+  const byValue = EGYPT_REGIONS.find((region) => region.value.toLowerCase() === needle);
+  if (byValue) return byValue;
+  const matches = EGYPT_REGIONS.filter(
+    (region) => region.nameAr === value.trim(),
   );
+  if (matches.length === 1) return matches[0];
+  const city = findCity(governorate);
+  if (!city) return undefined;
+  const scoped = matches.filter((region) => region.governorate === city.value);
+  return scoped.length === 1 ? scoped[0] : undefined;
+}
+
+const warnedRegions = new Set<string>();
+
+export function warnDroppedRegion(value: string, city: string | null | undefined, reason: string) {
+  if (typeof window === "undefined" || warnedRegions.has(value)) return;
+  warnedRegions.add(value);
+  console.warn("[areas]", reason, value, "city:", city || "unknown");
 }
 
 /**
@@ -373,14 +391,24 @@ export function findRegion(value: string | null | undefined) {
  *
  * `places.region` stores the ENGLISH name as a stable key (it is effectively an enum), so
  * the Arabic label is not in the database — it is looked up here. Anything not in the
- * catalog (a legacy or hand-typed value) falls back to the stored string rather than
- * rendering blank.
+ * catalog is displayed only when all its letters use the reader's script. Ambiguous
+ * Arabic names require a governorate; they must never resolve by catalogue order.
  */
-export function regionLabel(value: string | null | undefined, locale: string): string {
+export function regionLabel(
+  value: string | null | undefined,
+  locale: string,
+  city?: string | null,
+): string {
   if (!value) return "";
-  const found = findRegion(value);
-  if (!found) return value;
-  return locale === "ar" ? found.nameAr || found.value : found.value;
+  const stored = value.trim();
+  if (!stored) return "";
+  const found = findRegion(stored, city);
+  if (found) return locale === "ar" ? found.nameAr : found.value;
+  const letters = stored.match(/\p{Letter}/gu) ?? [];
+  const script = locale === "ar" ? /\p{Script=Arabic}/u : /\p{Script=Latin}/u;
+  if (letters.length > 0 && letters.every((letter) => script.test(letter))) return stored;
+  warnDroppedRegion(value, city, "Hidden region with no label in the page language:");
+  return "";
 }
 
 /** Same rule for a governorate/city value. */

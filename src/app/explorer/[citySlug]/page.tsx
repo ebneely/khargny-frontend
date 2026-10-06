@@ -19,13 +19,14 @@ import { ErrorState } from "@/components/explorer/ErrorState";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { FilterPanel, type ActiveFilters } from "@/components/explorer/FilterPanel";
 import { PlaceFilters } from "@/components/explorer/PlaceFilters";
-import { useCities, useCityPlaces } from "@/lib/api/hooks/use-cities";
+import { useCities } from "@/lib/api/hooks/use-cities";
 import { usePlaces } from "@/lib/api/hooks/use-places";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName, displayNameAr } from "@/lib/display-name";
 import { RegionSelector } from "@/components/explorer/RegionSelector";
+import { regionLocation } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
 import { ChevronRight } from "lucide-react";
 
@@ -73,12 +74,24 @@ export default function CityExplorerPage() {
   // cities are loaded but this slug isn't among them → the city doesn't exist
   const cityNotFound = !loadingCities && !!cities && !currentCity;
 
+  const regionOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const k of currentCity?.areaKeys ?? []) {
+      if (k) set.add(k);
+    }
+    return Array.from(set).sort();
+  }, [currentCity]);
+
+  const cityName = currentCity?.nameEn || currentCity?.name || citySlug;
+  const cityNameById = useMemo(
+    () => new Map((cities ?? []).map((city) => [city.id, city.nameEn || city.name || city.slug])),
+    [cities],
+  );
   const { data: placesData, isLoading, isError, refetch } = usePlaces(
     {
       cityId: currentCity?.id,
       categoryId: activeCategory || undefined,
       region: activeRegion || undefined,
-      // visitor filters → query params (arrays comma-joined). Options come from the admin taxonomy.
       priceRange: filters.priceRange?.length ? filters.priceRange.join(",") : undefined,
       featured: filters.featured || undefined,
       amenityIds: filters.amenityIds?.length ? filters.amenityIds.join(",") : undefined,
@@ -86,32 +99,8 @@ export default function CityExplorerPage() {
       skip: page * PAGE_SIZE,
       limit: PAGE_SIZE,
     },
-    // gate: only query once we have a real cityId, so it never returns ALL places
     Boolean(currentCity?.id),
   );
-  // Unfiltered fetch for the SAME city, used only to work out which areas exist. Kept
-  // separate from the filtered list above so selecting a region doesn't collapse the chip
-  // row down to the one region you just picked.
-  //
-  // Uses the city-slug endpoint (city + its sub-area cities), NOT /v1/places?cityId (which
-  // only sees places whose cityId is the parent). Places assigned to a sub-area were invisible
-  // to the parent-only query, so the area dropdown came up empty on web while the app — which
-  // already hits this endpoint — populated it. This mirrors the app's region-picker exactly.
-  const { data: cityPlaces } = useCityPlaces(citySlug, { limit: 200 });
-  // Area options = the dashboard-curated list on the city (`areaKeys`), which is what the
-  // admin actually submits, UNION any region that a live place already carries. The curated
-  // list is the source of truth (so an area shows even before it has a place); the derived
-  // set is a safety net so a place whose region wasn't curated still gets a filter chip.
-  const regionOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const k of currentCity?.areaKeys ?? []) {
-      if (k) set.add(k);
-    }
-    for (const p of cityPlaces?.items ?? []) {
-      if (p.region) set.add(p.region);
-    }
-    return Array.from(set).sort();
-  }, [currentCity, cityPlaces]);
 
   const { data: searchData } = useSearchPlaces({ q: search || undefined });
 
@@ -170,6 +159,7 @@ export default function CityExplorerPage() {
         />
         <RegionSelector
           regions={regionOptions}
+          city={cityName}
           value={activeRegion}
           onChange={setActiveRegion}
         />
@@ -289,7 +279,12 @@ export default function CityExplorerPage() {
                   size="md"
                   placeId={place.id}
                   title={locale === "ar" ? place.name : place.nameEn || place.name}
-                  area={place.address || ""}
+                  area={regionLocation(
+                    place.region,
+                    place.address,
+                    locale,
+                    cityNameById.get(place.cityId) || place.cityId,
+                  )}
                   image={place.coverImage || undefined}
                   priceRange={place.priceRange}
                   metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }}
