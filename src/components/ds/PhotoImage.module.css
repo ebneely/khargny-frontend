@@ -1,0 +1,38 @@
+.frame {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0;
+  display: block;
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+
+.backdrop,
+.sharp,
+.placeholder {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  display: block;
+}
+
+.backdrop {
+  object-fit: cover;
+  filter: blur(14px) brightness(0.75);
+  transform: scale(1.12);
+}
+
+.sharp {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.loaded { opacity: 1; }
+
+.placeholder { background: var(--surface-sunken); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sharp { transition: none; }
+}

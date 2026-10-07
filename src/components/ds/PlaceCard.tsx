@@ -12,6 +12,7 @@
  * `onToggleFavorite` callback is what TASK-0009 wires to the saved-places backend.
  * For the homepage this pass, the callback is a no-op (heart is a visual only).
  */
+import { PhotoImage } from "./PhotoImage";
 import * as React from "react";
 import Link from "next/link";
 import { Heart, Navigation, Eye, Star } from "lucide-react";
@@ -21,11 +22,8 @@ import { useI18n } from "@/i18n/LocaleProvider";
 import { PlaceBadges } from "./PlaceBadges";
 import { priceBandLabel } from "@/lib/price-bands";
 
-// Bookmark (save-to-plan) icon — clearer intent than a heart for "add to my plan".
 const SaveIcon = ({ filled }: { filled: boolean }) => (
-  <svg width={18} height={18} viewBox="0 0 24 24" fill={filled ? "var(--brand-600)" : "none"} stroke={filled ? "var(--brand-600)" : "var(--gray-700)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-  </svg>
+  <Heart size={18} fill={filled ? "var(--brand-600)" : "none"} stroke={filled ? "var(--brand-600)" : "var(--gray-700)"} aria-hidden="true" />
 );
 
 // Bundled, not fetched from unpkg.com at runtime: a third-party request on the render path
@@ -53,6 +51,7 @@ const Badge = ({ children, tone = "white" }: BadgeProps) => (
 
 type PlaceCardProps = {
   image?: string;
+  imageSizes?: string;
   title: string;
   area: string;
   rating?: string;
@@ -100,6 +99,7 @@ function formatCount(n: number | undefined): string {
  */
 export function PlaceCard({
   image,
+  imageSizes,
   title,
   area,
   rating,
@@ -163,23 +163,7 @@ export function PlaceCard({
             indexed by image search and no alt text existed for them — on a directory whose
             content IS the places, that was the whole photo library invisible. The gradient
             behind stays as the fallback for a place with no photo. */}
-        {image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image}
-            alt={title}
-            loading="lazy"
-            decoding="async"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        )}
+        <PhotoImage photo={image} alt={title} frame="card" sizes={imageSizes} />
         <div
           style={{
             position: "absolute",

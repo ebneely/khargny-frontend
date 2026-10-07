@@ -19,11 +19,15 @@ function loadModule(relativePath, dependencies = {}, sourceOverride) {
     process: { env: { NODE_ENV: 'test', CI: '1' } },
     require: (name) => {
       if (name in dependencies) return dependencies[name];
-      if (name === 'lucide-react') return Object.fromEntries(['Utensils', 'BadgeCheck', 'Footprints', 'ImageOff', 'Heart', 'Navigation', 'Eye', 'Star', 'ArrowLeft', 'Share', 'Phone', 'Globe', 'MapPin', 'Bookmark']
+      if (name === 'lucide-react') return Object.fromEntries(['Tag', 'Receipt', 'Utensils', 'BadgeCheck', 'Footprints', 'ImageOff', 'Heart', 'Navigation', 'Eye', 'Star', 'ArrowLeft', 'Share', 'Phone', 'Globe', 'MapPin', 'Bookmark']
         .map((iconName) => [iconName, (props) => React.createElement('svg', { ...props, className: iconName === 'ImageOff' ? 'image-off' : iconName })]));
       if (name.endsWith('.module.css')) return { default: new Proxy({}, { get: (_, key) => String(key) }) };
-      if (name.startsWith('@/')) return loadModule(`src/${name.slice(2)}.ts`, dependencies);
-      if (name.startsWith('.')) throw new Error(`Missing local dependency: ${name}`);
+      if (name.startsWith('@/') || name.startsWith('.')) {
+        const base = name.startsWith('@/') ? path.join(__dirname, '../src', name.slice(2)) : path.resolve(path.dirname(filename), name);
+        const resolved = ['.ts', '.tsx'].map((extension) => `${base}${extension}`).find((candidate) => fs.existsSync(candidate));
+        if (!resolved) throw new Error(`Missing local dependency: ${name}`);
+        return loadModule(path.relative(path.join(__dirname, '..'), resolved), dependencies);
+      }
       return require(name);
     },
   }, { filename });
@@ -63,7 +67,7 @@ function cardModule(locale, linkComponent = frameworkLink) {
   return loadModule('src/components/ds/PlaceCard.tsx', {
     '@/i18n/LocaleProvider': provider,
     'next/link': { default: linkComponent },
-    './IconButton': { IconButton: ({ ariaLabel, onClick }) => React.createElement('button', { 'aria-label': ariaLabel, onClick }, 'Save') },
+    './IconButton': { IconButton: ({ ariaLabel, onClick, icon, selected }) => React.createElement('button', { 'aria-label': ariaLabel, 'aria-pressed': selected, onClick }, icon) },
     './PlaceBadges': loadModule('src/components/ds/PlaceBadges.tsx', { '@/i18n/LocaleProvider': provider }),
     '@/lib/api/hooks/use-saved-places': { useSaveToggle: () => ({ saved: false, toggle: () => {} }) },
   }).PlaceCard;
@@ -116,7 +120,7 @@ function placePage(locale, flags) {
 }
 
 function assertStatuses(markup, expected, locale) {
-  const names = locale === 'en' ? ['Menu', 'Price verified', 'Visited by 5argny'] : ['المنيو', 'السعر متحقق منه', 'زرناه'];
+  const names = locale === 'en' ? ['Prices listed', 'Price match', 'Visited by 5argny'] : ['الأسعار معروضة', 'مطابقة الأسعار', 'زرناه'];
   const chips = [...markup.matchAll(/<span\b[^>]*data-place-status="([^"]+)"[^>]*>/g)];
   assert.equal(chips.length, 3);
   assert.deepEqual(chips.map((chip) => chip[1]), ['hasMenu', 'priceVerified', 'visitedByUs']);
@@ -139,7 +143,7 @@ test('rendered cards retain legacy text and put the name before three passive st
     assertStatuses(legacy, [false, false, false], locale);
     assert.ok(legacy.includes('Test area'));
     const modern = renderToStaticMarkup(React.createElement(PlaceCard, { ...props, hasMenu: true, priceVerified: true, visitedByUs: true }));
-    const menuLabel = locale === 'en' ? 'Menu' : 'المنيو';
+    const menuLabel = locale === 'en' ? 'Prices listed' : 'الأسعار معروضة';
     assert.ok(modern.indexOf('title="Test place"') < modern.indexOf(menuLabel));
     assert.ok(modern.includes('flex-wrap:wrap'));
   }
@@ -382,9 +386,9 @@ test('one status source preserves icon order, localized explanations and strict 
     assert.ok(statuses.every(({ name, explanation }) => typeof name === 'string' && typeof explanation === 'string'));
     const markup = renderToStaticMarkup(React.createElement(PlaceBadges, { hasMenu: true, priceRange: 4, priceVerified: true, visitedByUs: true }));
     assertStatuses(markup, [true, true, true], locale);
-    assert.equal((markup.match(/<svg /g) ?? []).length, 3);
-    assert.ok(markup.indexOf('Utensils') < markup.indexOf('BadgeCheck'));
-    assert.ok(markup.indexOf('BadgeCheck') < markup.indexOf('Footprints'));
+    assert.equal((markup.match(/<svg /g) ?? []).length, 2);
+    assert.ok(markup.indexOf('Tag') < markup.indexOf('BadgeCheck'));
+    assert.ok(markup.indexOf('BadgeCheck') < markup.indexOf('<img'));
     assert.ok(!markup.includes('<button'));
     const price = renderToStaticMarkup(React.createElement(PlaceBadges, { variant: 'price', priceRange: 4, priceClassName: 'pd-pill pd-pill-price', hasMenu: true }));
     assert.ok(price.includes(locale === 'ar' ? '١٬٠٠٠ – ٥٬٠٠٠+ جنيه' : '1,000 – 5,000+ EGP'));
@@ -394,20 +398,27 @@ test('one status source preserves icon order, localized explanations and strict 
   }
 });
 
-test('each actual place page ends with three green legend samples and readable explanations in both languages', () => {
+test('each actual place page ends with a neutral badge guide and readable explanations in both languages', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../src/components/ds/PlaceBadges.module.css'), 'utf8');
+  const guide = css.match(/\.guide\s*\{([^}]+)\}/)?.[1];
+  assert.ok(guide.includes('border-radius: var(--radius-xl)'));
+  assert.ok(guide.includes('padding-inline: clamp(20px, 4vw, 32px)'));
+  assert.ok(guide.includes('background: var(--surface-sunken)'));
+  assert.ok(!guide.includes('box-shadow'));
   for (const locale of ['ar', 'en']) {
     const provider = translations(locale);
     const markup = renderToStaticMarkup(React.createElement(placePage(locale, {})));
     const legend = markup.match(/<section\b[^>]*data-place-badge-legend="true"[^>]*>[\s\S]*?<\/section>/)?.[0];
     assert.ok(legend);
-    assertStatuses(legend, [true, true, true], locale);
+    assert.ok(!/class="[^"]*\bavailable\b/.test(legend));
+    assert.ok(!legend.includes('data-place-status='));
     assert.equal((legend.match(/<li>/g) ?? []).length, 3);
-    assert.ok(legend.includes(locale === 'en' ? 'What the badges mean' : 'ما معنى الشارات؟'));
+    assert.ok(legend.includes(locale === 'en' ? 'About the badges' : 'عن الشارات'));
     const headingId = legend.match(/aria-labelledby="([^"]+)"/)?.[1];
     assert.ok(headingId && legend.includes(`<h2 id="${headingId}"`));
-    for (const key of ['place.menuHint', 'place.priceVerifiedHint', 'place.visitedByUsHint']) assert.ok(legend.includes(provider.useI18n().t(key)));
+    for (const key of ['place.menuHint', 'place.priceVerifiedHint', 'place.visitedByUsHint']) assert.ok(legend.includes(provider.useI18n().t(key).replace(/'/g, '&#x27;')));
     assert.ok(markup.indexOf('data-similar') < markup.indexOf('data-place-badge-legend'));
-    assert.ok(markup.indexOf('data-place-badge-legend') < markup.indexOf('<aside'));
+    assert.ok(markup.indexOf('<aside') < markup.indexOf('data-place-badge-legend'));
   }
 });
 
@@ -475,17 +486,51 @@ test('legend explains green and grey before the three badges, with full-stop pri
     const key = markup.match(/<p\b[^>]*data-place-badge-colors="true"[^>]*>[\s\S]*?<\/p>/)?.[0];
     assert.ok(key);
     assert.equal((key.match(/data-badge-color=/g) ?? []).length, 2);
-    assert.ok(/class="badge available"[^>]*data-badge-color="green"/.test(key));
-    assert.ok(/class="badge notYet"[^>]*data-badge-color="grey"/.test(key));
-    const labels = locale === 'en' ? ['Green: available here', 'Grey: not yet'] : ['الأخضر: متاح هنا', 'الرمادي: ليس بعد'];
+    assert.ok(!/class="[^"]*\b(?:badge|available|notYet)\b/.test(key));
+    const labels = locale === 'en' ? ['Green: this place has it', 'Grey: not yet'] : ['الأخضر: متوفر في هذا المكان', 'الرمادي: ليس بعد'];
     for (const label of labels) assert.ok(key.includes(label));
     assert.ok(markup.indexOf('data-place-badge-colors') < markup.indexOf('<ul'));
-    assertStatuses(markup, [true, true, true], locale);
+    assert.ok(!markup.includes('data-place-status='));
     assert.equal((markup.match(/<li>/g) ?? []).length, 3);
     const hint = translations(locale).useI18n().t('place.priceVerifiedHint');
-    assert.equal(hint, locale === 'en' ? '5argny checked this against the menu.' : 'خرجني راجعت السعر على المنيو.');
-    assert.ok(markup.includes(hint));
+    assert.equal(hint, locale === 'en' ? 'Reviewed by the 5argny team: the prices listed here match the place\'s real prices.' : 'راجعها فريق خرجني: الأسعار المعروضة هنا مطابقة لأسعار المكان الفعلية.');
+    assert.ok(markup.includes(hint.replace(/'/g, '&#x27;')));
   }
+});
+
+test('renamed badges are distinct, neutral-priced and use the decorative real visited mark', () => {
+  for (const locale of ['ar', 'en']) {
+    const { PlaceBadges, getPlaceStatuses } = badgeModule(locale);
+    const statuses = getPlaceStatuses({}, translations(locale).useI18n().t);
+    assert.notEqual(statuses[0].name, statuses[1].name);
+    assert.notEqual(statuses[0].explanation, statuses[1].explanation);
+    const markup = renderToStaticMarkup(React.createElement(PlaceBadges, { visitedByUs: true }));
+    assert.ok(!markup.includes('Utensils'));
+    assert.ok(markup.includes('Tag'));
+    assert.ok(!markup.includes('Receipt'));
+    assert.match(markup, /<img[^>]*src="\/images\/5argny-mark-48.png"[^>]*alt=""/);
+    assert.ok(markup.includes('/images/5argny-mark-96.png 2x'));
+  }
+  const source = fs.readFileSync(path.join(__dirname, '../src/components/ds/PlaceBadges.tsx'), 'utf8');
+  assert.ok(!source.includes('Utensils'));
+  assert.ok(!source.includes('Receipt'));
+});
+
+test('the existing save action renders an outline or brand-filled heart, retaining labels and sibling links', () => {
+  const PlaceCard = cardModule('en');
+  for (const saved of [false, true]) {
+    const markup = renderToStaticMarkup(React.createElement(PlaceCard, { title: 'Test place', favorite: saved, href: '/test', onToggleFavorite: () => {} }));
+    const button = markup.match(/<button\b[\s\S]*?<\/button>/)?.[0];
+    assert.ok(button.includes('class="Heart"'));
+    assert.ok(button.includes(`fill="${saved ? 'var(--brand-600)' : 'none'}"`));
+    assert.ok(button.includes(`aria-label="${saved ? 'Remove Test place from your plan' : 'Add Test place to your plan'}"`));
+    assert.ok(!button.includes('Bookmark'));
+    assert.ok(markup.indexOf('</a>') < markup.indexOf('<button'));
+  }
+  const PlanItemCard = planCardModule('en');
+  const plan = renderToStaticMarkup(React.createElement(PlanItemCard, { saved: { place: { name: 'Test place', slug: 'test', cityId: 'city' } }, onOpen: () => {}, onRemove: () => {} }));
+  assert.ok(plan.includes('class="Heart"'));
+  assert.ok(!plan.includes('Bookmark'));
 });
 
 test('existing green and grey tokens meet text and icon contrast without opacity', () => {
@@ -513,7 +558,8 @@ test('existing green and grey tokens meet text and icon contrast without opacity
     assert.ok(css.includes(`color: var(--${foreground})`));
     assert.ok(css.includes(`background: var(--${background})`));
   }
-  assert.ok(!/opacity|#[\da-f]{3,8}\b|text-decoration:\s*line-through/i.test(css));
+  const textStyles = css.replace(/\.notYet \.mark\s*\{[^}]*\}/, '');
+  assert.ok(!/opacity|#[\da-f]{3,8}\b|text-decoration:\s*line-through/i.test(textStyles));
 });
 
 test('plan status taps and keyboard navigation preserve opening while remove remains a sibling', () => {
@@ -628,7 +674,7 @@ test('card name remains independent of wrapping metadata, and menus use mobile r
   assert.ok(badges.includes('max-inline-size: 100%'));
   assert.ok(badges.includes('flex-wrap: wrap'));
   assert.ok(/\.compact\s*\{\s*flex-wrap: nowrap;/.test(badges));
-  assert.ok(/@media \(min-width: 1024px\)\s*\{\s*\.mobileStatuses\s*\{\s*display: none;/.test(badges));
+  assert.ok(/@media \(min-width: 1024px\)\s*\{[\s\S]*?\.mobileStatuses\s*\{\s*display: none;/.test(badges));
   assert.ok(!/(?:margin|padding|inset)-(?:left|right)|(?:^|\n)\s*(?:left|right):/.test(badges));
   assert.ok(menu.includes('grid-template-columns: minmax(0, 1fr)'));
   assert.ok(menu.includes('@media (min-width: 768px)'));

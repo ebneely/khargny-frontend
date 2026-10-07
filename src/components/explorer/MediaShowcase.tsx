@@ -17,8 +17,10 @@
  */
 import * as React from "react";
 import { ImageOff, X, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { PhotoImage } from "@/components/ds/PhotoImage";
+import { normalizePhoto, type Photo } from "@/lib/place-photo";
 
-export type ShowcaseImage = { type: "image"; url: string; alt?: string };
+export type ShowcaseImage = { type: "image"; url?: string; photo?: Photo; alt?: string };
 export type ShowcaseVideo = {
   type: "video";
   url: string;
@@ -67,7 +69,9 @@ function Tile({
       onClick={() => onOpen(index)}
       aria-label={item.type === "video" ? `Play video ${index + 1}` : `View photo ${index + 1} of ${total}`}
     >
-      {posterSrc ? (
+      {item.type === "image" ? (
+        <PhotoImage photo={item.photo ?? item.url} alt={item.alt || ""} frame={hero ? "gallery" : "strip"} />
+      ) : posterSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={posterSrc} alt={item.alt || ""} loading={hero ? "eager" : "lazy"} />
       ) : item.type === "video" ? (
@@ -314,14 +318,9 @@ export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className="khg-lb-media"
-              src={active.url}
-              alt={active.alt || ""}
-              onClick={(e) => e.stopPropagation()}
-              style={{ objectFit: "contain" }}
-            />
+            <div className="khg-lb-media" style={{ position: "relative", width: "90vw", height: "85vh" }}>
+              <PhotoImage photo={active.photo ?? normalizePhoto(active.url)} alt={active.alt || ""} frame="gallery" sizes="90vw" fullPhoto onClick={(event) => event.stopPropagation()} />
+            </div>
           )}
         </div>
       )}

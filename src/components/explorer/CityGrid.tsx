@@ -10,6 +10,7 @@ import { MapPin } from "lucide-react";
 import { useCityPlaces } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
 import type { City } from "@/lib/api/types";
+import { PhotoImage } from "@/components/ds/PhotoImage";
 
 type CityGridProps = { cities: City[] };
 
@@ -79,8 +80,7 @@ export function CityGrid({ cities }: CityGridProps) {
               {/* A real <img> so the city photo is indexable and carries alt text; as a CSS
                   background it was invisible to image search. */}
               {city.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={city.imageUrl} alt={name} loading="lazy" decoding="async" className="khg-city-img" />
+                <PhotoImage photo={city.imageUrl} alt={name} frame="city" />
               ) : (
                 <span className="khg-city-initial">{initial}</span>
               )}

@@ -14,6 +14,7 @@
 import * as React from "react";
 import { Search, ArrowRight, MapPin } from "lucide-react";
 import { PlaceCard } from "@/components/ds/PlaceCard";
+import { CARD_RAIL_SIZES } from '@/lib/place-photo';
 import { Toast } from "@/components/ds/Toast";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SiteFooter } from "@/components/ds/SiteFooter";
@@ -170,6 +171,7 @@ export function Home({ d }: { d: HomeDiscovery }) {
                       href={p.citySlug && p.slug ? `/explorer/${p.citySlug}/${p.slug}` : undefined}
                       size="md"
                       image={p.image}
+                      imageSizes={CARD_RAIL_SIZES}
                       title={p.title}
                       area={p.area}
                       badge={p.badge}

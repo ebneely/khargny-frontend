@@ -16,6 +16,7 @@
 import { headers, cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { SITE_URL } from './config';
+import { normalizeSiteSettings, siteSocialUrls } from '@/lib/site-socials';
 import { LOCALES, DEFAULT_LOCALE, type Locale } from '@/i18n/dictionaries';
 
 /** The locale this request is being served in. Mirrors what the root layout decides. */
@@ -75,7 +76,14 @@ export const jsonLdScript = (data: unknown) =>
   JSON.stringify(data).replace(/</g, '\\u003c');
 
 /** The publisher, referenced by the other schemas rather than repeated in each. */
-export function organizationSchema(locale: Locale) {
+export function organizationSchema(locale: Locale, rawSettings?: unknown) {
+  const settings = normalizeSiteSettings(rawSettings);
+  const sameAs = siteSocialUrls(settings);
+  const contactPoint = settings?.phone || settings?.email ? {
+    '@type': 'ContactPoint',
+    ...(settings.phone ? { telephone: settings.phone } : {}),
+    ...(settings.email ? { email: settings.email } : {}),
+  } : undefined;
   return {
     '@type': 'Organization',
     '@id': `${SITE_URL}/#organization`,
@@ -84,6 +92,8 @@ export function organizationSchema(locale: Locale) {
     alternateName: locale === 'ar' ? 'Khargny' : 'خرجني',
     url: urlFor('/', locale),
     logo: { '@type': 'ImageObject', url: `${SITE_URL}/images/logo-en.png` },
+    ...(sameAs.length ? { sameAs } : {}),
+    ...(contactPoint ? { contactPoint } : {}),
   };
 }
 

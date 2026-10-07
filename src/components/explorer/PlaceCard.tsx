@@ -1,13 +1,12 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Star, ImageOff } from 'lucide-react';
+import { Heart, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 import { PlaceBadges } from '@/components/ds/PlaceBadges';
+import { PhotoImage } from '@/components/ds/PhotoImage';
 
 interface PlaceCardProps {
   image?: string | null;
@@ -40,7 +39,6 @@ export function PlaceCard({
   priceVerified,
   visitedByUs,
 }: PlaceCardProps) {
-  const [imgError, setImgError] = useState(false);
   const width = size === 'sm' ? 'w-[260px]' : 'w-[300px]';
 
   return (
@@ -48,19 +46,7 @@ export function PlaceCard({
     <Link href={`/explorer/${citySlug}/${placeSlug}`} className="khg-place-card-link block">
       <Card className="overflow-hidden border-0 shadow-none group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-250 ease-[cubic-bezier(0.2,0,0,1)] bg-card">
         <div className="relative aspect-square overflow-hidden">
-          {image && !imgError ? (
-            <Image
-              src={image}
-              alt={title}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-250"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-              <ImageOff className="w-8 h-8 text-white/60" />
-            </div>
-          )}
+          <PhotoImage photo={image} alt={title} frame="card" sizes={size === 'sm' ? 'auto, 260px' : 'auto, 300px'} />
           {badgeText && (
             <Badge variant="secondary" className="absolute top-2 start-2 bg-gray-100/90 text-gray-700 text-xs">
               {badgeText}
@@ -86,14 +72,14 @@ export function PlaceCard({
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-2 end-2 bg-white/80 hover:bg-white rounded-full w-8 h-8"
+        className="khg-heart-tap absolute top-2 end-2 bg-white/80 hover:bg-white rounded-full w-8 h-8"
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
           onToggleFavorite(!favorite);
         }}
       >
-        <Heart className={`w-4 h-4 ${favorite ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+        <Heart className="w-4 h-4" fill={favorite ? 'var(--brand-600)' : 'none'} stroke={favorite ? 'var(--brand-600)' : 'var(--gray-700)'} aria-hidden="true" />
       </Button>
     )}
     </div>

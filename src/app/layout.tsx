@@ -8,6 +8,8 @@ import { SITE_URL } from "@/lib/config";
 import { alternatesFor, currentLocale, urlFor, ogLocale, ogAlternateLocale, graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
 import { cookies, headers } from "next/headers";
 import type { Locale } from "@/i18n/dictionaries";
+import { getSiteSettings } from '@/lib/api/site-settings';
+import { SiteSettingsProvider } from '@/lib/api/hooks/use-site-settings';
 
 /**
  * Root layout — single light theme (no `next-themes` / dark mode).
@@ -87,6 +89,7 @@ export default async function RootLayout({
   const chosen = urlLocale ?? cookieLocale;
   const locale: Locale = chosen === "en" ? "en" : "ar";
   const dir = locale === "ar" ? "rtl" : "ltr";
+  const settings = await getSiteSettings();
 
   return (
     // Scrollbars are hidden globally in globals.css. The `scrollbar-hide` class that used to
@@ -98,17 +101,19 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: jsonLdScript(graph(organizationSchema(locale), webSiteSchema(locale))),
+            __html: jsonLdScript(graph(organizationSchema(locale, settings), webSiteSchema(locale))),
           }}
         />
         <LocaleProvider initialLocale={locale}>
           <QueryProvider>
-            {children}
+            <SiteSettingsProvider settings={settings}>
+              {children}
             {/* The floating LanguageToggle was removed: SiteHeader already carries a language
                 control, so on mobile the language switch rendered TWICE (once in the nav, once
                 floating at the bottom). The header is now the single place to switch. */}
-            <Toaster />
-            <PageViewTracker />
+              <Toaster />
+              <PageViewTracker />
+            </SiteSettingsProvider>
           </QueryProvider>
         </LocaleProvider>
       </body>

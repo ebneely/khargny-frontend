@@ -13,12 +13,15 @@ import Link from "next/link";
 import { Instagram, Facebook, Youtube, MessageCircle, Mail, Phone, Music2 } from "lucide-react";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { useSiteSettings } from "@/lib/api/hooks/use-site-settings";
+import { normalizeSiteSettings, siteContactLinks } from '@/lib/site-socials';
 
 const MAXW = 1120;
 
 export function SiteFooter() {
   const { t } = useI18n();
-  const { data: settings } = useSiteSettings();
+  const { data } = useSiteSettings();
+  const settings = normalizeSiteSettings(data);
+  const contacts = siteContactLinks(settings);
 
   const links = [
     { href: "/", label: t("common.home") },
@@ -35,12 +38,12 @@ export function SiteFooter() {
     { key: "youtube", href: settings?.youtube, Icon: Youtube, label: "YouTube" },
     {
       key: "whatsapp",
-      href: settings?.whatsapp ? `https://wa.me/${settings.whatsapp.replace(/[^\d]/g, "")}` : null,
+      href: contacts.whatsapp,
       Icon: MessageCircle,
       label: "WhatsApp",
     },
-    { key: "email", href: settings?.email ? `mailto:${settings.email}` : null, Icon: Mail, label: "Email" },
-    { key: "phone", href: settings?.phone ? `tel:${settings.phone}` : null, Icon: Phone, label: "Phone" },
+    { key: "email", href: contacts.email, Icon: Mail, label: "Email" },
+    { key: "phone", href: contacts.phone, Icon: Phone, label: "Phone" },
   ].filter((s) => s.href);
 
   return (
@@ -97,7 +100,7 @@ export function SiteFooter() {
                 key={key}
                 href={href as string}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="me noopener"
                 aria-label={label}
                 className="khg-social"
                 style={{

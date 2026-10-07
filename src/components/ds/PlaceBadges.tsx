@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BadgeCheck, Footprints, Utensils } from "lucide-react";
+import { BadgeCheck, Tag } from "lucide-react";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { priceBandLabel } from "@/lib/price-bands";
 import styles from "./PlaceBadges.module.css";
@@ -19,10 +19,17 @@ type Props = PlaceStatusFlags & {
   mobileOnly?: boolean;
 };
 
+function VisitedMark() {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/images/5argny-mark-48.png" srcSet="/images/5argny-mark-48.png 1x, /images/5argny-mark-96.png 2x" alt="" width={20} height={20} className={styles.mark} aria-hidden="true" />
+  );
+}
+
 const STATUS_DEFINITIONS = [
-  { id: "hasMenu", Icon: Utensils, nameKey: "place.menu", explanationKey: "place.menuHint" },
+  { id: "hasMenu", Icon: Tag, nameKey: "place.menu", explanationKey: "place.menuHint" },
   { id: "priceVerified", Icon: BadgeCheck, nameKey: "place.priceVerified", explanationKey: "place.priceVerifiedHint" },
-  { id: "visitedByUs", Icon: Footprints, nameKey: "place.visitedByUs", explanationKey: "place.visitedByUsHint" },
+  { id: "visitedByUs", Icon: VisitedMark, nameKey: "place.visitedByUs", explanationKey: "place.visitedByUsHint" },
 ] as const;
 
 export function getPlaceStatuses(flags: PlaceStatusFlags, t: (key: string) => string) {
@@ -99,16 +106,16 @@ export function PlaceBadgeLegend() {
   const headingId = React.useId();
   const statuses = getPlaceStatuses({ hasMenu: true, priceVerified: true, visitedByUs: true }, t);
   return (
-    <section data-place-badge-legend="true" aria-labelledby={headingId} dir={locale === "ar" ? "rtl" : "ltr"}>
-      <h2 id={headingId} className="pd-section-title">{t("place.badgesLegendTitle")}</h2>
+    <section className={styles.guide} data-place-badge-legend="true" aria-labelledby={headingId} dir={locale === "ar" ? "rtl" : "ltr"}>
+      <h2 id={headingId} className={styles.guideHeading}>{t("place.badgesLegendTitle")}</h2>
       <p className={styles.colorKey} data-place-badge-colors="true">
-        <span className={`${styles.badge} ${styles.available}`} data-badge-color="green">{t("place.badgeGreenMeaning")}</span>
-        <span className={`${styles.badge} ${styles.notYet}`} data-badge-color="grey">{t("place.badgeGreyMeaning")}</span>
+        <span><span className={`${styles.swatch} ${styles.greenDot}`} data-badge-color="green" aria-hidden="true" />{t("place.badgeGreenMeaning")}</span>
+        <span><span className={`${styles.swatch} ${styles.greyDot}`} data-badge-color="grey" aria-hidden="true" />{t("place.badgeGreyMeaning")}</span>
       </p>
       <ul className={styles.legendList}>
         {statuses.map((status) => (
           <li key={status.id}>
-            <StatusBadge status={status} />
+            <span className={styles.guideName}><status.Icon size={16} aria-hidden="true" /><span>{status.name}</span></span>
             <p className={styles.legendExplanation}>{status.explanation}</p>
           </li>
         ))}

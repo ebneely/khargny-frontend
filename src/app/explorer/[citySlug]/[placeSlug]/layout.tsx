@@ -15,6 +15,7 @@ import {
   urlFor,
 } from '@/lib/seo';
 import type { Locale } from '@/i18n/dictionaries';
+import { photoCandidates, photoSrcSet, PHOTO_SIZES, type Photo } from '@/lib/place-photo';
 
 // Server wrapper for the (client) place detail page. Its job is this place's search
 // presence: a title and description built from its own facts, and LocalBusiness structured
@@ -47,7 +48,7 @@ type Place = Partial<PlaceFlags> & {
   facebook?: string | null;
   priceRange?: PriceLevel | null;
   coverImage?: string | null;
-  images?: { url?: string; altText?: string | null }[];
+  images?: Photo[];
   placeHours?: Hour[];
   category?: { nameAr?: string; nameEn?: string | null };
   city?: { name?: string; nameEn?: string | null; slug?: string };
@@ -166,7 +167,7 @@ export async function generateMetadata({
         : `${name}${categoryName ? `, ${categoryName}` : ''} in ${where || cityName}. Address, opening hours, photos and directions on Khargny.`,
     );
 
-  const image = place.images?.[0]?.url || place.coverImage || '/images/logo-en.png';
+  const image = photoCandidates(place.images?.[0] ?? {}).at(-1)?.url || place.coverImage || '/images/logo-en.png';
 
   return {
     title,
@@ -202,6 +203,8 @@ export default async function PlaceDetailLayout({
   const isAr = locale === 'ar';
   const place = await fetchPlace(placeSlug);
   if (!place) return <>{children}</>;
+  const coverSrcSet = photoSrcSet(place.images?.[0] ?? {});
+  const coverUrl = photoCandidates(place.images?.[0] ?? {}).at(-1)?.url || place.coverImage;
 
   const name = pickName(place, locale);
   const [resolvedCity, categoryName] = await Promise.all([
@@ -254,7 +257,7 @@ export default async function PlaceDetailLayout({
       ? { priceRange: priceBandLabel(place.priceRange, locale) }
       : {}),
     ...(place.images?.length
-      ? { image: place.images.slice(0, 6).map((i) => i.url).filter(Boolean) }
+      ? { image: place.images.slice(0, 6).map((image) => photoCandidates(image).at(-1)?.url).filter(Boolean) }
       : place.coverImage
         ? { image: [place.coverImage] }
         : {}),
@@ -267,6 +270,7 @@ export default async function PlaceDetailLayout({
 
   return (
     <>
+      {coverSrcSet && <link rel="preload" as="image" imageSrcSet={coverSrcSet} imageSizes={PHOTO_SIZES.hero} fetchPriority="high" />}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -288,8 +292,8 @@ export default async function PlaceDetailLayout({
                 url,
                 name,
                 isPartOf: { '@id': `${SITE_URL}/#website` },
-                ...(place.images?.[0]?.url || place.coverImage
-                  ? { primaryImageOfPage: place.images?.[0]?.url ?? place.coverImage }
+                ...(coverUrl
+                  ? { primaryImageOfPage: coverUrl }
                   : {}),
               },
             ),

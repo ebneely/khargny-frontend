@@ -16,11 +16,12 @@ import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName } from "@/lib/display-name";
-import { Star, Bookmark } from "lucide-react";
+import { Star, Heart } from "lucide-react";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { PlaceBadges } from "@/components/ds/PlaceBadges";
+import { PhotoImage } from "@/components/ds/PhotoImage";
 
 type SavedPlaceWithPlace = {
   id: string;
@@ -182,7 +183,7 @@ export default function PlanPage() {
             padding: "4px 10px",
           }}
         >
-          <Bookmark size={12} fill="var(--brand-600)" color="var(--brand-600)" />
+          <Heart size={12} fill="var(--brand-600)" color="var(--brand-600)" aria-hidden="true" />
           {totalCount}
         </span>
       </div>
@@ -364,8 +365,8 @@ function PlanDayGroup({
 }
 
 /**
- * A saved place, as a full-width row: gradient thumbnail + name/address/rating,
- * with a remove (bookmark) button. The whole row is the click target (no dead
+ * A saved place, as a full-width row: photo thumbnail + name/address/rating,
+ * with a remove (heart) button. The whole row is the click target (no dead
  * clickable whitespace — the old fixed-width card left the rest of the grid cell
  * clickable, which silently navigated when you clicked empty space).
  */
@@ -410,24 +411,20 @@ function PlanItemCard({
         }}
         style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minInlineSize: 0 }}
       >
-      {/* The place's own photo. The backend has always attached coverImage here; this row
-          drew a gradient block regardless, so every saved place looked like a missing
-          image. The gradient stays as the fallback for a place with no photo yet. */}
       <div
         style={{
+          position: "relative",
           width: 72,
           height: 72,
           flexShrink: 0,
           borderRadius: "var(--radius-lg)",
           overflow: "hidden",
-          background: sp.place.coverImage
-            ? `center/cover no-repeat url(${sp.place.coverImage}), var(--gradient-sunset)`
-            : "var(--gradient-sunset)",
+          background: "var(--surface-sunken)",
         }}
-        role={sp.place.coverImage ? "img" : undefined}
-        aria-label={sp.place.coverImage ? placeName : undefined}
         aria-hidden={sp.place.coverImage ? undefined : true}
-      />
+      >
+        <PhotoImage photo={sp.place.coverImage} alt={sp.place.coverImage ? placeName : ""} frame="card" sizes="auto, 72px" />
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -479,6 +476,7 @@ function PlanItemCard({
       <button
         type="button"
         aria-label={`Remove ${placeName} from your plan`}
+        className="khg-heart-tap"
         disabled={removing}
         onClick={(e) => {
           e.stopPropagation();
@@ -497,7 +495,7 @@ function PlanItemCard({
           cursor: removing ? "default" : "pointer",
         }}
       >
-        <Bookmark size={16} fill="var(--brand-600)" color="var(--brand-600)" />
+        <Heart size={16} fill="var(--brand-600)" color="var(--brand-600)" aria-hidden="true" />
       </button>
     </div>
   );

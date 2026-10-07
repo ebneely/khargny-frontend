@@ -16,6 +16,8 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Star, Share, Navigation, Heart, Phone, Globe, MapPin, Eye } from "lucide-react";
 import { SiteHeader } from "@/components/ds/SiteHeader";
+import { PhotoImage } from "@/components/ds/PhotoImage";
+import type { Photo } from "@/lib/place-photo";
 import { MediaShowcase, type ShowcaseItem } from "@/components/explorer/MediaShowcase";
 import { HoursTable } from "@/components/explorer/HoursTable";
 import { SimilarPlaces } from "@/components/explorer/SimilarPlaces";
@@ -163,16 +165,11 @@ function PlaceDetailPage() {
 
   // "Cover" is one concept: the first image is the card thumbnail AND this hero.
   // The gallery shows only the rest, so the cover never appears twice.
-  const allImages = ((place as any).images ?? []) as {
-    url: string;
-    alt?: string;
-    urls?: { thumb?: string; small?: string; medium?: string; large?: string };
-  }[];
+  const allImages = (place.images ?? []) as Photo[];
   const cover = allImages[0];
-  const coverUrl = cover ? cover.urls?.large || cover.urls?.medium || cover.url : null;
   const galleryImages = allImages.slice(1).map((img) => ({
-    url: img.urls?.medium || img.urls?.small || img.url,
-    alt: img.alt,
+    photo: img,
+    alt: img.altText || img.alt,
   }));
 
   // Videos live in the payload but were never rendered — this is the fix. The showcase gets
@@ -183,7 +180,7 @@ function PlaceDetailPage() {
     durationSeconds?: number | null;
   }[];
   const showcaseItems: ShowcaseItem[] = [
-    ...galleryImages.map((img): ShowcaseItem => ({ type: "image", url: img.url, alt: img.alt })),
+    ...galleryImages.map((img): ShowcaseItem => ({ type: "image", photo: img.photo, alt: img.alt })),
     ...placeVideos.map((v): ShowcaseItem => ({
       type: "video",
       url: v.url,
@@ -245,7 +242,7 @@ function PlaceDetailPage() {
       type="button"
       onClick={onToggleSaved}
       disabled={isSavingPending}
-      className={variant === "icon" ? "pd-iconbtn" : `pd-btn pd-btn-${variant}`}
+      className={`khg-heart-tap ${variant === "icon" ? "pd-iconbtn" : `pd-btn pd-btn-${variant}`}`}
       data-saved={placeSaved || undefined}
       aria-label={saveLabel}
       aria-pressed={placeSaved}
@@ -413,16 +410,7 @@ function PlaceDetailPage() {
           {/* The page's primary image, as a real <img> with the place's name as alt. As a
               CSS background it could not be indexed by image search and announced nothing
               to a screen reader — on a place page, that is the main content. */}
-          {coverUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={coverUrl}
-              alt={title}
-              fetchPriority="high"
-              decoding="async"
-              className="pd-hero-img"
-            />
-          )}
+          <PhotoImage photo={cover} fallbackPhotos={allImages.slice(1)} alt={title} frame="hero" priority />
           <div className="pd-hero-controls">
             <button type="button" aria-label={t("explorer.back")} onClick={() => router.back()} className="pd-iconbtn">
               <ArrowLeft size={18} color="var(--gray-900)" />
@@ -437,7 +425,7 @@ function PlaceDetailPage() {
                 aria-pressed={placeSaved}
                 onClick={onToggleSaved}
                 disabled={isSavingPending}
-                className="pd-iconbtn"
+                className="pd-iconbtn khg-heart-tap"
               >
                 <Heart
                   size={18}
@@ -541,7 +529,6 @@ function PlaceDetailPage() {
             </section>
 
             {similar && similar.length > 0 && <SimilarPlaces places={similar} citySlug={citySlug} />}
-            <PlaceBadgeLegend />
           </div>
 
           {/* ── Action rail (desktop only; mobile uses the bar below) ── */}
@@ -569,6 +556,7 @@ function PlaceDetailPage() {
             </div>
           </aside>
         </div>
+        <PlaceBadgeLegend />
       </main>
 
       {/* Mobile action bar — hidden ≥1024 where the rail takes over */}

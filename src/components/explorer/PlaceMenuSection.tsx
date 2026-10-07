@@ -28,7 +28,7 @@ export function PlaceMenuSection({ slug, hasMenu }: { slug: string; hasMenu: boo
   const name = (nameAr: string | null, nameEn: string | null) => locale === "en" ? nameEn || nameAr : nameAr;
   return (
     <section aria-labelledby={headingId} dir={locale === "ar" ? "rtl" : "ltr"}>
-      <h2 id={headingId} className="pd-section-title">{t("place.menu")}</h2>
+      <h2 id={headingId} className="pd-section-title">{t("place.pricing")}</h2>
       <div className={styles.sections}>
         {menu.sections.map((section) => (
           <div key={section.id ?? "unsectioned"}>
