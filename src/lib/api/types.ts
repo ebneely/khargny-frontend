@@ -9,6 +9,9 @@
  * surface only. Admin/mutation shapes live in khargny-dashboard.
  */
 
+import type { PriceLevel } from '@/lib/price-bands';
+import type { PlaceFlags } from './normalize-place';
+
 // ── Response envelope (matches AllExceptionsFilter / ResponseInterceptor) ──────
 export interface ApiSuccess<T> {
   success: true;
@@ -90,7 +93,7 @@ export interface PlaceListByCity {
 // ── Places ───────────────────────────────────────────────────────────────────
 export type PlaceStatus = 'active' | 'draft';
 
-export interface Place {
+export interface Place extends PlaceFlags {
   id: string;
   cityId: string;
   categoryId: string;
@@ -110,7 +113,7 @@ export interface Place {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
-  priceRange: number | null;
+  priceRange: PriceLevel | null;
   rating: number;
   viewCount: number;
   saveCount?: number;
@@ -160,6 +163,37 @@ export interface PlaceDetail extends Place {
   placeHours?: PlaceHour[];
   amenities?: PlaceAmenity[];
   tags?: PlaceTag[];
+}
+
+export interface MenuImage {
+  url: string | null;
+  thumb: string | null;
+  small: string | null;
+  medium: string | null;
+}
+
+export interface MenuItem {
+  id: string;
+  nameAr: string;
+  nameEn: string | null;
+  price: string;
+  available: boolean;
+  image: MenuImage | null;
+}
+
+export interface MenuSection {
+  id: string | null;
+  nameAr: string | null;
+  nameEn: string | null;
+  items: MenuItem[];
+}
+
+export interface PlaceMenu {
+  placeId: string;
+  slug: string;
+  currency: 'EGP';
+  updatedAt: string;
+  sections: MenuSection[];
 }
 
 export interface PlaceList {

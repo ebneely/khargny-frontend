@@ -11,7 +11,10 @@
 // Place Types (Dashboard)
 // ============================================================================
 
-export interface Place {
+import type { PriceLevel } from '@/lib/price-bands';
+import type { PlaceFlags } from '@/lib/api/normalize-place';
+
+export interface Place extends Partial<PlaceFlags> {
   id: string;
   name: string;
   city: string;
@@ -22,6 +25,7 @@ export interface Place {
   description?: string | null;
   age?: string | null;
   price?: string | null;
+  priceRange?: PriceLevel | null;
   rating?: number | null;
   area?: string | null;
   photos?: Photo[];
@@ -66,7 +70,7 @@ export interface Outing {
   reviewCount?: number;
   user_ratings_total?: number;
   price: string;
-  price_level?: number;
+  price_level?: PriceLevel;
   area: string;
   location: string;
   category: string;

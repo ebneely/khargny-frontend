@@ -19,6 +19,8 @@ import { SiteHeader } from "@/components/ds/SiteHeader";
 import { MediaShowcase, type ShowcaseItem } from "@/components/explorer/MediaShowcase";
 import { HoursTable } from "@/components/explorer/HoursTable";
 import { SimilarPlaces } from "@/components/explorer/SimilarPlaces";
+import { PlaceMenuSection } from "@/components/explorer/PlaceMenuSection";
+import { PlaceBadges } from "@/components/ds/PlaceBadges";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { NotFoundState } from "@/components/explorer/NotFoundState";
@@ -39,8 +41,6 @@ const DAY_LABELS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_LABELS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5]; // Sat → Fri
 
-// Price as words, not "level 3". Readers understand cheap/expensive instantly.
-const PRICE_EN = ["Cheap", "Moderate", "Pricey", "Expensive"];
 function fmtCount(n?: number): string {
   const v = n ?? 0;
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}m`;
@@ -48,7 +48,6 @@ function fmtCount(n?: number): string {
   return String(v);
 }
 
-const PRICE_AR = ["رخيص", "متوسط", "مرتفع", "غالي"];
 
 /** "HH:mm" (24h) → "9:00 AM". Returns the raw string if it can't parse. */
 function formatTime(hhmm: string, locale: string): string {
@@ -161,8 +160,6 @@ function PlaceDetailPage() {
   const description = pick(place.description, (place as any).descriptionEn);
   const rating = Number(place.rating);
   const hasRating = rating > 0;
-  const priceIdx = place.priceRange ? Math.min(Math.max(place.priceRange, 1), 4) - 1 : null;
-  const priceLabel = priceIdx === null ? null : (locale === "ar" ? PRICE_AR : PRICE_EN)[priceIdx];
 
   // "Cover" is one concept: the first image is the card thumbnail AND this hero.
   // The gallery shows only the rest, so the cover never appears twice.
@@ -464,7 +461,7 @@ function PlaceDetailPage() {
                     <strong style={{ color: "var(--text-primary)" }}>{rating.toFixed(1)}</strong>
                   </span>
                 )}
-                {priceLabel && <span className="pd-pill pd-pill-price">{priceLabel}</span>}
+                <PlaceBadges priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} priceClassName="pd-pill pd-pill-price" />
               </div>
               {location && (
                 <p className="pd-addr">
@@ -522,6 +519,8 @@ function PlaceDetailPage() {
                 <p className="pd-prose">{description}</p>
               </section>
             )}
+
+            <PlaceMenuSection slug={placeSlug} hasMenu={place.hasMenu} />
 
             {showcaseItems.length > 0 && (
               <section>

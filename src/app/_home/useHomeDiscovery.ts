@@ -18,15 +18,18 @@ import { useHomeSections } from "@/lib/api/hooks/use-home";
 import { useSavePlace } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { regionLabel } from "@/lib/egypt-regions";
+import type { PriceLevel } from "@/lib/price-bands";
+import type { PlaceFlags } from "@/lib/api/normalize-place";
 
 export type Category = { key: string; label: string; icon: string };
-export type RailPlace = {
+export type RailPlace = PlaceFlags & {
   id: string;
   slug: string;
   citySlug: string;
   title: string;
   area: string;
   rating: string;
+  priceRange: PriceLevel | null;
   badge?: string;
   image?: string;
   metrics?: { saves?: number; directions?: number; views?: number };
@@ -85,13 +88,14 @@ export function useHomeDiscovery() {
   }, [categoryData, locale]);
 
   const rails = React.useMemo<Rail[]>(() => {
-    const toRail = (place: {
+    const toRail = (place: PlaceFlags & {
       id: string;
       slug: string;
       name: string;
       nameEn?: string | null;
       cityId: string;
       rating: number | string;
+      priceRange: PriceLevel | null;
       featured?: boolean;
       saveCount?: number;
       viewCount?: number;
@@ -106,6 +110,10 @@ export function useHomeDiscovery() {
       // Backend serializes numeric rating as a string; coerce before format.
       rating: Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : "—",
       badge,
+      priceRange: place.priceRange,
+      hasMenu: place.hasMenu,
+      priceVerified: place.priceVerified,
+      visitedByUs: place.visitedByUs,
       image: place.coverImage ?? undefined,
       metrics: {
         saves: place.saveCount,

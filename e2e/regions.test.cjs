@@ -236,6 +236,7 @@ function placesHook(apiRequest) {
   return loadModule('src/lib/api/hooks/use-places.ts', {
     '@tanstack/react-query': { useQuery: (options) => options },
     '@/lib/api/client': { apiRequest },
+    '@/lib/api/normalize-place': loadModule('src/lib/api/normalize-place.ts'),
   });
 }
 
@@ -319,6 +320,8 @@ test('rendered place cards omit the area element when its safe label is empty', 
     'react/jsx-runtime': require('react/jsx-runtime'),
     'lucide-react': icons(React),
     './IconButton': { IconButton: () => null },
+    './PlaceBadges': { PlaceBadges: () => null },
+    '@/lib/price-bands': loadModule('src/lib/price-bands.ts'),
     '@/lib/api/hooks/use-saved-places': { useSaveToggle: () => ({ saved: false, toggle: () => {}, isPending: false }) },
     '@/i18n/LocaleProvider': { useI18n: () => ({ locale: 'en', t: (key) => key }) },
   });

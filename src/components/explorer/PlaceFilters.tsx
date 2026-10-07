@@ -9,6 +9,7 @@ import * as React from "react";
 import { useAmenities, useTags } from "@/lib/api/hooks/use-taxonomy";
 import { useI18n } from "@/i18n/LocaleProvider";
 import type { ActiveFilters } from "./FilterPanel";
+import { PRICE_LEVELS, priceBandLabel } from "@/lib/price-bands";
 
 type Props = {
   value: ActiveFilters;
@@ -63,13 +64,13 @@ export function PlaceFilters({ value, onChange }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
       <Section title={t("explorer.filterPrice")}>
-        <div style={{ display: "flex", gap: 8 }}>
-          {[1, 2, 3, 4].map((n) => (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {PRICE_LEVELS.map((level) => (
             <Chip
-              key={n}
-              active={(value.priceRange ?? []).includes(String(n))}
-              label={"$".repeat(n)}
-              onClick={() => toggle("priceRange", String(n))}
+              key={level}
+              active={(value.priceRange ?? []).includes(`${level}` as const)}
+              label={priceBandLabel(level, locale)!}
+              onClick={() => toggle("priceRange", String(level))}
             />
           ))}
         </div>

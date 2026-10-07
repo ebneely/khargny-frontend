@@ -17,6 +17,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
+import { normalizePlaceFlags, type PlaceFlags } from "@/lib/api/normalize-place";
 
 /** Mirrors `Modules/saved-places/contract.ts` SavedPlaceWithPlace. */
 export interface SavedPlace {
@@ -29,7 +30,7 @@ export interface SavedPlace {
 }
 
 export interface SavedPlaceWithPlace extends SavedPlace {
-  place: {
+  place: Partial<PlaceFlags> & {
     id: string;
     name: string;
     nameEn: string | null;
@@ -53,7 +54,10 @@ export const savedPlacesKeys = {
 export function useSavedPlaces(enabled: boolean = true) {
   return useQuery({
     queryKey: savedPlacesKeys.all,
-    queryFn: () => apiRequest<SavedPlaceWithPlace[]>("GET", "/v1/saved-places"),
+    queryFn: async () => (await apiRequest<SavedPlaceWithPlace[]>("GET", "/v1/saved-places")).map((savedPlace) => ({
+      ...savedPlace,
+      place: normalizePlaceFlags(savedPlace.place),
+    })),
     enabled,
     staleTime: 30 * 1000,
   });

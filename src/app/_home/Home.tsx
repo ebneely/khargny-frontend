@@ -172,6 +172,10 @@ export function Home({ d }: { d: HomeDiscovery }) {
                       title={p.title}
                       area={p.area}
                       badge={p.badge}
+                      priceRange={p.priceVerified ? p.priceRange : undefined}
+                      hasMenu={p.hasMenu}
+                      priceVerified={p.priceVerified}
+                      visitedByUs={p.visitedByUs}
                       metrics={p.metrics}
                       favorite={false}
                       onToggleFavorite={() => d.onSavePlace(p.id)}

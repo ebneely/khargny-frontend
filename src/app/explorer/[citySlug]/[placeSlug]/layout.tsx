@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { regionLabel } from '@/lib/egypt-regions';
+import { priceBandLabel, type PriceLevel } from '@/lib/price-bands';
+import { normalizePlaceFlags, type PlaceFlags } from '@/lib/api/normalize-place';
 import { API_BASE_URL, SITE_URL } from '@/lib/config';
 import {
   alternatesFor,
@@ -27,7 +29,7 @@ type Hour = {
   isClosed?: boolean;
 };
 
-type Place = {
+type Place = Partial<PlaceFlags> & {
   cityId?: string;
   categoryId?: string;
   name?: string;
@@ -43,7 +45,7 @@ type Place = {
   mapsUrl?: string | null;
   instagram?: string | null;
   facebook?: string | null;
-  priceRange?: number | null;
+  priceRange?: PriceLevel | null;
   coverImage?: string | null;
   images?: { url?: string; altText?: string | null }[];
   placeHours?: Hour[];
@@ -92,7 +94,7 @@ async function fetchPlace(slug: string): Promise<Place | null> {
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return (json?.data ?? json) as Place;
+    return normalizePlaceFlags((json?.data ?? json) as Place);
   } catch {
     return null;
   }
@@ -248,9 +250,8 @@ export default async function PlaceDetailLayout({
     ...(hasGeo ? { geo: { '@type': 'GeoCoordinates', latitude: lat, longitude: lng } } : {}),
     ...(place.phone ? { telephone: place.phone } : {}),
     ...(social.length ? { sameAs: social } : {}),
-    // 1-4 becomes $ to $$$$, which is the notation Google renders.
-    ...(place.priceRange
-      ? { priceRange: '$'.repeat(Math.min(4, Math.max(1, place.priceRange))) }
+    ...(priceBandLabel(place.priceRange, locale)
+      ? { priceRange: priceBandLabel(place.priceRange, locale) }
       : {}),
     ...(place.images?.length
       ? { image: place.images.slice(0, 6).map((i) => i.url).filter(Boolean) }

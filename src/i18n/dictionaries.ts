@@ -118,6 +118,11 @@ const en = {
     directions: "Directions",
     go: "5argny",
     goDirections: "5argny: directions to {place}",
+    menu: "Menu",
+    priceVerified: "Price verified",
+    priceVerifiedHint: "5argny checked this against the menu",
+    visitedByUs: "Visited by 5argny",
+    unavailable: "Unavailable",
   },
   plan: {
     title: "My visit plan",
@@ -252,6 +257,11 @@ const ar: typeof en = {
     directions: "الطريق",
     go: "خرجني",
     goDirections: "خرجني: الطريق إلى {place}",
+    menu: "المنيو",
+    priceVerified: "السعر متحقق منه",
+    priceVerifiedHint: "خرجني راجعت السعر على المنيو",
+    visitedByUs: "زرناه",
+    unavailable: "غير متاح",
   },
   plan: {
     title: "خطة خروجتي",

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
+import { normalizePlaceFlags } from '@/lib/api/normalize-place';
 import type { Place, PlaceDetail, PlaceFilters, PlaceList } from '@/lib/api/types';
 
 export const placesKeys = {
@@ -16,7 +17,7 @@ export const placesKeys = {
  */
 export function normalizePlaceList(raw: unknown): PlaceList {
   if (Array.isArray(raw)) {
-    const items = raw as Place[];
+    const items = (raw as Place[]).map(normalizePlaceFlags);
     return { items, skip: 0, limit: items.length, total: items.length };
   }
   const r = (raw ?? {}) as {
@@ -27,7 +28,7 @@ export function normalizePlaceList(raw: unknown): PlaceList {
     total?: number;
     meta?: { skip?: number; limit?: number; total?: number };
   };
-  const items = r.items ?? r.data ?? [];
+  const items = (r.items ?? r.data ?? []).map(normalizePlaceFlags);
   return {
     items,
     skip: r.skip ?? r.meta?.skip ?? 0,
@@ -65,7 +66,7 @@ export function usePlaces(filters?: PlaceFilters, enabled: boolean = true) {
 export function usePlace(slug: string | null | undefined) {
   return useQuery({
     queryKey: placesKeys.detail(slug ?? ''),
-    queryFn: () => apiRequest<PlaceDetail>('GET', `/v1/places/${slug}`),
+    queryFn: async () => normalizePlaceFlags(await apiRequest<PlaceDetail>('GET', `/v1/places/${slug}`)),
     enabled: Boolean(slug),
     staleTime: 5 * 60 * 1000,
   });
@@ -75,7 +76,7 @@ export function usePlace(slug: string | null | undefined) {
 export function useSimilarPlaces(id: string | null | undefined) {
   return useQuery({
     queryKey: placesKeys.similar(id ?? ''),
-    queryFn: () => apiRequest<Place[]>('GET', `/v1/places/${id}/similar`),
+    queryFn: async () => (await apiRequest<Place[]>('GET', `/v1/places/${id}/similar`)).map(normalizePlaceFlags),
     enabled: Boolean(id),
     staleTime: 5 * 60 * 1000,
   });

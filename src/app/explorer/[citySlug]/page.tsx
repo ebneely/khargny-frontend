@@ -287,6 +287,9 @@ export default function CityExplorerPage() {
                   )}
                   image={place.coverImage || undefined}
                   priceRange={place.priceRange}
+                  hasMenu={place.hasMenu}
+                  priceVerified={place.priceVerified}
+                  visitedByUs={place.visitedByUs}
                   metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }}
                   onToggleFavorite={() => {}}
                 />

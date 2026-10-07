@@ -8,9 +8,10 @@ import * as React from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { Sheet } from "@/components/ds/Sheet";
 import { useI18n } from "@/i18n/LocaleProvider";
+import type { PriceLevel } from "@/lib/price-bands";
 
 export type ActiveFilters = {
-  priceRange?: string[];
+  priceRange?: `${PriceLevel}`[];
   featured?: boolean;
   amenityIds?: string[];
   tagIds?: string[];

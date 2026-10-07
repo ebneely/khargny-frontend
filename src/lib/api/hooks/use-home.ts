@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
+import { normalizePlaceFlags } from "@/lib/api/normalize-place";
 import type { Place } from "@/lib/api/types";
 
 // GET /v1/home — admin-curated homepage sections (enabled, in order, each with its places).
@@ -22,7 +23,8 @@ export function useHomeSections() {
         "GET",
         "/v1/home",
       );
-      return Array.isArray(raw) ? raw : raw?.data ?? [];
+      const sections = Array.isArray(raw) ? raw : raw?.data ?? [];
+      return sections.map((section) => ({ ...section, places: (section.places ?? []).map(normalizePlaceFlags) }));
     },
     staleTime: 5 * 60 * 1000,
   });

@@ -60,6 +60,10 @@ export function SimilarPlaces({ places, citySlug }: SimilarPlacesProps) {
               p.address,
             ].filter(Boolean).join(" · ")}
             rating={p.rating > 0 ? p.rating.toString() : undefined}
+            priceRange={p.priceVerified ? p.priceRange : undefined}
+            hasMenu={p.hasMenu}
+            priceVerified={p.priceVerified}
+            visitedByUs={p.visitedByUs}
             onTitleClick={() => {
               window.location.href = `/explorer/${citySlug}/${p.slug}`;
             }}

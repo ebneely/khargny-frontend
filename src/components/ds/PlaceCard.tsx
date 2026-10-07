@@ -17,6 +17,8 @@ import { Heart, Navigation, Eye, Star } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { PlaceBadges } from "./PlaceBadges";
+import { priceBandLabel } from "@/lib/price-bands";
 
 // Bookmark (save-to-plan) icon — clearer intent than a heart for "add to my plan".
 const SaveIcon = ({ filled }: { filled: boolean }) => (
@@ -53,8 +55,10 @@ type PlaceCardProps = {
   title: string;
   area: string;
   rating?: string;
-  /** Price tier 1-4 — rendered as a word (Cheap … Expensive), never "level 3". */
   priceRange?: number | null;
+  hasMenu?: boolean;
+  priceVerified?: boolean;
+  visitedByUs?: boolean;
   badge?: string;
   /** Optional — if provided, the heart icon wires to the saved-places backend. */
   placeId?: string;
@@ -83,17 +87,15 @@ function formatCount(n: number | undefined): string {
  * data, no real `placeId`), the heart is a visual no-op and `onToggleFavorite`
  * is the caller-supplied callback (homepage uses this to fire a Toast).
  */
-// Price tiers read as words, in the reader's language — so an Arabic card shows مرتفع, not
-// "Pricey". Kept in step with the app's price.* strings and the place-detail PRICE_AR/EN.
-const PRICE_WORDS_EN = ["Cheap", "Moderate", "Pricey", "Expensive"];
-const PRICE_WORDS_AR = ["رخيص", "متوسط", "مرتفع", "غالي"];
-
 export function PlaceCard({
   image,
   title,
   area,
   rating,
   priceRange,
+  hasMenu = false,
+  priceVerified = false,
+  visitedByUs = false,
   badge,
   placeId,
   favorite = false,
@@ -117,10 +119,7 @@ export function PlaceCard({
   // could not shrink below it and the results grid overflowed the page on any viewport
   // narrower than columns x 200 + gaps. Containers own width: .khg-home-rail sizes its
   // children explicitly, and .khg-place-grid uses minmax(min(100%, 200px), 1fr).
-  const priceWord =
-    typeof priceRange === "number" && priceRange >= 1 && priceRange <= 4
-      ? (locale === "ar" ? PRICE_WORDS_AR : PRICE_WORDS_EN)[priceRange - 1]
-      : null;
+  const priceLabel = priceBandLabel(priceRange, locale);
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -231,10 +230,11 @@ export function PlaceCard({
         </span>
 
         {/* Meta: rating + price, the two things that drive the choice. */}
-        {(rating || priceWord) && (
+        {(rating || priceLabel || hasMenu || priceVerified || visitedByUs) && (
           <span
             style={{
               display: "flex",
+              flexWrap: "wrap",
               alignItems: "center",
               gap: 8,
               fontSize: "var(--text-sm)",
@@ -247,8 +247,8 @@ export function PlaceCard({
                 <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{rating}</span>
               </span>
             )}
-            {rating && priceWord && <span aria-hidden style={{ color: "var(--gray-300)" }}>·</span>}
-            {priceWord && <span>{priceWord}</span>}
+            {rating && priceLabel && <span aria-hidden style={{ color: "var(--gray-300)" }}>·</span>}
+            <PlaceBadges priceRange={priceRange} hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} />
           </span>
         )}
 

@@ -1,6 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs";
 // Force reload
 import type { NextConfig } from "next";
+import { IMAGE_HOSTS, LEGACY_IMAGE_HOST_PATTERNS } from "./src/lib/image-hosts";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -56,32 +57,10 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   images: {
-    remotePatterns: [
-      // Our own media: stored objects and imgproxy renditions. Without these, next/image
-      // answers 400 for every place photo (seen live on 2026-09-30).
-      { protocol: "https", hostname: "storage.5argny.com" },
-      { protocol: "https", hostname: "img.5argny.com" },
-      {
-        protocol: "https",
-        hostname: "img.heroui.chat",
-      },
-      {
-        protocol: "https",
-        hostname: "**.googleapis.com",
-      },
-      {
-        protocol: "https",
-        hostname: "**.googleusercontent.com",
-      },
-      {
-        protocol: "https",
-        hostname: "maps.googleapis.com",
-      },
-      {
-        protocol: "https",
-        hostname: "**.gstatic.com",
-      },
-    ],
+    remotePatterns: [...IMAGE_HOSTS, ...LEGACY_IMAGE_HOST_PATTERNS].map((hostname) => ({
+      protocol: "https" as const,
+      hostname,
+    })),
   },
 };
 
