@@ -30,18 +30,28 @@ const queue: Queued[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 let listening = false;
 
-function send(events: Queued[], keepalive: boolean): void {
+export function isTrackingAllowed(): boolean {
+  return typeof window !== "undefined" && navigator.doNotTrack !== "1" &&
+    !(navigator as { globalPrivacyControl?: boolean }).globalPrivacyControl;
+}
+
+export function sendTrackingBatch(path: string, body: unknown, keepalive: boolean): Promise<boolean> {
   try {
-    void fetch(`${API_BASE_URL}/v1/analytics/events`, {
+    return fetch(`${API_BASE_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       keepalive,
-      body: JSON.stringify({ platform: "web", events }),
-    }).catch(() => undefined);
+      body: JSON.stringify(body),
+    }).then((response) => response.ok).catch(() => false);
   } catch {
     // Never let analytics throw into the page.
+    return Promise.resolve(false);
   }
+}
+
+function send(events: Queued[], keepalive: boolean): void {
+  sendTrackingBatch("/v1/analytics/events", { platform: "web", events }, keepalive);
 }
 
 export function flushAnalytics(keepalive = false): void {

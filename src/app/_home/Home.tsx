@@ -21,6 +21,7 @@ import { SiteFooter } from "@/components/ds/SiteFooter";
 import { CityGrid } from "@/components/explorer/CityGrid";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { HomeAds } from "./HomeAds";
 
 const MAXW = 1120;
 
@@ -142,7 +143,10 @@ function RegionGrid({ d }: { d: HomeDiscovery }) {
 
 export function Home({ d }: { d: HomeDiscovery }) {
   const { t } = useI18n();
-  const hasPlaces = d.rails.length > 0;
+  const hasPlaces = d.rails.length > 0 || Boolean(d.featured || d.topPlaces);
+  const [emptyPublished, setEmptyPublished] = React.useState(false);
+  if (!hasPlaces && !emptyPublished) setEmptyPublished(true);
+  const showEmpty = d.rails.length === 0 && (!hasPlaces || emptyPublished);
   return (
     <div
       style={{ minHeight: "100dvh", background: "var(--surface-app)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}
@@ -158,7 +162,9 @@ export function Home({ d }: { d: HomeDiscovery }) {
         {/* Regions — always present at every width, so home is never an empty page */}
         <RegionGrid d={d} />
 
-        {hasPlaces ? (
+        <HomeAds d={d} />
+
+        {!showEmpty ? (
           d.rails.map((rail) => (
             <section key={rail.title} className="khg-anim-in-2" style={{ margin: "clamp(24px, 5vw, 36px) 0" }}>
               <h2 className="khg-section-title">{rail.title}</h2>

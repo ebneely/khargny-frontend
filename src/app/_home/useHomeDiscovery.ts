@@ -15,11 +15,13 @@ import { useRouter } from "next/navigation";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useHomeSections } from "@/lib/api/hooks/use-home";
+import { useFeaturedPlaces, useTopPlaces } from "@/lib/api/hooks/use-home-ads";
 import { useSavePlace } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { regionLabel } from "@/lib/egypt-regions";
 import type { PriceLevel } from "@/lib/price-bands";
 import type { PlaceFlags } from "@/lib/api/normalize-place";
+import type { TopPlaces } from "@/lib/ads/placements";
 
 export type Category = { key: string; label: string; icon: string };
 export type RailPlace = PlaceFlags & {
@@ -55,10 +57,17 @@ export function useHomeDiscovery() {
   const [cat, setCat] = React.useState<string>("");
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [toast, setToast] = React.useState<ToastState>(null);
+  const [topCity, setTopCity] = React.useState<string | undefined>();
 
   const { data: categoryData } = useCategories();
   const { data: cityData } = useCities();
   const { data: homeSections } = useHomeSections();
+  const featuredQuery = useFeaturedPlaces();
+  const topPlacesQuery = useTopPlaces(topCity);
+  const allEgyptQuery = useTopPlaces();
+  const [lastGoodTop, setLastGoodTop] = React.useState<TopPlaces | null>(null);
+  const [editorialFeaturedPublished, setEditorialFeaturedPublished] = React.useState(false);
+  if (topPlacesQuery.data && !topPlacesQuery.isPlaceholderData && topPlacesQuery.data !== lastGoodTop) setLastGoodTop(topPlacesQuery.data);
   const savePlace = useSavePlace();
 
   const cityNameById = React.useMemo(() => {
@@ -75,6 +84,24 @@ export function useHomeDiscovery() {
     for (const c of cityData ?? []) m.set(c.id, c.slug);
     return m;
   }, [cityData]);
+
+  const featured = React.useMemo(() => {
+    const data = featuredQuery.data;
+    if (!data) return null;
+    const cities = new Set((cityData ?? []).filter((city) => city.status !== "draft" && city.slug).map((city) => city.id));
+    const items = data.items.filter((item) => cities.has(item.place.cityId));
+    return items.length ? { ...data, items } : null;
+  }, [featuredQuery.data, cityData]);
+
+  if (!editorialFeaturedPublished && !featured && homeSections?.some((section) => section.kind === "featured" && section.places.length > 0)) setEditorialFeaturedPublished(true);
+
+  const topPlaces = React.useMemo(() => {
+    const data = topPlacesQuery.data || allEgyptQuery.data || lastGoodTop;
+    if (!data) return null;
+    const cities = new Set((cityData ?? []).filter((city) => city.status !== "draft" && city.slug).map((city) => city.id));
+    const items = data.items.filter((item) => cities.has(item.place.cityId));
+    return items.length ? { ...data, items } : null;
+  }, [topPlacesQuery.data, allEgyptQuery.data, lastGoodTop, cityData]);
 
   const categories = React.useMemo<Category[]>(() => {
     return (categoryData ?? [])
@@ -129,12 +156,12 @@ export function useHomeDiscovery() {
     // reorder nor remove it. With no sections configured, the home still shows its hero,
     // categories and region grid. The Expo app renders the same endpoint the same way.
     return (homeSections ?? [])
-      .filter((s) => (s.places?.length ?? 0) > 0)
+      .filter((s) => (s.places?.length ?? 0) > 0 && (!featured || editorialFeaturedPublished || s.kind !== "featured"))
       .map((s) => ({
         title: (locale === "ar" ? s.titleAr : s.titleEn || s.titleAr) || s.key,
         places: s.places.map((p) => toRail(p, s.kind === "featured" ? t("home.popular") : undefined)),
       }));
-  }, [homeSections, cityNameById, citySlugById, locale, t]);
+  }, [homeSections, cityNameById, citySlugById, featured, editorialFeaturedPublished, locale, t]);
 
   // Open a place from a home rail card → its detail page (needs the city slug).
   const onOpenPlace = React.useCallback(
@@ -194,6 +221,12 @@ export function useHomeDiscovery() {
     regionCities,
     categories,
     rails,
+    featured,
+    topPlaces,
+    topPlacesLoading: topPlacesQuery.isFetching && topPlacesQuery.fetchStatus !== "paused",
+    topPlacesCity: topPlaces?.city,
+    topCity,
+    setTopCity,
     cat,
     setCat,
     filtersOpen,
