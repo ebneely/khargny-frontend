@@ -20,7 +20,7 @@ import { MediaShowcase, type ShowcaseItem } from "@/components/explorer/MediaSho
 import { HoursTable } from "@/components/explorer/HoursTable";
 import { SimilarPlaces } from "@/components/explorer/SimilarPlaces";
 import { PlaceMenuSection } from "@/components/explorer/PlaceMenuSection";
-import { PlaceBadges } from "@/components/ds/PlaceBadges";
+import { PlaceBadges, PlaceStatuses, PlaceBadgeLegend } from "@/components/ds/PlaceBadges";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { NotFoundState } from "@/components/explorer/NotFoundState";
@@ -461,7 +461,7 @@ function PlaceDetailPage() {
                     <strong style={{ color: "var(--text-primary)" }}>{rating.toFixed(1)}</strong>
                   </span>
                 )}
-                <PlaceBadges priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} priceClassName="pd-pill pd-pill-price" />
+                <PlaceBadges priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} priceClassName="pd-pill pd-pill-price" mobileOnly />
               </div>
               {location && (
                 <p className="pd-addr">
@@ -541,6 +541,7 @@ function PlaceDetailPage() {
             </section>
 
             {similar && similar.length > 0 && <SimilarPlaces places={similar} citySlug={citySlug} />}
+            <PlaceBadgeLegend />
           </div>
 
           {/* ── Action rail (desktop only; mobile uses the bar below) ── */}
@@ -564,6 +565,7 @@ function PlaceDetailPage() {
                   )}
                 </div>
               )}
+              <PlaceStatuses hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} />
             </div>
           </aside>
         </div>

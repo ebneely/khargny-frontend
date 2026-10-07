@@ -271,11 +271,11 @@ export default function CityExplorerPage() {
             {displayedPlaces.map((place) => (
               <div
                 key={place.id}
-                onClick={() => router.push(`/explorer/${citySlug}/${place.slug}`)}
                 style={{ cursor: "pointer" }}
               >
                 {/* No `rating` prop: no review system yet — places.rating is always 0. */}
                 <PlaceCard
+                  href={`/explorer/${citySlug}/${place.slug}`}
                   size="md"
                   placeId={place.id}
                   title={locale === "ar" ? place.name : place.nameEn || place.name}

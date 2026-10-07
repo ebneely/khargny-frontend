@@ -3,7 +3,8 @@
   align-items: center;
   gap: 4px;
   max-inline-size: 100%;
-  padding: 3px 6px;
+  padding-block: 3px;
+  padding-inline: 6px;
   border-radius: var(--radius-full);
   background: var(--surface-sunken);
   color: var(--text-secondary);
@@ -27,32 +28,95 @@
   max-inline-size: 100%;
 }
 
-.verified {
-  min-block-size: 44px;
-  border: 0;
-  cursor: pointer;
+.statuses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
-.verified:hover {
-  background: var(--brand-50);
-  color: var(--brand-700);
+.available {
+  background: var(--success-bg);
+  color: var(--success);
 }
 
-.verified:focus-visible {
-  outline: 2px solid var(--brand-600);
-  outline-offset: 2px;
+.notYet {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
 }
 
-.explanation {
-  z-index: 60;
-  max-inline-size: calc(100vw - 24px);
-  padding: 8px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--white);
+.compact {
+  flex-wrap: nowrap;
+}
+
+.compactBadge {
+  justify-content: center;
+  flex: 0 0 auto;
+  padding-block: 5px;
+  padding-inline: 5px;
+}
+
+.statusBlock {
+  margin-block-start: 20px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--border-default);
+}
+
+.statusHeading {
+  margin-block: 0 10px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
+}
+
+.statusList,
+.legendList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.statusRow {
+  display: flex;
+  border-radius: var(--radius-md);
+  padding-block: 8px;
+  padding-inline: 10px;
+  gap: 8px;
+}
+
+.state {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+.legendList {
+  gap: 16px;
+}
+
+.legendExplanation {
+  margin-block: 6px 0;
+  color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  box-shadow: var(--shadow-sm);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.colorKey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-block: 0 16px;
+  margin-inline: 0;
+}
+
+@media (min-width: 1024px) {
+  .mobileStatuses {
+    display: none;
+  }
 }

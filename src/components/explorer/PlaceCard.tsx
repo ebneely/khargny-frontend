@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { PlaceBadges } from '@/components/ds/PlaceBadges';
 
 interface PlaceCardProps {
   image?: string | null;
@@ -19,6 +20,9 @@ interface PlaceCardProps {
   favorite?: boolean;
   onToggleFavorite?: (saved: boolean) => void;
   size?: 'sm' | 'md';
+  hasMenu?: boolean;
+  priceVerified?: boolean;
+  visitedByUs?: boolean;
 }
 
 export function PlaceCard({
@@ -32,12 +36,16 @@ export function PlaceCard({
   favorite = false,
   onToggleFavorite,
   size = 'md',
+  hasMenu,
+  priceVerified,
+  visitedByUs,
 }: PlaceCardProps) {
   const [imgError, setImgError] = useState(false);
   const width = size === 'sm' ? 'w-[260px]' : 'w-[300px]';
 
   return (
-    <Link href={`/explorer/${citySlug}/${placeSlug}`} className={`${width} shrink-0 group`}>
+    <div className={`${width} shrink-0 group relative`}>
+    <Link href={`/explorer/${citySlug}/${placeSlug}`} className="khg-place-card-link block">
       <Card className="overflow-hidden border-0 shadow-none group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-250 ease-[cubic-bezier(0.2,0,0,1)] bg-card">
         <div className="relative aspect-square overflow-hidden">
           {image && !imgError ? (
@@ -53,22 +61,8 @@ export function PlaceCard({
               <ImageOff className="w-8 h-8 text-white/60" />
             </div>
           )}
-          {onToggleFavorite && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full w-8 h-8"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggleFavorite(!favorite);
-              }}
-            >
-              <Heart className={`w-4 h-4 ${favorite ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
-            </Button>
-          )}
           {badgeText && (
-            <Badge variant="secondary" className="absolute top-2 left-2 bg-gray-100/90 text-gray-700 text-xs">
+            <Badge variant="secondary" className="absolute top-2 start-2 bg-gray-100/90 text-gray-700 text-xs">
               {badgeText}
             </Badge>
           )}
@@ -82,8 +76,26 @@ export function PlaceCard({
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-0.5">{area}</p>
+          <div className="mt-1">
+            <PlaceBadges hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} variant="compact" />
+          </div>
         </div>
       </Card>
     </Link>
+    {onToggleFavorite && (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 end-2 bg-white/80 hover:bg-white rounded-full w-8 h-8"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onToggleFavorite(!favorite);
+        }}
+      >
+        <Heart className={`w-4 h-4 ${favorite ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+      </Button>
+    )}
+    </div>
   );
 }

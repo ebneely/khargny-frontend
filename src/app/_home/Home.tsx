@@ -163,10 +163,11 @@ export function Home({ d }: { d: HomeDiscovery }) {
               <h2 className="khg-section-title">{rail.title}</h2>
               <div className="khg-home-rail no-scrollbar">
                 {rail.places.map((p) => (
-                  <div key={p.id} onClick={() => d.onOpenPlace(p)} style={{ cursor: "pointer", width: "100%" }}>
+                  <div key={p.id} style={{ cursor: "pointer", width: "100%" }}>
                     {/* No `rating` prop: there is no review system yet, so places.rating is
                         always 0 and rendering it published a score nobody gave. */}
                     <PlaceCard
+                      href={p.citySlug && p.slug ? `/explorer/${p.citySlug}/${p.slug}` : undefined}
                       size="md"
                       image={p.image}
                       title={p.title}

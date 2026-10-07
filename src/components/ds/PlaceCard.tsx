@@ -13,6 +13,7 @@
  * For the homepage this pass, the callback is a no-op (heart is a visual only).
  */
 import * as React from "react";
+import Link from "next/link";
 import { Heart, Navigation, Eye, Star } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
@@ -68,9 +69,19 @@ type PlaceCardProps = {
   onToggleFavorite?: (saved: boolean) => void;
   size?: "sm" | "md";
   onTitleClick?: () => void;
+  href?: string;
   /** Public engagement counts, shown as a small stat row: saves · directions · views. */
   metrics?: { saves?: number; directions?: number; views?: number };
 };
+
+function PlaceCardLink({ href, onTitleClick, children }: Pick<PlaceCardProps, "href" | "onTitleClick"> & { children: React.ReactNode }) {
+  if (!href) return <>{children}</>;
+  return (
+    <Link href={href} prefetch={false} onClick={onTitleClick} className="khg-place-card-link" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+      {children}
+    </Link>
+  );
+}
 
 /** 1234 → "1.2k", 1000000 → "1m". Keeps the stat row compact. */
 function formatCount(n: number | undefined): string {
@@ -102,6 +113,7 @@ export function PlaceCard({
   onToggleFavorite,
   size = "md",
   onTitleClick,
+  href,
   metrics,
 }: PlaceCardProps) {
   const { locale } = useI18n();
@@ -127,11 +139,13 @@ export function PlaceCard({
       style={{
         width: "100%",
         minWidth: 0,
+        position: "relative",
         fontFamily: "var(--font-body)",
         cursor: "pointer",
         transition: "var(--motion-shadow)",
       }}
     >
+      <PlaceCardLink href={href} onTitleClick={onTitleClick}>
       <div
         style={{
           position: "relative",
@@ -169,9 +183,9 @@ export function PlaceCard({
         <div
           style={{
             position: "absolute",
-            top: 8,
-            left: 8,
-            right: 8,
+            insetBlockStart: 8,
+            insetInlineStart: 8,
+            insetInlineEnd: 8,
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "space-between",
@@ -181,36 +195,9 @@ export function PlaceCard({
           <div style={{ minWidth: 0, flex: badge ? "0 1 auto" : "0 0 0" }}>
             {badge && <Badge>{badge}</Badge>}
           </div>
-          {onToggleFavorite && (
-            <div style={{ flexShrink: 0 }}>
-              <IconButton
-                ariaLabel={
-                  saved
-                    ? `Remove ${title} from your plan`
-                    : `Add ${title} to your plan`
-                }
-                selected={saved}
-                icon={
-                  <span key={bump} className={bump > 0 ? "khg-pop-anim" : undefined} style={{ display: "inline-flex" }}>
-                    <SaveIcon filled={saved} />
-                  </span>
-                }
-                onClick={() => {
-                  setBump((b) => b + 1);
-                  if (useBackend) {
-                    backend.toggle();
-                  } else {
-                    setLocalSaved(!saved);
-                    onToggleFavorite(!saved);
-                  }
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
       <div
-        onClick={onTitleClick}
         style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}
       >
         {/* Name owns the line — it's the thing being scanned. */}
@@ -230,7 +217,7 @@ export function PlaceCard({
         </span>
 
         {/* Meta: rating + price, the two things that drive the choice. */}
-        {(rating || priceLabel || hasMenu || priceVerified || visitedByUs) && (
+        {(rating || priceLabel) && (
           <span
             style={{
               display: "flex",
@@ -248,9 +235,11 @@ export function PlaceCard({
               </span>
             )}
             {rating && priceLabel && <span aria-hidden style={{ color: "var(--gray-300)" }}>·</span>}
-            <PlaceBadges priceRange={priceRange} hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} />
+            <PlaceBadges priceRange={priceRange} variant="price" />
           </span>
         )}
+
+        <PlaceBadges hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} variant="compact" />
 
         {/* Area is context, not the headline — one line, never a 3-line address dump. */}
         {area && (
@@ -298,6 +287,29 @@ export function PlaceCard({
           </span>
         )}
       </div>
+      </PlaceCardLink>
+      {onToggleFavorite && (
+        <div style={{ position: "absolute", insetBlockStart: 8, insetInlineEnd: 8, zIndex: 1 }}>
+          <IconButton
+            ariaLabel={saved ? `Remove ${title} from your plan` : `Add ${title} to your plan`}
+            selected={saved}
+            icon={
+              <span key={bump} className={bump > 0 ? "khg-pop-anim" : undefined} style={{ display: "inline-flex" }}>
+                <SaveIcon filled={saved} />
+              </span>
+            }
+            onClick={() => {
+              setBump((b) => b + 1);
+              if (useBackend) {
+                backend.toggle();
+              } else {
+                setLocalSaved(!saved);
+                onToggleFavorite(!saved);
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

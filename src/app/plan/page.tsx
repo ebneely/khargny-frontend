@@ -20,6 +20,7 @@ import { Star, Bookmark } from "lucide-react";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { SiteHeader } from "@/components/ds/SiteHeader";
+import { PlaceBadges } from "@/components/ds/PlaceBadges";
 
 type SavedPlaceWithPlace = {
   id: string;
@@ -37,6 +38,9 @@ type SavedPlaceWithPlace = {
     cityId: string;
     /** attachCovers() has always sent this; the row just never read it. */
     coverImage?: string | null;
+    hasMenu?: boolean;
+    priceVerified?: boolean;
+    visitedByUs?: boolean;
   };
 };
 
@@ -380,15 +384,6 @@ function PlanItemCard({
   const placeName = displayName(sp.place, locale) || sp.place.name;
   return (
     <div
-      onClick={onOpen}
-      role="link"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
       style={{
         display: "flex",
         alignItems: "center",
@@ -402,6 +397,19 @@ function PlanItemCard({
         boxShadow: "var(--shadow-sm)",
       }}
     >
+      <div
+        className="khg-place-card-link"
+        onClick={onOpen}
+        role="link"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpen();
+          }
+        }}
+        style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minInlineSize: 0 }}
+      >
       {/* The place's own photo. The backend has always attached coverImage here; this row
           drew a gradient block regardless, so every saved place looked like a missing
           image. The gradient stays as the fallback for a place with no photo yet. */}
@@ -463,6 +471,10 @@ function PlanItemCard({
             {sp.place.rating.toFixed(1)}
           </div>
         )}
+        <div style={{ marginBlockStart: 4 }}>
+          <PlaceBadges hasMenu={sp.place.hasMenu} priceVerified={sp.place.priceVerified} visitedByUs={sp.place.visitedByUs} variant="compact" />
+        </div>
+      </div>
       </div>
       <button
         type="button"
