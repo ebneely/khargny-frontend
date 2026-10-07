@@ -24,6 +24,7 @@ export class ApiError extends Error {
 
 interface ApiRequestOptions {
   body?: unknown;
+  headers?: Record<string, string>;
   params?: Record<string, string | number | boolean | string[] | undefined | null>;
   signal?: AbortSignal;
 }
@@ -58,7 +59,7 @@ export async function apiRequest<TData>(
   const res = await fetch(buildUrl(path, params), {
     method,
     credentials: 'include',
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    headers: { ...opts.headers, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
   });

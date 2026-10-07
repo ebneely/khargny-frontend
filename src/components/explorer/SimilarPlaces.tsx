@@ -64,7 +64,7 @@ export function SimilarPlaces({ places, citySlug }: SimilarPlacesProps) {
             hasMenu={p.hasMenu}
             priceVerified={p.priceVerified}
             visitedByUs={p.visitedByUs}
-            href={`/explorer/${citySlug}/${p.slug}`}
+            href={`/explorer/${cities?.find((city) => city.id === p.cityId)?.slug || citySlug}/${p.slug}`}
             onToggleFavorite={() => {
               // no-op — `placeId` above wires the heart to the saved-places backend
               // (TASK-0009) automatically. The callback is unused in this path.

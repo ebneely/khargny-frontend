@@ -200,7 +200,11 @@ test('city listing retains the two-argument single-value query; area discovery n
     ['skip', 'page * PAGE_SIZE'],
     ['limit', 'PAGE_SIZE'],
   ]);
-  assert.equal(enabled.getText(actual.parsed), 'Boolean(currentCity?.id)');
+  assert.equal(enabled.getText(actual.parsed), 'Boolean(currentCity?.id) && !searching');
+  const browseEnabled = new Function('currentCity', 'searching', `return ${enabled.getText(actual.parsed)}`);
+  assert.equal(browseEnabled({ id: 'aswan' }, false), true);
+  assert.equal(browseEnabled({ id: 'aswan' }, true), false);
+  assert.equal(browseEnabled(undefined, false), false);
   assert.equal(callsIn(source, 'useCityPlaces').calls.length, 0);
   assert.ok(!source.includes('cityPlaces'));
 });

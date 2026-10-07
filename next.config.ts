@@ -52,6 +52,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // SSR mode enabled (no static export)
   trailingSlash: true,
+  htmlLimitedBots: /.*/,
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

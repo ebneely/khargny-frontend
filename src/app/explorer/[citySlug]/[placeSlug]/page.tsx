@@ -36,6 +36,7 @@ import { API_BASE_URL } from "@/lib/config";
 import { trackPlaceAction, trackPlaceView } from "@/lib/analytics/track";
 import type { PlaceHour } from "@/lib/api/types";
 import type { HoursRow } from "@/components/explorer/HoursTable";
+import { placeRedirect } from '@/lib/place-address';
 
 // Day labels indexed by dayOfWeek (0=Sunday … 6=Saturday — backend convention,
 // Modules/place-hours PlaceHourItemDto). Displayed Saturday-first (Egypt week).
@@ -99,6 +100,12 @@ function PlaceDetailPage() {
   const { data: cities } = useCities();
 
   const currentCity = cities?.find((c) => c.slug === citySlug);
+  const canonicalCity = cities?.find((city) => city.id === place?.cityId);
+  React.useEffect(() => {
+    if (!place) return;
+    const target = placeRedirect({ citySlug, placeSlug, locale, search: window.location.search }, { slug: place.slug, citySlug: canonicalCity?.slug, redirectedFrom: place.redirectedFrom });
+    if (target) router.replace(`${target}${window.location.hash}`, { scroll: false });
+  }, [place, citySlug, placeSlug, locale, canonicalCity?.slug, router]);
 
   // Heart is wired to the saved-places backend. No login — guest cookie auth
   // (khargny_guest_id); POST /v1/saved-places is idempotent, so re-tapping is safe.
@@ -226,7 +233,7 @@ function PlaceDetailPage() {
   };
 
   const onShare = async () => {
-    const url = `${window.location.origin}/explorer/${citySlug}/${placeSlug}`;
+    const url = `${window.location.origin}/${locale}/explorer/${placeCity?.slug || citySlug}/${place.slug}/`;
     trackPlaceAction("share", place?.id);
     try {
       if (navigator.share) await navigator.share({ title, text: title, url });
@@ -508,7 +515,7 @@ function PlaceDetailPage() {
               </section>
             )}
 
-            <PlaceMenuSection slug={placeSlug} hasMenu={place.hasMenu} />
+            <PlaceMenuSection slug={place.slug} hasMenu={place.hasMenu} />
 
             {showcaseItems.length > 0 && (
               <section>
@@ -528,7 +535,7 @@ function PlaceDetailPage() {
               )}
             </section>
 
-            {similar && similar.length > 0 && <SimilarPlaces places={similar} citySlug={citySlug} />}
+            {similar && similar.length > 0 && <SimilarPlaces places={similar} citySlug={placeCity?.slug || citySlug} />}
           </div>
 
           {/* ── Action rail (desktop only; mobile uses the bar below) ── */}

@@ -7,6 +7,7 @@
  */
 import * as React from "react";
 import { Search, X } from "lucide-react";
+import { useI18n } from '@/i18n/LocaleProvider';
 
 type SearchBarProps = {
   value: string;
@@ -15,6 +16,8 @@ type SearchBarProps = {
 };
 
 export function SearchBar({ value, onChange, placeholder = "Search places..." }: SearchBarProps) {
+  const { t } = useI18n();
+  const inputRef = React.useRef<HTMLInputElement>(null);
   return (
     <div
       style={{
@@ -48,11 +51,13 @@ export function SearchBar({ value, onChange, placeholder = "Search places..." }:
         .khg-searchbar-input::-ms-clear { display: none; width: 0; height: 0; }
       `}</style>
       <input
+        ref={inputRef}
         className="khg-searchbar-input"
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder}
         style={{
           border: "none",
           outline: "none",
@@ -66,14 +71,17 @@ export function SearchBar({ value, onChange, placeholder = "Search places..." }:
       {value && (
         <button
           type="button"
-          onClick={() => onChange("")}
-          aria-label="Clear search"
+          onClick={() => { onChange(""); inputRef.current?.focus(); }}
+          aria-label={t('explorer.clearSearch')}
           style={{
             border: "none",
             background: "transparent",
             color: "var(--text-tertiary)",
             cursor: "pointer",
             padding: 0,
+            minWidth: 32,
+            minHeight: 40,
+            justifyContent: 'center',
             display: "flex",
             alignItems: "center",
           }}

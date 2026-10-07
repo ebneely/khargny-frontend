@@ -5,7 +5,7 @@
  * See `UI_UX/explorer/structure/explorer-home/wireframe.md` for the layout spec.
  */
 import * as React from "react";
-import { useState } from "react";
+import { Suspense } from "react";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { CityGrid } from "@/components/explorer/CityGrid";
 import { SearchBar } from "@/components/explorer/SearchBar";
@@ -13,16 +13,17 @@ import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { useSearchTerm } from '@/lib/use-search-term';
 
-export default function ExplorerPage() {
+function ExplorerPage() {
   const { t } = useI18n();
   const { data: cities, isLoading, isError, refetch } = useCities();
-  const [search, setSearch] = useState("");
+  const { search, setSearch, debouncedSearch } = useSearchTerm();
 
   const filtered = cities?.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.nameEn?.toLowerCase().includes(search.toLowerCase()) ?? false),
+      c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (c.nameEn?.toLowerCase().includes(debouncedSearch.toLowerCase()) ?? false),
   );
 
   return (
@@ -122,4 +123,8 @@ export default function ExplorerPage() {
       </main>
     </div>
   );
+}
+
+export default function ExplorerSearchPage() {
+  return <Suspense fallback={<LoadingSkeleton count={6} />}><ExplorerPage /></Suspense>;
 }

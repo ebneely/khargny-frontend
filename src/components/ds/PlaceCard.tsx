@@ -53,6 +53,7 @@ type PlaceCardProps = {
   image?: string;
   imageSizes?: string;
   title: string;
+  searchReason?: string;
   area: string;
   rating?: string;
   priceRange?: number | null;
@@ -101,6 +102,7 @@ export function PlaceCard({
   image,
   imageSizes,
   title,
+  searchReason,
   area,
   rating,
   priceRange,
@@ -199,6 +201,12 @@ export function PlaceCard({
         >
           {title}
         </span>
+
+        {searchReason !== undefined && (
+          <span data-search-reason style={{ height: '1.35em', lineHeight: 1.35, fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={searchReason || undefined}>
+            {searchReason || '\u00a0'}
+          </span>
+        )}
 
         {/* Meta: rating + price, the two things that drive the choice. */}
         {(rating || priceLabel) && (

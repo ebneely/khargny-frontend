@@ -1,0 +1,31 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const ts = require('typescript');
+
+function load(relativePath, dependencies = {}) {
+  const filename = path.join(__dirname, '..', relativePath);
+  const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText;
+  const exports = {};
+  vm.runInNewContext(output, { exports, URL, URLSearchParams, setTimeout, clearTimeout,
+    window: dependencies.window, fetch: dependencies.fetch, process: { env: { NODE_ENV: 'test', CI: '1' } },
+    require(name) {
+      if (name in dependencies) return dependencies[name];
+      if (name.endsWith('.module.css')) return { default: new Proxy({}, { get: (target, key) => String(key) }) };
+      if (name === 'lucide-react') return new Proxy({}, { get: () => (props) => require('react').createElement('svg', props) });
+      if (name.startsWith('@/') || name.startsWith('.')) {
+        const base = name.startsWith('@/') ? path.join(__dirname, '../src', name.slice(2)) : path.resolve(path.dirname(filename), name);
+        const alias = '@/' + path.relative(path.join(__dirname, '../src'), base).split(path.sep).join('/');
+        if (alias in dependencies) return dependencies[alias];
+        const resolved = ['.ts', '.tsx'].map((suffix) => base + suffix).find(fs.existsSync);
+        return load(path.relative(path.join(__dirname, '..'), resolved), dependencies);
+      }
+      return require(name);
+    },
+  }, { filename });
+  return exports;
+}
+
+module.exports = { load };

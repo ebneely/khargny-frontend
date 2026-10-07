@@ -94,6 +94,8 @@ export interface PlaceListByCity {
 export type PlaceStatus = 'active' | 'draft';
 
 export interface Place extends PlaceFlags {
+  matchedOn?: string[];
+  redirectedFrom?: string;
   id: string;
   cityId: string;
   categoryId: string;
@@ -189,6 +191,7 @@ export interface MenuSection {
 }
 
 export interface PlaceMenu {
+  redirectedFrom?: string;
   placeId: string;
   slug: string;
   currency: 'EGP';
@@ -222,6 +225,7 @@ export interface PlaceFilters {
 // ── Search ───────────────────────────────────────────────────────────────────
 export interface SearchPlacesQuery {
   q?: string;
+  cityId?: string;
   lat?: number;
   lng?: number;
   radiusKm?: number;
@@ -236,4 +240,7 @@ export interface SearchPlacesResult {
   items: Place[];
   skip?: number;
   limit?: number;
+  total?: number;
+  hasMore: boolean;
+  otherCities: Place[];
 }

@@ -207,6 +207,9 @@ test('existing server place fetch supplies the initial responsive cover preload 
     '@/lib/config': { API_BASE_URL: 'https://api.example.invalid', SITE_URL: 'https://www.5argny.com' },
     '@/lib/seo': seo,
     '@/lib/place-photo': media,
+    '@/lib/place-address': require('./offline-loader.cjs').load('src/lib/place-address.ts'),
+    'next/headers': { headers: async () => new Headers() },
+    'next/navigation': { permanentRedirect: () => { throw new Error('Unexpected redirect'); }, notFound: () => { throw new Error('Unexpected not found'); } },
   };
   vm.runInNewContext(source, { exports: exported, fetch: async (url) => {
     calls.push(url);

@@ -1,4 +1,7 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { placePath, placeRedirect } from '@/lib/place-address';
 import { regionLabel } from '@/lib/egypt-regions';
 import { priceBandLabel, type PriceLevel } from '@/lib/price-bands';
 import { normalizePlaceFlags, type PlaceFlags } from '@/lib/api/normalize-place';
@@ -31,6 +34,8 @@ type Hour = {
 };
 
 type Place = Partial<PlaceFlags> & {
+  slug?: string;
+  redirectedFrom?: string;
   cityId?: string;
   categoryId?: string;
   name?: string;
@@ -89,16 +94,46 @@ async function fetchCategoryName(id: string | undefined, isAr: boolean): Promise
 
 async function fetchPlace(slug: string): Promise<Place | null> {
   if (!API_BASE_URL) return null;
+  let missing = false;
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/places/${slug}`, {
-      next: { revalidate: 3600 },
+    const res = await fetch(`${API_BASE_URL}/v1/places/${encodeURIComponent(slug)}`, {
+      cache: 'no-store',
     });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return normalizePlaceFlags((json?.data ?? json) as Place);
+    missing = res.status === 404;
+    if (res.ok) {
+      const json = await res.json();
+      const payload = json?.data ?? json;
+      return payload && typeof payload === 'object' ? normalizePlaceFlags(payload as Place) : null;
+    }
   } catch {
     return null;
   }
+  if (missing) notFound();
+  return null;
+}
+
+async function fetchPlaceCity(place: Place, requestedCity: string): Promise<string> {
+  if (place.city?.slug) return place.city.slug;
+  if (!place.cityId || !API_BASE_URL) return requestedCity;
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/cities`, { next: { revalidate: 3600 } });
+    if (!response.ok) return requestedCity;
+    const json = await response.json();
+    const cities: { id: string; slug: string }[] = json?.data?.data ?? json?.data ?? [];
+    return (Array.isArray(cities) ? cities.find((city) => city.id === place.cityId)?.slug : null) || requestedCity;
+  } catch {
+    return requestedCity;
+  }
+}
+
+async function resolvePlace(params: Params, locale: Locale) {
+  const place = await fetchPlace(params.placeSlug);
+  if (!place) return { place: null, citySlug: params.citySlug };
+  const citySlug = await fetchPlaceCity(place, params.citySlug);
+  const search = (await headers()).get('x-khargny-search') ?? '';
+  const target = placeRedirect({ ...params, locale, search }, { slug: place.slug, citySlug, redirectedFrom: place.redirectedFrom });
+  if (target) permanentRedirect(target);
+  return { place, citySlug };
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -128,11 +163,11 @@ export async function generateMetadata({
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const { citySlug, placeSlug } = await params;
+  const requested = await params;
   const locale = await currentLocale();
   const isAr = locale === 'ar';
-  const path = `/explorer/${citySlug}/${placeSlug}`;
-  const place = await fetchPlace(placeSlug);
+  const { place, citySlug } = await resolvePlace(requested, locale);
+  const path = placePath(citySlug, place?.slug || requested.placeSlug);
 
   // Even a place we could not load gets a correct canonical and hreflang, so a transient
   // API failure never publishes a page pointing at the wrong URL. It is marked noindex
@@ -198,10 +233,10 @@ export default async function PlaceDetailLayout({
   children: React.ReactNode;
   params: Promise<Params>;
 }) {
-  const { citySlug, placeSlug } = await params;
+  const requested = await params;
   const locale = await currentLocale();
   const isAr = locale === 'ar';
-  const place = await fetchPlace(placeSlug);
+  const { place, citySlug } = await resolvePlace(requested, locale);
   if (!place) return <>{children}</>;
   const coverSrcSet = photoSrcSet(place.images?.[0] ?? {});
   const coverUrl = photoCandidates(place.images?.[0] ?? {}).at(-1)?.url || place.coverImage;
@@ -213,7 +248,7 @@ export default async function PlaceDetailLayout({
   ]);
   const cityName =
     resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
-  const path = `/explorer/${citySlug}/${placeSlug}`;
+  const path = placePath(citySlug, place.slug || requested.placeSlug);
   const url = urlFor(path, locale);
   const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || resolvedCity || citySlug);
 

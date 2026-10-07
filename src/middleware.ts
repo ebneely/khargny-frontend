@@ -48,6 +48,7 @@ export function middleware(req: NextRequest) {
     // it is the city page or a place page nested inside it — otherwise both emit one and a
     // place page ships two competing BreadcrumbLists.
     headers.set(PATH_HEADER, rest);
+    headers.set('x-khargny-search', search);
     const res = NextResponse.rewrite(url, { request: { headers } });
     // Keep the cookie in step so a later bare URL redirects to the language they are reading.
     if (req.cookies.get(COOKIE)?.value !== urlLocale) {

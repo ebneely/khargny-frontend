@@ -29,6 +29,8 @@ import { RegionSelector } from "@/components/explorer/RegionSelector";
 import { regionLocation } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
 import { ChevronRight } from "lucide-react";
+import { useSearchTerm } from '@/lib/use-search-term';
+import { matchReason, searchTerm, SEARCH_PAGE_SIZE } from '@/lib/place-search';
 
 /** Grid-friendly page size: divides evenly by 2, 3 and 4 columns. */
 const PAGE_SIZE = 24;
@@ -52,21 +54,25 @@ function pageWindow(current: number, total: number): (number | null)[] {
   return out;
 }
 
-export default function CityExplorerPage() {
+function CityExplorerPage() {
   const { t, locale } = useI18n();
   const params = useParams();
   const router = useRouter();
   const citySlug = params.citySlug as string;
 
-  const [search, setSearch] = useState("");
+  const { search, setSearch, debouncedSearch, isDebouncing } = useSearchTerm();
+  const searching = Boolean(searchTerm(search));
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   // The list used to send no limit or skip at all, so the backend's default of 20 applied and
   // "All" showed a city's first twenty places as though they were the whole set — Cairo has
   // 147. Paged properly now, with the page reported from the server's total.
-  const [page, setPage] = useState(0);
+  const [pageState, setPageState] = useState({ scope: '', page: 0 });
   const [filters, setFilters] = useState<ActiveFilters>({});
+  const scope = JSON.stringify([citySlug, debouncedSearch, activeCategory, activeRegion, filters, locale]);
+  const page = pageState.scope === scope ? pageState.page : 0;
+  const setPage = (next: number | ((previous: number) => number)) => setPageState({ scope, page: typeof next === 'function' ? next(page) : next });
 
   const { data: cities, isLoading: loadingCities } = useCities();
   const { data: categories } = useCategories();
@@ -99,27 +105,27 @@ export default function CityExplorerPage() {
       skip: page * PAGE_SIZE,
       limit: PAGE_SIZE,
     },
-    Boolean(currentCity?.id),
+    Boolean(currentCity?.id) && !searching,
   );
 
-  const { data: searchData } = useSearchPlaces({ q: search || undefined });
-
-  const displayedPlaces = search ? searchData?.items : placesData?.items;
-  // Only meaningful for the browse list; search has its own endpoint and its own paging.
-  const totalMatching = placesData?.total ?? 0;
-  const totalPages = search ? 0 : Math.ceil(totalMatching / PAGE_SIZE);
+  const searchQuery = useSearchPlaces({
+    q: debouncedSearch || undefined,
+    cityId: currentCity?.id,
+    categoryIds: activeCategory ? [activeCategory] : undefined,
+    skip: page * SEARCH_PAGE_SIZE,
+    limit: SEARCH_PAGE_SIZE,
+  }, { enabled: Boolean(currentCity?.id) && searching && !isDebouncing, locale, local: { ...filters, region: activeRegion } });
+  const searchData = searchQuery.data;
+  const searchBusy = searching && (isDebouncing || searchQuery.isFetching || (!searchData && !searchQuery.isError));
+  const displayedPlaces = searching ? searchData?.items ?? (searchQuery.isError ? undefined : placesData?.items) : placesData?.items;
+  const totalMatching = searching ? searchData?.total : placesData?.total;
+  const totalPages = Math.ceil((totalMatching ?? 0) / (searching ? SEARCH_PAGE_SIZE : PAGE_SIZE));
   const pageNumbers = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
-
-  // A new filter is a new list; keep the window at one page so it does not inherit a
-  // large size from whatever was being browsed before.
-  useEffect(() => {
-    setPage(0);
-  }, [activeCategory, activeRegion, filters, citySlug, search]);
 
   // Moving between pages should start you at the top of the new one, not halfway down it.
   useEffect(() => {
-    if (page > 0) window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [page]);
+    if (page > 0 && (!searching || totalMatching !== undefined)) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page, searching, totalMatching]);
 
   const handleCityChange = (slug: string) => {
     router.push(`/explorer/${slug}`);
@@ -190,8 +196,10 @@ export default function CityExplorerPage() {
           >
             {currentCity ? displayName(currentCity, locale) : t("common.loading")}
           </h1>
-          {placesData && (
+          {(searching ? searchData : placesData) && (
             <p
+              role="status"
+              aria-live="polite"
               style={{
                 fontSize: "var(--text-sm)",
                 color: "var(--text-tertiary)",
@@ -199,7 +207,9 @@ export default function CityExplorerPage() {
               }}
             >
               {/* The count of what matches, not the count of what this page returned. */}
-              {t("explorer.placesFound", { count: placesData.total ?? placesData.items.length })}
+              {searching
+                ? t(searchData?.total === undefined ? 'explorer.searchMatchesLoaded' : 'explorer.searchMatches', { count: searchData?.total ?? searchData?.items.length ?? 0, q: debouncedSearch })
+                : t('explorer.placesFound', { count: placesData?.total ?? placesData?.items.length ?? 0 })}
             </p>
           )}
         </div>
@@ -262,12 +272,14 @@ export default function CityExplorerPage() {
               {t("explorer.cityNotFound")}
             </p>
           </div>
-        ) : isLoading || (loadingCities && !currentCity) ? (
+        ) : (loadingCities && !currentCity) || (!displayedPlaces && (searching ? searchBusy : isLoading)) ? (
           <LoadingSkeleton count={6} />
-        ) : isError ? (
+        ) : searching && searchQuery.isError ? (
+          <ErrorState message={t('explorer.loadFailed')} onRetry={() => searchQuery.refetch()} />
+        ) : !searching && isError ? (
           <ErrorState message={t("explorer.loadFailed")} onRetry={() => refetch()} />
         ) : displayedPlaces && displayedPlaces.length > 0 ? (
-          <div className="khg-place-grid">
+          <div className="khg-place-grid" aria-busy={searchBusy} style={{ opacity: searchBusy ? 0.5 : 1 }}>
             {displayedPlaces.map((place) => (
               <div
                 key={place.id}
@@ -279,6 +291,7 @@ export default function CityExplorerPage() {
                   size="md"
                   placeId={place.id}
                   title={locale === "ar" ? place.name : place.nameEn || place.name}
+                  searchReason={searching ? matchReason(place.matchedOn) : undefined}
                   area={regionLocation(
                     place.region,
                     place.address,
@@ -300,7 +313,7 @@ export default function CityExplorerPage() {
                 <button
                   type="button"
                   className="khg-page-btn"
-                  disabled={page === 0}
+                  disabled={page === 0 || searchBusy}
                   onClick={() => setPage((p) => p - 1)}
                   aria-label={t("explorer.prevPage")}
                 >
@@ -317,6 +330,7 @@ export default function CityExplorerPage() {
                       className="khg-page-btn"
                       data-current={n === page ? "true" : undefined}
                       aria-current={n === page ? "page" : undefined}
+                      disabled={searchBusy}
                       onClick={() => setPage(n)}
                     >
                       {n + 1}
@@ -327,13 +341,16 @@ export default function CityExplorerPage() {
                 <button
                   type="button"
                   className="khg-page-btn"
-                  disabled={page >= totalPages - 1}
+                  disabled={page >= totalPages - 1 || searchBusy}
                   onClick={() => setPage((p) => p + 1)}
                   aria-label={t("explorer.nextPage")}
                 >
                   <ChevronRight className="khg-page-next" size={18} aria-hidden />
                 </button>
               </nav>
+            )}
+            {searching && searchData?.total === undefined && searchData?.hasMore && (
+              <button type="button" className="khg-page-btn" style={{ gridColumn: '1 / -1', justifySelf: 'center' }} disabled={searchBusy} onClick={() => setPage((previous) => previous + 1)}>{t('explorer.loadMore')}</button>
             )}
             <style>{`
               .khg-pager {
@@ -381,11 +398,33 @@ export default function CityExplorerPage() {
                 margin: 0,
               }}
             >
-              {search ? t("explorer.searchNoResults", { q: search }) : t("explorer.noPlacesInCity")}
+              {searching ? t('explorer.searchNoResults', { q: debouncedSearch }) : t('explorer.noPlacesInCity')}
             </p>
+            {searching && (
+              <>
+                {searchBusy && <p role="status">{t('common.loading')}</p>}
+                {searchData?.otherCities.length ? (
+                  <section aria-busy={searchBusy} style={{ textAlign: 'start', marginTop: 'var(--space-6)', opacity: searchBusy ? 0.5 : 1 }}>
+                    <h2>{t('explorer.otherCities')}</h2>
+                    <div className="khg-place-grid">
+                      {searchData.otherCities.map((place) => {
+                        const city = cities?.find((item) => item.id === place.cityId);
+                        if (!city) return null;
+                        return <PlaceCard key={place.id} href={`/explorer/${city.slug}/${place.slug}`} size="md" placeId={place.id} title={displayName(place, locale)} area={displayName(city, locale)} searchReason={matchReason(place.matchedOn)} image={place.coverImage || undefined} priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }} onToggleFavorite={() => {}} />;
+                      })}
+                    </div>
+                  </section>
+                ) : !searchBusy && <p>{t('explorer.noMatchesAnywhere')}</p>}
+                {!searchBusy && <button type="button" onClick={() => setSearch('')}>{t('explorer.clearSearch')}</button>}
+              </>
+            )}
           </div>
         )}
       </main>
     </div>
   );
+}
+
+export default function CitySearchPage() {
+  return <React.Suspense fallback={<LoadingSkeleton count={6} />}><CityExplorerPage /></React.Suspense>;
 }
