@@ -30,7 +30,13 @@ for (const locale of ['ar', 'en']) for (const route of routes) {
     assert.ok(html.includes(`lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}"`));
     assert.doesNotMatch(html, /<h1[^>]*>\s*Loading|LoadingSkeleton|No places yet|جار[يٍ] التحميل/);
     assert.ok(result.photos.length > 0);
-    if (route.kind === 'city') { assert.equal(new Set(result.places).size, 24); assert.ok(result.links.includes('?page=2')); assert.ok(html.includes('Restaurants') || html.includes('مطاعم')); }
+    if (route.kind === 'city') { assert.equal(new Set(result.places).size, 24); assert.ok(result.links.includes('?page=2'));
+      // The category strip is gone from the page (categories live in the Filters sheet, which is
+      // closed in the first HTML). Category names reach a crawler on each card instead; that is
+      // checked on a real build by crawl-check, where the server has the categories.
+      assert.doesNotMatch(html, /khg-cat-row/);
+      assert.doesNotMatch(html, /<select/);
+    }
     if (route.kind === 'home') { assert.ok(result.places.length >= 5); assert.ok(html.includes(dictionary.home.sponsored)); }
     if (route.kind === 'place') {
       assert.ok(result.links.includes('tel:+201234567890'));

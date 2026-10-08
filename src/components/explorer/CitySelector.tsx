@@ -9,6 +9,7 @@
  * strict CSP. All of that now comes from the shared primitive.
  */
 import * as React from "react";
+import { MapPin } from "lucide-react";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName } from "@/lib/display-name";
 import type { City } from "@/lib/api/types";
@@ -40,6 +41,10 @@ export function CitySelector({ cities, currentCitySlug, onChange }: CitySelector
       label={t("explorer.cities")}
       placeholder={t("explorer.pickCity")}
       emptyLabel={t("explorer.noCities")}
+      icon={<MapPin size={16} />}
+      searchPlaceholder={t("explorer.searchCities")}
+      noMatchLabel={t("explorer.nothingMatches")}
+      closeLabel={t("common.close")}
     />
   );
 }

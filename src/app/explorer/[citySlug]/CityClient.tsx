@@ -13,7 +13,6 @@ import { useState, useMemo, useEffect } from "react";
 import { CitySelector } from "@/components/explorer/CitySelector";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SearchBar } from "@/components/explorer/SearchBar";
-import { CategoryChip } from "@/components/ds/CategoryChip";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { PlaceCard } from "@/components/ds/PlaceCard";
@@ -28,7 +27,9 @@ import { displayName, displayNameAr } from "@/lib/display-name";
 import { RegionSelector } from "@/components/explorer/RegionSelector";
 import { cardArea } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
+import { useAmenities } from "@/lib/api/hooks/use-taxonomy";
+import { priceBandLabel, type PriceLevel } from "@/lib/price-bands";
 import { useSearchTerm } from '@/lib/use-search-term';
 import { matchReason, searchTerm, SEARCH_PAGE_SIZE } from '@/lib/place-search';
 
@@ -84,6 +85,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
 
   const { data: cities, isLoading: loadingCities } = useCities();
   const { data: categories } = useCategories();
+  const { data: amenities } = useAmenities();
   const currentCity = cities?.find((c) => c.slug === citySlug);
   // cities are loaded but this slug isn't among them → the city doesn't exist
   const cityNotFound = !loadingCities && !!cities && !currentCity;
@@ -135,6 +137,40 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
     if (page > 0 && (!searching || totalMatching !== undefined)) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [page, searching, totalMatching]);
 
+  const matchingCount = placesData?.total ?? placesData?.items.length ?? 0;
+  const cityIntro = currentCity
+    ? (locale === 'ar' ? currentCity.descriptionAr : currentCity.descriptionEn) || (locale === 'ar'
+      ? `أحلى الأماكن في ${displayName(currentCity, locale)}: مطاعم وكافيهات وشواطئ وفنادق ومعالم. اختار المنطقة أو دوّر بالاسم.`
+      : `The best places in ${displayName(currentCity, locale)}: restaurants, cafes, beaches, hotels and landmarks. Pick an area or search by name.`)
+    : '';
+
+  // Categories with a name in the page's language (one with none renders nothing rather than
+  // leaking its slug — see lib/display-name.ts), with the icon the dashboard gave each.
+  const categoryOptions = useMemo(
+    () => (categories ?? [])
+      .map((cat) => ({ id: cat.id, label: displayNameAr(cat, locale), icon: cat.icon ? icon(cat.icon, 16) : undefined }))
+      .filter((cat) => cat.label),
+    [categories, locale],
+  );
+  const clearFilters = () => {
+    setActiveCategory(null);
+    setFilters({});
+  };
+  // Western digits in both languages, as everywhere else on the site (cards, titles).
+  const number = (n: number) => n.toLocaleString('en-US');
+  // What is narrowing the list right now, each with its own way out.
+  const activeChips = [
+    ...(activeCategory ? [{ key: `c:${activeCategory}`, label: categoryOptions.find((c) => c.id === activeCategory)?.label ?? t('explorer.filterCategory'), remove: () => setActiveCategory(null) }] : []),
+    ...(filters.priceRange ?? []).map((level) => ({ key: `p:${level}`, label: priceBandLabel(Number(level) as PriceLevel, locale) ?? level, remove: () => setFilters({ ...filters, priceRange: (filters.priceRange ?? []).filter((x) => x !== level) }) })),
+    ...(filters.featured ? [{ key: 'featured', label: t('explorer.filterFeaturedOn'), remove: () => setFilters({ ...filters, featured: false }) }] : []),
+    ...(filters.amenityIds ?? []).map((id) => {
+      const amenity = amenities?.find((a) => a.id === id);
+      return { key: `a:${id}`, label: amenity ? (locale === 'ar' ? amenity.name : amenity.nameEn || amenity.name) : t('explorer.filterAmenities'), remove: () => setFilters({ ...filters, amenityIds: (filters.amenityIds ?? []).filter((x) => x !== id) }) };
+    }),
+  ];
+
+  const narrowed = activeChips.length > 0 || Boolean(activeRegion);
+
   const handleCityChange = (slug: string) => {
     router.push(`/explorer/${slug}`);
   };
@@ -148,36 +184,6 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
       }}
     >
       <SiteHeader active="explore" />
-
-      {/* Location filters live in their own bar under the header, not crammed into the top
-          nav. City then area — the two levels of "where", in that order. Cramming both
-          selectors plus the language and menu buttons onto one header line overflowed a
-          phone; a dedicated bar reads cleanly at every width and is the right home for a
-          filter anyway. It scrolls horizontally rather than wrapping if a label is long. */}
-      <div
-        className="no-scrollbar"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-2)",
-          overflowX: "auto",
-          padding: "var(--space-2) clamp(16px, 4vw, 32px)",
-          background: "var(--surface-app)",
-          borderBottom: "1px solid var(--gray-200)",
-        }}
-      >
-        <CitySelector
-          cities={cities || []}
-          currentCitySlug={citySlug}
-          onChange={handleCityChange}
-        />
-        <RegionSelector
-          regions={regionOptions}
-          city={cityName}
-          value={activeRegion}
-          onChange={setActiveRegion}
-        />
-      </div>
 
       {/* Same measure and inset as the home page and the header (1120 + clamp), so the page
           edge is one continuous line from the logo down to the last card. This used to be
@@ -193,91 +199,71 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
           padding: "var(--space-6) clamp(16px, 4vw, 32px)",
         }}
       >
-        <div style={{ marginBottom: "var(--space-6)" }}>
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "var(--text-3xl)",
-              fontWeight: 600,
-              lineHeight: 1.3,
-              color: "var(--text-primary)",
-              margin: 0,
-            }}
-          >
-            {currentCity ? displayName(currentCity, locale) : t("common.loading")}
-          </h1>
-          {currentCity && <p className="pd-prose">{(locale === 'ar' ? currentCity.descriptionAr : currentCity.descriptionEn) || (locale === 'ar'
-            ? `اكتشف أحلى الأماكن في ${displayName(currentCity, locale)}: مطاعم وكافيهات وشواطئ وفنادق ومعالم${placesData?.total ? ` — ${placesData.total} مكان مختار` : ''}. اتفرج حسب المنطقة والنوع على خرجني.`
-            : `Discover the best places in ${displayName(currentCity, locale)} — restaurants, cafes, beaches, hotels and landmarks${placesData?.total ? `, ${placesData.total} curated spots` : ''}. Browse by area and category on Khargny.`)}</p>}
-          {(searching ? searchData : placesData) && (
-            <p
-              role="status"
-              aria-live="polite"
-              style={{
-                fontSize: "var(--text-sm)",
-                color: "var(--text-tertiary)",
-                marginTop: "var(--space-1)",
-              }}
-            >
-              {/* The count of what matches, not the count of what this page returned. */}
-              {searching
-                ? t(searchData?.total === undefined ? 'explorer.searchMatchesLoaded' : 'explorer.searchMatches', { count: searchData?.total ?? searchData?.items.length ?? 0, q: debouncedSearch })
-                : t('explorer.placesFound', { count: placesData?.total ?? placesData?.items.length ?? 0 })}
-            </p>
+        {/* One header, read top to bottom: where you are and how much is there, then the two
+            questions a visitor answers. WHERE is the pair of pills (city, area); WHAT is the
+            search and the Filters sheet, where the categories now live. Whatever is narrowing
+            the list is spelled out underneath as chips that can be removed one by one. This
+            replaces a separate location bar, a search row and a two-row strip of nineteen
+            category icons, which between them took half a phone screen before the first place. */}
+        <header className="khg-browse">
+          <div className="khg-browse-heading">
+            <h1 className="khg-browse-title">{currentCity ? displayName(currentCity, locale) : t("common.loading")}</h1>
+            {(searching ? searchData : placesData) && (
+              <p role="status" aria-live="polite" className="khg-browse-count">
+                {/* The count of what matches, not the count of what this page returned. */}
+                {searching
+                  ? t(searchData?.total === undefined ? 'explorer.searchMatchesLoaded' : 'explorer.searchMatches', { count: searchData?.total ?? searchData?.items.length ?? 0, q: debouncedSearch })
+                  : t(matchingCount === 1 ? 'explorer.placesInOne' : 'explorer.placesIn', { count: number(matchingCount) })}
+              </p>
+            )}
+          </div>
+          {currentCity && <p className="khg-browse-intro">{cityIntro}</p>}
+
+          <div className="khg-browse-controls">
+            <div className="khg-browse-where">
+              <CitySelector cities={cities || []} currentCitySlug={citySlug} onChange={handleCityChange} />
+              <RegionSelector regions={regionOptions} city={cityName} value={activeRegion} onChange={setActiveRegion} />
+            </div>
+            <div className="khg-browse-what">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SearchBar value={search} onChange={setSearch} placeholder={t("common.searchPlaces")} />
+              </div>
+              <FilterPanel
+                isOpen={filtersOpen}
+                onOpenChange={setFiltersOpen}
+                activeCount={activeChips.length}
+                onClear={clearFilters}
+                resultCount={searchBusy || (!searching && isLoading) ? undefined : totalMatching}
+              >
+                <PlaceFilters
+                  value={filters}
+                  onChange={setFilters}
+                  categories={categoryOptions}
+                  categoryId={activeCategory}
+                  onCategoryChange={setActiveCategory}
+                />
+              </FilterPanel>
+            </div>
+          </div>
+
+          {activeChips.length > 0 && (
+            <ul className="khg-browse-active no-scrollbar" aria-label={t("explorer.activeFilters")}>
+              {activeChips.map((chip) => (
+                <li key={chip.key}>
+                  <button type="button" className="khg-active-chip" onClick={chip.remove} aria-label={t("explorer.removeFilter", { name: chip.label })}>
+                    <span>{chip.label}</span>
+                    <X size={14} aria-hidden />
+                  </button>
+                </li>
+              ))}
+              {activeChips.length > 1 && (
+                <li>
+                  <button type="button" className="khg-active-clear" onClick={clearFilters}>{t("explorer.clearAll")}</button>
+                </li>
+              )}
+            </ul>
           )}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--space-3)",
-            marginBottom: "var(--space-6)",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <SearchBar value={search} onChange={setSearch} placeholder={t("common.searchPlaces")} />
-          </div>
-          <FilterPanel
-            isOpen={filtersOpen}
-            onOpenChange={setFiltersOpen}
-            activeFilters={filters}
-            onFilterChange={setFilters}
-            onClear={() => setFilters({})}
-          >
-            <PlaceFilters value={filters} onChange={setFilters} />
-          </FilterPanel>
-        </div>
-
-        {/* The area filter is the RegionSelector in the header (next to the city), so the
-            old horizontal chip row here was a second control for the same state — removed to
-            avoid two area pickers that could disagree. Category chips stay. */}
-        {/* .khg-cat-row is the shared strip: a swipeable rail on phones, and a centred block
-            that wraps onto as many rows as it needs from 1024px up. This page previously
-            re-implemented the scroller inline, so it never wrapped on desktop and the last
-            categories stayed hidden off the right edge with nothing to suggest they existed. */}
-        {categories && categories.length > 0 && (
-          <div className="khg-cat-row no-scrollbar">
-            <CategoryChip
-              label={t("explorer.all")}
-              active={activeCategory === null}
-              onClick={() => setActiveCategory(null)}
-            />
-            {/* A category with no name in either language renders nothing rather than
-                leaking its slug — see lib/display-name.ts. */}
-            {categories.filter((cat) => displayNameAr(cat, locale)).map((cat) => (
-              <CategoryChip
-                key={cat.id}
-                label={displayNameAr(cat, locale)}
-                // Render the category's own icon (from the dashboard) when it has one, so the
-                // rail matches the app's icon chips.
-                icon={cat.icon ? icon(cat.icon, 20) : undefined}
-                active={activeCategory === cat.id}
-                onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
-              />
-            ))}
-          </div>
-        )}
+        </header>
 
         {cityNotFound ? (
           <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
@@ -415,8 +401,15 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
                 margin: 0,
               }}
             >
-              {searching ? t('explorer.searchNoResults', { q: debouncedSearch }) : t('explorer.noPlacesInCity')}
+              {searching ? t('explorer.searchNoResults', { q: debouncedSearch }) : narrowed ? t('explorer.noResults') : t('explorer.noPlacesInCity')}
             </p>
+            {/* An empty list caused by the visitor's own choices says so and offers the way out,
+                instead of claiming the city has no places. */}
+            {!searching && narrowed && (
+              <button type="button" className="khg-active-clear" style={{ marginTop: "var(--space-3)" }} onClick={() => { clearFilters(); setActiveRegion(null); }}>
+                {t('explorer.clearFilters')}
+              </button>
+            )}
             {searching && (
               <>
                 {searchBusy && <p role="status">{t('common.loading')}</p>}

@@ -3,6 +3,15 @@ const fs = require("node:fs");
 const { test } = require("node:test");
 const { QueryClient, QueryObserver, onlineManager, focusManager, keepPreviousData } = require("@tanstack/react-query");
 const settle = () => new Promise((resolve) => setImmediate(resolve));
+// HomeAds chooses the Top 10 city through the shared picker (a pill that opens a sheet), not a
+// raw <select>. In a static render only the pill is on the page.
+function homeAdsPickerStubs() {
+  const React = require("react");
+  return {
+    "lucide-react": { MapPin: () => null },
+    "@/components/explorer/SelectPill": { SelectPill: ({ label, allLabel, value, options }) => React.createElement("button", { type: "button", "data-city-picker": value ?? "", "aria-label": label }, value ? options.find((option) => option.value === value)?.label ?? value : allLabel) },
+  };
+}
 const enter = (observer) => observer.callback([{ isIntersecting: true, intersectionRatio: 0.5 }]);
 
 module.exports = ({ load, environment, campaignId, place, item, featured, top, city, discovery, assertBatch, validateBatch, validateTrackedBatch, backendAcceptsEventId, adEvent, realPlaceCard }) => {
@@ -234,6 +243,7 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
     const { dictionaries } = load("src/i18n/dictionaries.ts");
     const t = (key) => key.split(".").reduce((value, part) => value?.[part], dictionaries.en) ?? key;
     const { HomeAds } = load("src/app/_home/HomeAds.tsx", {}, {
+      ...homeAdsPickerStubs(),
       react: React, "react/jsx-runtime": require("react/jsx-runtime"),
       "next/link": { default: (props) => React.createElement("a", props) },
       "next/image": { default: () => null },
@@ -249,10 +259,10 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
     const { HomeAds, render } = markup();
     const data = { ...discovery({ top, cities: [city] }), topCity: "alexandria", topPlacesCity: undefined };
     const fallback = render(HomeAds, data);
-    assert.ok(fallback.includes('value="alexandria"') || fallback.includes('value="cairo"'));
+    assert.ok(fallback.includes('data-city-picker="alexandria"') || fallback.includes('data-city-picker="cairo"'));
     assert.ok(fallback.includes("Showing:") && fallback.includes("All Egypt"));
     const unavailable = render(HomeAds, { ...data, topPlaces: null });
-    assert.ok(unavailable.includes("<select"));
+    assert.ok(unavailable.includes("data-city-picker") && !unavailable.includes("<select"));
     assert.ok(!unavailable.includes("<h2"));
     assert.ok(!unavailable.includes('id="home-top10-list"'));
     const lastGood = render(HomeAds, { ...data, topPlacesCity: "cairo" });
@@ -332,6 +342,7 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
       useEffect: (callback) => effects.push(callback),
     };
     const { HomeAds } = load("src/app/_home/HomeAds.tsx", {}, {
+      ...homeAdsPickerStubs(),
       react, "react/jsx-runtime": require("react/jsx-runtime"),
       "next/link": { default: (props) => React.createElement("a", props) },
       "next/image": { default: () => null },
@@ -670,6 +681,7 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
     };
     const effects = [];
     const { HomeAds } = load("src/app/_home/HomeAds.tsx", {}, {
+      ...homeAdsPickerStubs(),
       react, "react/jsx-runtime": require("react/jsx-runtime"),
       "@/components/ds/PlaceCard": { PlaceCard: () => null },
       "@/lib/place-photo": load("src/lib/place-photo.ts", { URL }),
@@ -716,6 +728,7 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
     for (const locale of ["ar", "en"]) {
       const t = (key) => key.split(".").reduce((value, part) => value?.[part], dictionaries[locale]) ?? key;
       const { HomeAds } = load("src/app/_home/HomeAds.tsx", {}, {
+      ...homeAdsPickerStubs(),
         react: React, "react/jsx-runtime": require("react/jsx-runtime"),
         "@/components/ds/PlaceCard": realPlaceCard(React, locale, t),
         "@/lib/place-photo": photos,
@@ -733,7 +746,8 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
         assert.ok(!anchor.includes("_thumb.webp"));
         assert.ok(!anchor.includes("<button"));
       }
-      assert.equal((html.match(/<button\b/g) ?? []).length, 2);
+      // Two save hearts and the Top 10 city picker's pill.
+      assert.equal((html.match(/<button\b/g) ?? []).length, 3);
       assert.equal((html.match(/class="khg-home-rail no-scrollbar"/g) ?? []).length, 2);
     }
     const missing = normalizers.normalizeFeaturedPlaces({ ...featured, items: [item] }).items[0].place;

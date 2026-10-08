@@ -1,29 +1,26 @@
 "use client";
 /**
- * SelectPill — the one pill-shaped listbox used by every header selector (city, area).
+ * SelectPill — the one pill-shaped picker used by every scope selector (city, area).
  *
- * Extracted because the city and area selectors are the same control with different data:
- * shipping two hand-rolled popovers guarantees they drift, and a user who learns one should
- * already know the other. Everything below is the shared behaviour those two were missing:
+ * The pill names what is chosen; tapping it opens a sheet with the choices, exactly as the
+ * app does. It used to open a small popover under the pill: fine with a mouse, cramped under
+ * a thumb, and a different idea from the app's city sheet for the same job.
  *
- *   - full state set: default, hover, focus-visible, open, disabled, empty
- *   - roving keyboard support (↑ ↓ Home End Enter Esc) over a real listbox
- *   - closes on Escape and on outside pointerdown, and restores focus to the trigger
- *   - the open panel is scrolled to the selected option, so a long list doesn't open blind
- *   - `position: fixed` panel, so an ancestor with overflow can never clip it
- *
- * Icons are bundled (lucide-react). The previous selector fetched its chevron from
- * unpkg.com on every render: a third-party request on the critical path that fails offline,
- * behind a strict CSP, or when the CDN is slow, and shifts layout when it lands.
+ * In the sheet: one row per choice, the chosen one marked; an optional leading "everything"
+ * row (All areas); a search field once the list is long enough to need one; arrow keys, Home,
+ * End and Enter work; choosing closes the sheet and returns focus to the pill.
  */
 import * as React from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, Search } from "lucide-react";
+import { Sheet } from "@/components/ds/Sheet";
 
 export type SelectPillOption = {
   /** Stable value handed back to onChange. */
   value: string;
   /** Localized label shown to the reader. */
   label: string;
+  /** Optional quiet detail at the end of the row, e.g. a count. */
+  detail?: string;
 };
 
 type SelectPillProps = {
@@ -32,14 +29,34 @@ type SelectPillProps = {
   onChange: (value: string) => void;
   /** Trigger text when nothing is selected. */
   placeholder: string;
-  /** Accessible name for the listbox. */
+  /** Accessible name of the control and the sheet's title. */
   label: string;
   /** Shown in place of the list when there are no options. */
   emptyLabel?: string;
   /** Optional leading "everything" row (e.g. All areas). Selected when value is null. */
   allLabel?: string;
+  /** Leading icon on the pill, e.g. a map pin for the city. */
+  icon?: React.ReactNode;
+  /** Placeholder of the sheet's search field. */
+  searchPlaceholder?: string;
+  /** Said when the search matches nothing. */
+  noMatchLabel?: string;
+  /** Accessible name of the sheet's close button. */
+  closeLabel?: string;
   disabled?: boolean;
 };
+
+/** A search field earns its place once the list no longer fits in one look. */
+const SEARCH_FROM = 9;
+
+const fold = (text: string) =>
+  text
+    .toLocaleLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ًͯ-ٟـ]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي");
 
 export function SelectPill({
   options,
@@ -49,14 +66,16 @@ export function SelectPill({
   label,
   emptyLabel,
   allLabel,
+  icon,
+  searchPlaceholder,
+  noMatchLabel,
+  closeLabel,
   disabled,
 }: SelectPillProps) {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const rootRef = React.useRef<HTMLDivElement>(null);
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
-  const [anchor, setAnchor] = React.useState<{ top: number; left: number; width: number } | null>(null);
 
   // A null value means "all" when an allLabel is offered, so the two share one index space:
   // row 0 is All, and the real options follow.
@@ -64,102 +83,42 @@ export function SelectPill({
     () => (allLabel ? [{ value: "", label: allLabel }, ...options] : options),
     [allLabel, options],
   );
-  const selectedIndex = React.useMemo(
-    () => Math.max(0, rows.findIndex((r) => r.value === (value ?? ""))),
-    [rows, value],
-  );
   const current = rows.find((r) => r.value === (value ?? ""));
   const triggerLabel = value ? current?.label ?? placeholder : allLabel ?? placeholder;
+
+  const searchable = options.length >= SEARCH_FROM;
+  const visible = React.useMemo(() => {
+    const q = fold(query.trim());
+    if (!q) return rows;
+    return rows.filter((r) => fold(r.label).includes(q));
+  }, [rows, query]);
 
   const isEmpty = options.length === 0;
   const isDisabled = disabled || isEmpty;
 
-  // Measure the trigger so the fixed panel sits under it. Fixed positioning is what keeps
-  // the panel out of any ancestor's overflow, which is the usual reason a dropdown is clipped.
-  const place = React.useCallback(() => {
-    const el = triggerRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const width = Math.max(r.width, 220);
+  const openSheet = () => {
+    if (isDisabled) return;
+    setQuery("");
+    setActiveIndex(Math.max(0, rows.findIndex((r) => r.value === (value ?? ""))));
+    setOpen(true);
+  };
 
-    // The panel is wider than its pill, so it has to grow away from the page edge it sits
-    // nearest. Anchoring everything to the pill's left edge worked in English and pushed the
-    // panel off the right-hand side in Arabic, where the pill starts at the right.
-    const rtl = getComputedStyle(el).direction === "rtl";
-    const preferred = rtl ? r.right - width : r.left;
-
-    // Clamp inside the viewport either way, so a pill near either edge still opens fully.
-    const margin = 8;
-    const maxLeft = Math.max(margin, window.innerWidth - width - margin);
-    const left = Math.min(Math.max(margin, preferred), maxLeft);
-
-    setAnchor({ top: r.bottom + 6, left, width });
-  }, []);
-
-  const close = React.useCallback((refocus = true) => {
+  const commit = (row: SelectPillOption) => {
+    onChange(row.value);
     setOpen(false);
-    if (refocus) triggerRef.current?.focus();
-  }, []);
+  };
 
-  React.useEffect(() => {
-    if (!open) return;
-    place();
-    setActiveIndex(selectedIndex);
-    const onDocDown = (e: PointerEvent) => {
-      if (rootRef.current?.contains(e.target as Node)) return;
-      if (listRef.current?.contains(e.target as Node)) return;
-      close(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        close();
-      }
-    };
-    // Reposition rather than reopen: a scroll or resize while open must not leave the
-    // panel floating away from its trigger.
-    document.addEventListener("pointerdown", onDocDown);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      document.removeEventListener("pointerdown", onDocDown);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
-  }, [open, place, selectedIndex, close]);
-
-  // Bring the active row into view for keyboard users and for long lists.
+  // Keep the highlighted row in view: the list opens on the chosen row, not at the top.
   React.useEffect(() => {
     if (!open) return;
     const node = listRef.current?.querySelector<HTMLElement>(`[data-idx="${activeIndex}"]`);
     node?.scrollIntoView({ block: "nearest" });
   }, [open, activeIndex]);
 
-  // Move focus into the list as it opens, so the arrow keys drive it immediately rather
-  // than requiring an extra Tab.
-  React.useEffect(() => {
-    if (open) listRef.current?.focus();
-  }, [open]);
-
-  const commit = (row: SelectPillOption) => {
-    onChange(row.value);
-    close();
-  };
-
-  const onTriggerKey = (e: React.KeyboardEvent) => {
-    if (isDisabled) return;
-    if (!open && (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      setOpen(true);
-    }
-  };
-
-  const onListKey = (e: React.KeyboardEvent) => {
+  const onKeys = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, rows.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, visible.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
@@ -168,113 +127,131 @@ export function SelectPill({
       setActiveIndex(0);
     } else if (e.key === "End") {
       e.preventDefault();
-      setActiveIndex(rows.length - 1);
-    } else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      const row = rows[activeIndex];
-      if (row) commit(row);
+      setActiveIndex(visible.length - 1);
+    } else if (e.key === "Enter") {
+      const row = visible[activeIndex];
+      if (row) {
+        e.preventDefault();
+        commit(row);
+      }
     }
   };
 
   return (
-    <div ref={rootRef} style={{ position: "relative" }}>
+    <>
       <style>{`
         .khg-pill {
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 6px 12px; min-height: 36px;
+          display: inline-flex; align-items: center; gap: 8px;
+          min-width: 0; max-width: 100%;
+          padding: 0 14px; min-height: 44px;
           border-radius: var(--radius-full);
           border: 1px solid var(--border-default);
           background: var(--white); color: var(--text-primary);
           font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500;
           cursor: pointer; transition: var(--motion-color);
-          max-width: 200px;
         }
         .khg-pill:hover:not(:disabled) { background: var(--surface-sunken); }
         .khg-pill[data-open="true"] { background: var(--surface-sunken); border-color: var(--brand-400); }
+        .khg-pill[data-chosen="true"] { border-color: var(--brand-400); background: var(--brand-50); color: var(--brand-700); }
         .khg-pill:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
         .khg-pill:disabled { opacity: 0.55; cursor: not-allowed; }
-        .khg-pill-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .khg-pill-chev { flex: none; transition: transform var(--duration-fast) var(--ease-standard); }
-        .khg-pill[data-open="true"] .khg-pill-chev { transform: rotate(180deg); }
-        .khg-pill-panel {
-          position: fixed; z-index: 60;
-          max-height: min(320px, 60vh); overflow-y: auto;
-          background: var(--white); border: 1px solid var(--border-default);
-          border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
-          padding: var(--space-1); margin: 0; list-style: none;
-          animation: khg-pill-in var(--duration-fast) var(--ease-standard);
+        .khg-pill-icon { flex: none; display: inline-flex; color: var(--brand-600); }
+        .khg-pill-text { flex: 1; min-width: 0; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .khg-pill-chev { flex: none; color: var(--text-tertiary); }
+
+        .khg-pick-search {
+          display: flex; align-items: center; gap: 8px;
+          height: 44px; padding: 0 14px; margin-bottom: 8px;
+          border: 1px solid var(--border-default); border-radius: var(--radius-full);
+          background: var(--surface-sunken); color: var(--text-tertiary);
         }
-        @keyframes khg-pill-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-        .khg-pill-row {
-          display: flex; align-items: center; justify-content: space-between; gap: 8px;
-          width: 100%; text-align: start; padding: 8px 12px;
-          border: none; background: transparent; color: var(--text-primary);
-          font-family: var(--font-body); font-size: var(--text-sm);
-          border-radius: var(--radius-md); cursor: pointer;
+        .khg-pick-search:focus-within { border-color: var(--brand-400); background: var(--white); }
+        .khg-pick-search input {
+          flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+          font-family: var(--font-body); font-size: var(--text-base); color: var(--text-primary);
         }
-        .khg-pill-row[data-active="true"] { background: var(--surface-sunken); }
-        .khg-pill-row[data-selected="true"] { font-weight: 600; color: var(--brand-700); }
-        .khg-pill-empty {
-          padding: 10px 12px; color: var(--text-secondary);
-          font-family: var(--font-body); font-size: var(--text-sm);
+        .khg-pick-search input::placeholder { color: var(--text-tertiary); }
+        .khg-pick-list { list-style: none; margin: 0; padding: 0; outline: none; }
+        .khg-pick-row {
+          display: flex; align-items: center; gap: 12px;
+          width: 100%; min-height: 48px; padding: 8px 12px;
+          border: none; border-radius: var(--radius-md);
+          background: transparent; color: var(--text-primary); text-align: start;
+          font-family: var(--font-body); font-size: var(--text-base);
+          cursor: pointer;
         }
-        @media (prefers-reduced-motion: reduce) {
-          .khg-pill-panel { animation: none; }
-          .khg-pill-chev { transition: none; }
-        }
+        .khg-pick-row[data-active="true"] { background: var(--surface-sunken); }
+        .khg-pick-row[data-selected="true"] { font-weight: 600; color: var(--brand-700); }
+        .khg-pick-row:focus-visible { outline: 2px solid var(--brand-600); outline-offset: -2px; }
+        .khg-pick-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .khg-pick-detail { flex: none; color: var(--text-tertiary); font-size: var(--text-sm); font-weight: 400; font-variant-numeric: tabular-nums; }
+        .khg-pick-check { flex: none; width: 18px; color: var(--brand-600); }
+        .khg-pick-empty { padding: 20px 12px; color: var(--text-secondary); font-family: var(--font-body); font-size: var(--text-sm); }
       `}</style>
 
       <button
-        ref={triggerRef}
         type="button"
         className="khg-pill"
         data-open={open ? "true" : undefined}
+        data-chosen={allLabel && value ? "true" : undefined}
         disabled={isDisabled}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={label}
-        onClick={() => !isDisabled && setOpen((o) => !o)}
-        onKeyDown={onTriggerKey}
+        aria-label={`${label}: ${isEmpty ? emptyLabel ?? placeholder : triggerLabel}`}
+        onClick={openSheet}
       >
+        {icon && <span className="khg-pill-icon" aria-hidden>{icon}</span>}
         <span className="khg-pill-text">{isEmpty ? emptyLabel ?? placeholder : triggerLabel}</span>
-        <ChevronDown className="khg-pill-chev" size={14} aria-hidden="true" />
+        <ChevronDown className="khg-pill-chev" size={16} aria-hidden="true" />
       </button>
 
-      {open && anchor && (
-        <ul
-          ref={listRef}
-          role="listbox"
-          aria-label={label}
-          tabIndex={-1}
-          onKeyDown={onListKey}
-          className="khg-pill-panel"
-          style={{ top: anchor.top, left: anchor.left, minWidth: anchor.width }}
-        >
-          {rows.length === 0 ? (
-            <li className="khg-pill-empty">{emptyLabel}</li>
-          ) : (
-            rows.map((row, i) => {
-              const selected = row.value === (value ?? "");
-              return (
-                <li key={row.value || "__all"} role="option" aria-selected={selected}>
-                  <button
-                    type="button"
-                    data-idx={i}
-                    data-active={i === activeIndex ? "true" : undefined}
-                    data-selected={selected ? "true" : undefined}
-                    className="khg-pill-row"
-                    onMouseEnter={() => setActiveIndex(i)}
-                    onClick={() => commit(row)}
-                  >
-                    <span>{row.label}</span>
-                    {selected && <Check size={14} aria-hidden="true" />}
-                  </button>
-                </li>
-              );
-            })
+      <Sheet open={open} onClose={() => setOpen(false)} title={label} closeLabel={closeLabel}>
+        <div onKeyDown={onKeys}>
+          {searchable && (
+            <label className="khg-pick-search">
+              <Search size={18} aria-hidden />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setActiveIndex(0);
+                }}
+                placeholder={searchPlaceholder ?? label}
+                aria-label={searchPlaceholder ?? label}
+                autoComplete="off"
+                enterKeyHint="search"
+              />
+            </label>
           )}
-        </ul>
-      )}
-    </div>
+          {visible.length === 0 ? (
+            <p className="khg-pick-empty" role="status">{noMatchLabel ?? emptyLabel}</p>
+          ) : (
+            <ul ref={listRef} role="listbox" aria-label={label} className="khg-pick-list">
+              {visible.map((row, i) => {
+                const selected = row.value === (value ?? "");
+                return (
+                  <li key={row.value || "__all"} role="option" aria-selected={selected}>
+                    <button
+                      type="button"
+                      data-idx={i}
+                      data-active={i === activeIndex ? "true" : undefined}
+                      data-selected={selected ? "true" : undefined}
+                      className="khg-pick-row"
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onClick={() => commit(row)}
+                    >
+                      <span className="khg-pick-label">{row.label}</span>
+                      {row.detail && <span className="khg-pick-detail">{row.detail}</span>}
+                      <span className="khg-pick-check" aria-hidden>{selected && <Check size={18} />}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </Sheet>
+    </>
   );
 }

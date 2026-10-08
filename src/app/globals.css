@@ -258,23 +258,54 @@ body::-webkit-scrollbar {
 }
 
 /* Category row: a horizontal scroller on phones, a centered wrap once there's room. */
-.khg-cat-row {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  padding: 16px 0 4px;
-  scroll-padding-inline: 16px;
+/* ── Browse header (city page) ────────────────────────────────────────────────
+   Title and count, then WHERE (city, area pills) and WHAT (search, Filters), then the
+   filters in use. One row of controls on a wide screen, two on a phone. */
+.khg-browse { margin-bottom: var(--space-6); }
+.khg-browse-heading { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-3); row-gap: 2px; }
+.khg-browse-title {
+  margin: 0; font-family: var(--font-display); font-weight: 600; line-height: 1.2;
+  letter-spacing: -0.02em; color: var(--text-primary);
+  font-size: clamp(1.75rem, 1.35rem + 1.6vw, 2.5rem); text-wrap: balance;
 }
-@media (min-width: 1024px) {
-  .khg-cat-row {
-    overflow-x: visible;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 28px 0 4px;
-  }
+.khg-browse-count { margin: 0; font-size: var(--text-sm); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.khg-browse-intro {
+  margin: var(--space-2) 0 0; max-width: 68ch;
+  font-size: var(--text-sm); line-height: 1.6; color: var(--text-secondary);
 }
+.khg-browse-controls { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+.khg-browse-where { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.khg-browse-where > * { min-width: 0; }
+.khg-browse-where .khg-pill { width: 100%; }
+.khg-browse-what { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+@media (min-width: 768px) {
+  .khg-browse-controls { flex-direction: row; align-items: center; }
+  .khg-browse-where { display: flex; flex: none; }
+  .khg-browse-where .khg-pill { width: auto; max-width: 220px; }
+  .khg-browse-what { flex: 1; }
+}
+.khg-browse-active {
+  display: flex; align-items: center; gap: var(--space-2);
+  margin: var(--space-3) 0 0; padding: 2px; list-style: none;
+  overflow-x: auto; scroll-padding-inline: 16px;
+}
+.khg-browse-active > li { flex: none; }
+.khg-active-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 0 10px 0 12px; padding-inline: 12px 10px;
+  border: 1px solid var(--brand-400); border-radius: var(--radius-full);
+  background: var(--brand-50); color: var(--brand-700);
+  font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500;
+  cursor: pointer; transition: var(--motion-color);
+}
+.khg-active-chip:hover { background: var(--brand-100); }
+.khg-active-chip:focus-visible, .khg-active-clear:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.khg-active-clear {
+  min-height: 36px; padding: 0 8px; border: none; border-radius: var(--radius-full); background: transparent;
+  color: var(--text-secondary); font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.khg-active-clear:hover { color: var(--text-primary); }
 
 /* Home rails: a swipeable rail on phones, a grid on desktop. Rail children are sized here so
    PlaceCard itself stays fluid (a fixed card width left dead clickable space in 1fr cells).

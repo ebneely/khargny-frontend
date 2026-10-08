@@ -370,6 +370,8 @@ function renderCity(locale, result, extra = {}) {
     '@/lib/api/hooks/use-search': { useSearchPlaces: (query, options) => { captured = { query, options }; return { data: result, isFetching: extra.loading ?? false, isError: false }; } },
     '@/lib/api/hooks/use-saved-places': { useSaveToggle: () => ({ saved: false, toggle: empty }) },
     '@/lib/icon-catalog': { icon: empty },
+    '@/lib/api/hooks/use-taxonomy': { useAmenities: () => ({ data: [{ id: 'roof', name: 'روف', nameEn: 'Rooftop Seating' }] }) },
+    '@/lib/price-bands': { priceBandLabel: (level) => `band ${level}` },
     '@/components/ds/SiteHeader': { SiteHeader: empty },
     '@/components/explorer/CitySelector': { CitySelector: empty },
     '@/components/explorer/RegionSelector': { RegionSelector: empty },

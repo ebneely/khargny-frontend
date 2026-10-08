@@ -47,6 +47,16 @@ function assertBatch(request, events) {
 const at = (milliseconds = 0) => new Date(Date.parse("2026-10-06T12:00:00.000Z") + milliseconds).toISOString();
 const adEvent = (type, placement = "featured", milliseconds = 0, identifier = campaignId) => ({ campaignId: identifier, type, placement, occurredAt: at(milliseconds) });
 
+// HomeAds chooses the Top 10 city through the shared picker (a pill that opens a sheet), not a
+// raw <select>. In a static render only the pill is on the page.
+function homeAdsPickerStubs() {
+  const React = require("react");
+  return {
+    "lucide-react": { MapPin: () => null },
+    "@/components/explorer/SelectPill": { SelectPill: ({ label, allLabel, value, options }) => React.createElement("button", { type: "button", "data-city-picker": value ?? "", "aria-label": label }, value ? options.find((option) => option.value === value)?.label ?? value : allLabel) },
+  };
+}
+
 function load(file, globals = {}, imports = {}, sourceOverride) {
   const source = sourceOverride ?? fs.readFileSync(file, "utf8");
   const javascript = ts.transpileModule(source, { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
@@ -357,6 +367,7 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
   for (const locale of ["ar", "en"]) {
     const t = (key) => key.split(".").reduce((value, part) => value?.[part], dictionaries[locale]) ?? key;
     const { HomeAds } = load("src/app/_home/HomeAds.tsx", {}, {
+      ...homeAdsPickerStubs(),
       react: React, "react/jsx-runtime": jsx,
       "@/lib/place-photo": load("src/lib/place-photo.ts", { URL }),
       "@/components/ds/PlaceCard": realPlaceCard(React, locale, t),
@@ -369,7 +380,7 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
     assert.ok(markup.includes(locale === "ar" ? "كل مصر" : "All Egypt"));
     assert.ok(markup.includes(locale === "ar" ? "أماكن مميزة" : "Featured places"));
     assert.ok(markup.includes(`href="/${locale}/explorer/cairo/test-place/"`));
-    assert.ok(markup.includes('aria-controls="home-top10-list"'));
+    assert.ok(markup.includes("data-city-picker") && !markup.includes("<select"));
     // The owner: "just a tag like mobile with blue sponsored ... and hide position #".
     assert.ok(!markup.includes(locale === "ar" ? "المركز" : "Position"));
     assert.ok(!markup.includes(" ? "));

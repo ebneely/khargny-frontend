@@ -1,5 +1,7 @@
 "use client";
 
+import { MapPin } from "lucide-react";
+import { SelectPill } from "@/components/explorer/SelectPill";
 import * as React from "react";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { CARD_RAIL_SIZES } from "@/lib/place-photo";
@@ -91,19 +93,20 @@ export function HomeAds({ d }: { d: HomeDiscovery }) {
         <section aria-labelledby={d.topPlaces ? "home-top10-title" : undefined} data-ad-placement="top10" className="khg-anim-in-2" style={{ margin: "clamp(24px, 5vw, 36px) 0" }}>
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             {d.topPlaces && <h2 id="home-top10-title" className="khg-section-title" style={{ marginBottom: 0 }}>{t("home.top10")}</h2>}
-            <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-              <span>{t("home.top10City")}</span>
-              <select
-                value={d.topCity ?? ""}
-                onChange={(event) => d.setTopCity(event.target.value || undefined)}
-                aria-controls={d.topPlaces ? "home-top10-list" : undefined}
-                className="max-w-48 rounded-full border px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-600)]"
-                style={{ borderColor: "var(--gray-300)", background: "var(--white)", color: "var(--text-primary)" }}
-              >
-                <option value="">{t("home.allEgypt")}</option>
-                {d.activeCities.map((city) => <option key={city.id} value={city.slug}>{locale === "ar" ? city.name : city.nameEn || city.name}</option>)}
-              </select>
-            </label>
+            {/* The same picker sheet the explorer's city pill opens. A raw <select> here drew the
+                operating system's own list over the page. */}
+            <SelectPill
+              options={d.activeCities.map((city) => ({ value: city.slug, label: locale === "ar" ? city.name : city.nameEn || city.name }))}
+              value={d.topCity ?? null}
+              onChange={(slug) => d.setTopCity(slug || undefined)}
+              label={t("home.top10City")}
+              placeholder={t("home.allEgypt")}
+              allLabel={t("home.allEgypt")}
+              icon={<MapPin size={16} />}
+              searchPlaceholder={t("explorer.searchCities")}
+              noMatchLabel={t("explorer.nothingMatches")}
+              closeLabel={t("common.close")}
+            />
           </div>
           {d.topPlaces && <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }} aria-live="polite">{t("home.showingList")} {d.topPlacesCity ? (locale === "ar" ? d.activeCities.find((city) => city.slug === d.topPlacesCity)?.name : d.activeCities.find((city) => city.slug === d.topPlacesCity)?.nameEn || d.activeCities.find((city) => city.slug === d.topPlacesCity)?.name) : t("home.allEgypt")}</p>}
           {d.topPlaces && <div id="home-top10-list" aria-busy={d.topPlacesLoading} className="khg-home-rail no-scrollbar">

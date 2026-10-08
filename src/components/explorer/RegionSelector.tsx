@@ -42,6 +42,9 @@ export function RegionSelector({
       placeholder={t("explorer.pickRegion")}
       allLabel={t("explorer.regionAll")}
       emptyLabel={t("explorer.regionEmpty")}
+      searchPlaceholder={t("explorer.searchAreas")}
+      noMatchLabel={t("explorer.nothingMatches")}
+      closeLabel={t("common.close")}
     />
   );
 }

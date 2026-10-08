@@ -35,7 +35,7 @@ function optionsModule(regions) {
 }
 
 function icons(React) {
-  return Object.fromEntries(['ChevronDown', 'Check', 'Heart', 'Navigation', 'Eye', 'Star']
+  return Object.fromEntries(['ChevronDown', 'Check', 'Search', 'X', 'MapPin', 'Heart', 'Navigation', 'Eye', 'Star']
     .map((name) => [name, () => React.createElement('svg', { 'aria-hidden': true })]));
 }
 
@@ -296,6 +296,8 @@ test('rendered selector selects one catalogue key in both locales and All areas 
   const jsx = require('react/jsx-runtime');
   const { renderToStaticMarkup } = require('react-dom/server');
   const select = loadModule('src/components/explorer/SelectPill.tsx', {
+    // The sheet is closed in a static render: the pill alone is what is on the page.
+    '@/components/ds/Sheet': { Sheet: ({ open, children }) => (open ? children : null) },
     react: React,
     'react/jsx-runtime': jsx,
     'lucide-react': icons(React),
