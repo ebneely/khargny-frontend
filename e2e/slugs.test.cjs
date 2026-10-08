@@ -39,8 +39,10 @@ function cityLayout({ status = 200, failure = false, route = '/explorer/aswan', 
   return load('src/app/explorer/[citySlug]/layout.tsx', {
     fetch: async (url) => {
       if (failure) throw new Error('Offline simulated outage');
-      if (url.includes('/places?')) return { ok: true, json: async () => ({ data: { meta: { total: count } } }) };
-      return { ok: status === 200, status, json: async () => ({ data: { slug: 'aswan', name: 'Aswan', nameEn: 'Aswan' } }) };
+      if (url.includes('/places?')) return { ok: true, json: async () => ({ data: { data: [], meta: { total: count } } }) };
+      const city = { id: 'aswan', slug: 'aswan', name: 'Aswan', nameEn: 'Aswan' };
+      const data = url.endsWith('/v1/cities') ? [city] : url.endsWith('/v1/categories') ? [] : city;
+      return { ok: status === 200, status, json: async () => ({ data }) };
     },
     'next/navigation': { notFound: () => { throw new Error('NOT_FOUND'); } },
     'next/headers': { headers: async () => new Headers({ 'x-khargny-locale': 'en', 'x-khargny-path': route }), cookies: async () => ({ get: () => undefined }) },
@@ -48,16 +50,22 @@ function cityLayout({ status = 200, failure = false, route = '/explorer/aswan', 
   });
 }
 
-test('city metadata and server layout signal 404 only for an unknown city; empty city and API outage stay renderable', async () => {
+test('city metadata and layout keep unknown 404 and empty cities, but reject outages before rendering', async () => {
   const missing = cityLayout({ status: 404, route: '/explorer/no-such-city-zz/' });
   const cityArgs = { params: Promise.resolve({ citySlug: 'no-such-city-zz' }), children: 'city page' };
   await assert.rejects(missing.default(cityArgs), /NOT_FOUND/);
   await assert.rejects(missing.generateMetadata(cityArgs), /NOT_FOUND/);
-  for (const options of [{ count: 0 }, { status: 500 }, { failure: true }]) {
+  for (const options of [{ count: 0 }]) {
     const available = cityLayout(options);
     const currentArgs = { params: Promise.resolve({ citySlug: 'aswan' }), children: 'city page' };
     assert.match(require('react-dom/server').renderToStaticMarkup(await available.default(currentArgs)), /city page/);
     assert.ok(await available.generateMetadata(currentArgs));
+  }
+  for (const options of [{ status: 500 }, { failure: true }]) {
+    const failed = cityLayout(options);
+    const currentArgs = { params: Promise.resolve({ citySlug: 'aswan' }), children: 'city page' };
+    await assert.rejects(failed.default(currentArgs), /status 500|Offline/);
+    await assert.rejects(failed.generateMetadata(currentArgs), /status 500|Offline/);
   }
   const child = cityLayout({ status: 404, route: '/explorer/no-such-city-zz/old/' });
   assert.match(require('react-dom/server').renderToStaticMarkup(await child.default(cityArgs)), /city page/);
@@ -101,16 +109,14 @@ test('metadata blocks redirects before streaming; payload builds canonical, alte
   assert.ok(!markup.includes('/aswan/old'));
 });
 
-test('unknown slug signals framework 404; API failure keeps children/noindex, never redirects', async () => {
+test('unknown slug signals framework 404; API failure rejects before body or metadata and never redirects', async () => {
   const missing = layout(null, { status: 404 });
   await assert.rejects(missing.default(args), /NOT_FOUND/);
   await assert.rejects(missing.generateMetadata(args), /NOT_FOUND/);
   for (const options of [{ status: 503 }, { failure: true }]) {
     const failed = layout(null, options);
-    const rendered = await failed.default(args);
-    assert.equal(rendered.props.children, 'existing page');
-    const metadata = await failed.generateMetadata(args);
-    assert.equal(metadata.robots.index, false);
+    await assert.rejects(failed.default(args), /status 503|offline/i);
+    await assert.rejects(failed.generateMetadata(args), /status 503|offline/i);
     assert.equal(failed.decisions.length, 0);
   }
 });
@@ -137,8 +143,8 @@ test('an API failure envelope cannot redirect an old city or signal a missing ci
   }) });
   const layoutModule = load('src/app/explorer/[citySlug]/layout.tsx', deps);
   const cityArgs = { params: Promise.resolve({ citySlug: 'alqahrh' }), children: 'city page' };
-  assert.match(require('react-dom/server').renderToStaticMarkup(await layoutModule.default(cityArgs)), /city page/);
-  assert.equal((await layoutModule.generateMetadata(cityArgs)).robots.index, false);
+  await assert.rejects(layoutModule.default(cityArgs), (error) => error.status === 502);
+  await assert.rejects(layoutModule.generateMetadata(cityArgs), (error) => error.status === 502);
 });
 
 test('old city plus old place redirects once, directly to both current slugs', async () => {
@@ -173,7 +179,7 @@ test('client fallback replaces address without history push; menu uses payload s
   let address = { citySlug: 'aswan', placeSlug: 'old' };
   const place = { id: 'venue-id', cityId: 'city-cairo', slug: 'new', name: 'Venue', hasMenu: true, images: [], rating: 0 };
   const dictionary = load('src/i18n/dictionaries.ts').dictionaries.en;
-  const Page = load('src/app/explorer/[citySlug]/[placeSlug]/page.tsx', {
+  const pageDependencies = {
     react: { ...React, useEffect: (effect) => { effects.push(effect); } },
     window: { location: { search: '?q=roof', hash: '#menu' } },
     'next/navigation': { useParams: () => address, useRouter: () => ({ replace: (target, options) => {
@@ -184,6 +190,7 @@ test('client fallback replaces address without history push; menu uses payload s
     '@/i18n/LocaleProvider': { useI18n: () => ({ locale: 'en', t: (key) => key.split('.').reduce((value, part) => value?.[part], dictionary) ?? key }) },
     '@/lib/api/hooks/use-places': { usePlace: (slug) => { requestedSlugs.push(slug); return { data: place }; }, useSimilarPlaces: (id) => { similarIds.push(id); return { data: [] }; } },
     '@/lib/api/hooks/use-cities': { useCities: () => ({ data: [{ id: 'city-cairo', slug: 'cairo', name: 'Cairo' }] }) },
+    '@/lib/api/hooks/use-categories': { useCategories: () => ({ data: [] }) },
     '@/lib/api/hooks/use-saved-places': { useSaveToggle: () => ({ saved: false, toggle: empty }) },
     '@/lib/analytics/track': { trackPlaceAction: empty, trackPlaceView: empty },
     '@/lib/icon-catalog': { icon: empty },
@@ -195,15 +202,19 @@ test('client fallback replaces address without history push; menu uses payload s
     '@/components/explorer/LoadingSkeleton': { LoadingSkeleton: empty },
     '@/components/explorer/ErrorState': { ErrorState: empty },
     '@/components/explorer/NotFoundState': { NotFoundState: empty },
-  }).default;
-  require('react-dom/server').renderToStaticMarkup(React.createElement(Page));
+  };
+  const Page = load('src/app/explorer/[citySlug]/[placeSlug]/PlaceClient.tsx', pageDependencies).default;
+  const Related = load('src/app/explorer/[citySlug]/[placeSlug]/RelatedPlacesClient.tsx', pageDependencies).RelatedPlacesClient;
+  const Menu = pageDependencies['@/components/explorer/PlaceMenuSection'].PlaceMenuSection;
+  const element = () => React.createElement(Page, { menu: React.createElement(Menu, { slug: place.slug }), related: React.createElement(Related, { id: place.id, citySlug: 'cairo' }) });
+  require('react-dom/server').renderToStaticMarkup(element());
   for (const effect of effects) effect();
   assert.equal(replacements[0].target, '/en/explorer/cairo/new/?q=roof#menu');
   assert.equal(replacements[0].options.scroll, false);
   assert.deepEqual(menuSlugs, ['new']);
   assert.deepEqual(similarIds, ['venue-id']);
   effects.length = 0;
-  require('react-dom/server').renderToStaticMarkup(React.createElement(Page));
+  require('react-dom/server').renderToStaticMarkup(element());
   for (const effect of effects) effect();
   assert.deepEqual(requestedSlugs, ['old', 'new']);
   assert.deepEqual(menuSlugs, ['new', 'new']);

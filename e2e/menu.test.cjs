@@ -97,7 +97,7 @@ function placePage(locale, flags) {
   const empty = () => null;
   const place = { id: 'place-id', slug: 'test-place', name: 'مكان', nameEn: 'Test place', cityId: 'city-id',
     rating: 0, priceRange: 2, phone: '123', website: 'https://example.invalid', ...flags };
-  return loadModule('src/app/explorer/[citySlug]/[placeSlug]/page.tsx', {
+  const Page = loadModule('src/app/explorer/[citySlug]/[placeSlug]/PlaceClient.tsx', {
     '@/i18n/LocaleProvider': translations(locale),
     'next/navigation': { useParams: () => ({ citySlug: 'test-city', placeSlug: place.slug }), useRouter: () => ({ back: empty }) },
     '@/components/ds/SiteHeader': { SiteHeader: empty },
@@ -111,12 +111,14 @@ function placePage(locale, flags) {
     '@/components/explorer/NotFoundState': { NotFoundState: empty },
     '@/lib/api/hooks/use-places': { usePlace: () => ({ data: place }), useSimilarPlaces: () => ({ data: [place] }) },
     '@/lib/api/hooks/use-cities': { useCities: () => ({ data: [{ id: 'city-id', slug: 'test-city' }] }) },
+    '@/lib/api/hooks/use-categories': { useCategories: () => ({ data: [] }) },
     '@/lib/api/hooks/use-saved-places': { useSaveToggle: () => ({ saved: false, toggle: empty }) },
-    '@/lib/region-location': { regionLocation: () => '' },
+    '@/lib/region-location': { regionLocation: () => '', cardArea: () => '' },
     '@/lib/icon-catalog': { icon: empty },
     '@/lib/config': { API_BASE_URL: 'https://api.example.invalid' },
     '@/lib/analytics/track': { trackPlaceAction: empty, trackPlaceView: empty },
   }).default;
+  return () => React.createElement(Page, { related: React.createElement('section', { 'data-similar': true }) });
 }
 
 function assertStatuses(markup, expected, locale) {
@@ -436,7 +438,8 @@ test('both card components keep passive chips inside keyboard-native links and s
     for (const Card of [cardModule(locale), ExplorerCard]) {
       const markup = renderToStaticMarkup(React.createElement(Card, { title: 'Test place', area: '', href: '/explorer/test-city/test-place',
         citySlug: 'test-city', placeSlug: 'test-place', onToggleFavorite: () => {}, ...flags }));
-      const anchor = markup.match(/<a\b[^>]*href="\/explorer\/test-city\/test-place"[^>]*>[\s\S]*?<\/a>/)?.[0];
+      const href = Card === ExplorerCard ? '/explorer/test-city/test-place' : `/${locale}/explorer/test-city/test-place/`;
+      const anchor = [...markup.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)].find((match) => match[0].includes(`href="${href}"`))?.[0];
       assert.ok(anchor);
       assertStatuses(anchor, [true, false, true], locale);
       assert.equal((markup.match(/<button\b/g) ?? []).length, 1);
@@ -447,7 +450,7 @@ test('both card components keep passive chips inside keyboard-native links and s
   }
   const source = fs.readFileSync(path.join(__dirname, '../src/components/ds/PlaceBadges.tsx'), 'utf8');
   assert.ok(!/onClick|onPointer|stopPropagation|Popover|tabIndex/.test(source));
-  for (const file of ['src/app/_home/Home.tsx', 'src/app/explorer/[citySlug]/page.tsx', 'src/components/explorer/SimilarPlaces.tsx']) {
+  for (const file of ['src/app/_home/Home.tsx', 'src/app/explorer/[citySlug]/CityClient.tsx', 'src/components/explorer/SimilarPlaces.tsx']) {
     const cardSite = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
     assert.ok(/<PlaceCard[\s\S]*?href=/.test(cardSite));
   }
@@ -463,7 +466,7 @@ test('shared card invokes the framework Link with prefetch disabled, and renders
     const props = { title: 'Test place', area: '', onToggleFavorite: () => {} };
     const markup = renderToStaticMarkup(React.createElement(Card, { ...props, href: '/explorer/aswan/test-place' }));
     assert.equal(calls.length, 1, 'A bare anchor does not invoke next/link');
-    assert.equal(calls[0].href, '/explorer/aswan/test-place');
+    assert.equal(calls[0].href, `/${locale}/explorer/aswan/test-place/`);
     assert.equal(calls[0].prefetch, false);
     const anchor = markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/)?.[0];
     assert.ok(anchor && anchor.includes('data-next-link="true"'));

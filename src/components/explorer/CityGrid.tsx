@@ -12,9 +12,9 @@ import { useI18n } from "@/i18n/LocaleProvider";
 import type { City } from "@/lib/api/types";
 import { PhotoImage } from "@/components/ds/PhotoImage";
 
-type CityGridProps = { cities: City[] };
+type CityGridProps = { cities: City[]; countSlots?: Record<string, React.ReactNode> };
 
-function CountPill({ slug }: { slug: string }) {
+export function CountPill({ slug }: { slug: string }) {
   const { t } = useI18n();
   // limit:1 because this only ever needed the count. Asking for the default page and
   // counting the rows meant every city reported "20 places" — the page size — no matter
@@ -51,7 +51,7 @@ function CountPill({ slug }: { slug: string }) {
   );
 }
 
-export function CityGrid({ cities }: CityGridProps) {
+export function CityGrid({ cities, countSlots }: CityGridProps) {
   const { t, locale } = useI18n();
 
   if (cities.length === 0) {
@@ -72,7 +72,7 @@ export function CityGrid({ cities }: CityGridProps) {
         return (
           <Link
             key={city.id}
-            href={`/explorer/${city.slug}`}
+            href={`/${locale}/explorer/${city.slug}/`}
             className="khg-city-card"
             data-trace-id={`city-card-${city.slug}`}
           >
@@ -87,7 +87,7 @@ export function CityGrid({ cities }: CityGridProps) {
               <MapPin size={18} className="khg-city-pin" aria-hidden />
               {/* The count rides on the photo so the name below gets the full card width.
                   Sharing one row, the two competed and the name lost. */}
-              <CountPill slug={city.slug} />
+              {countSlots?.[city.slug] ?? <CountPill slug={city.slug} />}
             </div>
             <div className="khg-city-body">
               <h3 className="khg-city-name">{name}</h3>

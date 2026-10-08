@@ -427,7 +427,7 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
     const { renderToStaticMarkup } = require("react-dom/server");
     const effects = [];
     let published = false;
-    const { Home } = load("src/app/_home/Home.tsx", {}, {
+    const { HomeRails } = load("src/app/_home/Home.tsx", {}, {
       react: { useState: () => [published, (next) => { published = next; }], useEffect: (callback) => effects.push(callback) },
       "react/jsx-runtime": require("react/jsx-runtime"),
       "lucide-react": { Search: () => null, ArrowRight: () => null, MapPin: () => null },
@@ -440,7 +440,7 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
       "@/i18n/LocaleProvider": { useI18n: () => ({ t: (key) => key }) },
       "./HomeAds": { HomeAds: () => React.createElement("section", null, "Optional rails") },
     });
-    const render = (data) => { effects.length = 0; const text = renderToStaticMarkup(Home({ d: data })); effects.forEach((effect) => effect()); return text; };
+    const render = (data) => { effects.length = 0; const text = renderToStaticMarkup(HomeRails({ d: data })); effects.forEach((effect) => effect()); return text; };
     assert.ok(render(discovery({ cities: [city] })).includes("home.emptyTitle"));
     assert.ok(render(discovery({ featured, cities: [city] })).includes("home.emptyTitle"));
   });

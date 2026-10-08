@@ -368,7 +368,7 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
     assert.ok(markup.includes(locale === "ar" ? "إعلان" : "Sponsored"));
     assert.ok(markup.includes(locale === "ar" ? "كل مصر" : "All Egypt"));
     assert.ok(markup.includes(locale === "ar" ? "أماكن مميزة" : "Featured places"));
-    assert.ok(markup.includes('href="/explorer/cairo/test-place"'));
+    assert.ok(markup.includes(`href="/${locale}/explorer/cairo/test-place/"`));
     assert.ok(markup.includes('aria-controls="home-top10-list"'));
     // The owner: "just a tag like mobile with blue sponsored ... and hide position #".
     assert.ok(!markup.includes(locale === "ar" ? "المركز" : "Position"));
@@ -380,7 +380,7 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
     assert.equal(skeleton, "");
     assert.ok(!skeleton.includes("<h2"));
 
-    const { Home } = load("src/app/_home/Home.tsx", {}, {
+    const { Home, HomeRails } = load("src/app/_home/Home.tsx", {}, {
       react: React, "react/jsx-runtime": jsx,
       "lucide-react": { Search: () => null, ArrowRight: () => null, MapPin: () => null },
       "@/components/ds/PlaceCard": { PlaceCard: ({ title }) => React.createElement("div", null, title) },
@@ -392,14 +392,15 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
       "@/i18n/LocaleProvider": { useI18n: () => ({ locale, t }) },
       "./HomeAds": { HomeAds },
     });
-    const populated = renderToStaticMarkup(React.createElement(Home, { d: discovery({ featured, top, sections, cities: [city], locale }) }));
+    const renderHome = (discoveryData) => renderToStaticMarkup(React.createElement(Home, { d: discoveryData, cityCounts: {}, secondary: React.createElement(HomeRails, { d: discoveryData }) }));
+    const populated = renderHome(discovery({ featured, top, sections, cities: [city], locale }));
     assert.ok(populated.indexOf('id="khg-regions"') < populated.indexOf('data-ad-placement="featured"'));
     assert.ok(populated.indexOf('data-ad-placement="featured"') < populated.indexOf('data-ad-placement="top10"'));
     assert.ok(populated.indexOf('data-ad-placement="top10"') < populated.indexOf(locale === "ar" ? "اختيارات" : "Editorial custom"));
     assert.ok(!populated.includes(locale === "ar" ? "قسم مميز" : "Editorial featured"));
-    const adsOnly = renderToStaticMarkup(React.createElement(Home, { d: data }));
+    const adsOnly = renderHome(data);
     assert.ok(!adsOnly.includes(t("home.emptyTitle")));
-    const fallback = renderToStaticMarkup(React.createElement(Home, { d: discovery({ cities: [city], locale }) }));
+    const fallback = renderHome(discovery({ cities: [city], locale }));
     assert.ok(fallback.includes(t("home.emptyTitle")));
   }
 });

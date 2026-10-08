@@ -12,7 +12,7 @@
  * All state/actions still come from useHomeDiscovery(). Icons are bundled (lucide-react).
  */
 import * as React from "react";
-import { Search, ArrowRight, MapPin } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { CARD_RAIL_SIZES } from '@/lib/place-photo';
 import { Toast } from "@/components/ds/Toast";
@@ -124,7 +124,7 @@ function Hero() {
   );
 }
 
-function RegionGrid({ d }: { d: HomeDiscovery }) {
+function RegionGrid({ d, cityCounts }: { d: Pick<HomeDiscovery, 'activeCities'>; cityCounts?: Record<string, React.ReactNode> }) {
   const { t } = useI18n();
   if (d.activeCities.length === 0) return null;
   return (
@@ -136,32 +136,19 @@ function RegionGrid({ d }: { d: HomeDiscovery }) {
       {/* The same CityGrid the explorer renders. The home used to draw its own pill-shaped
           card — same data, different component, so city photos and place counts appeared in
           one place and not the other, and the two drifted apart on every change. */}
-      <CityGrid cities={d.activeCities} />
+      <CityGrid cities={d.activeCities} countSlots={cityCounts} />
     </section>
   );
 }
 
-export function Home({ d }: { d: HomeDiscovery }) {
+export function HomeRails({ d }: { d: HomeDiscovery }) {
   const { t } = useI18n();
   const hasPlaces = d.rails.length > 0 || Boolean(d.featured || d.topPlaces);
   const [emptyPublished, setEmptyPublished] = React.useState(false);
   if (!hasPlaces && !emptyPublished) setEmptyPublished(true);
   const showEmpty = d.rails.length === 0 && (!hasPlaces || emptyPublished);
   return (
-    <div
-      style={{ minHeight: "100dvh", background: "var(--surface-app)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}
-    >
-      <SiteHeader active="home" />
-      <Hero />
-
-      <div style={{ maxWidth: MAXW, margin: "0 auto", width: "100%", padding: "0 clamp(16px, 4vw, 32px)", flex: 1 }}>
-        {/* Categories deliberately do not appear here. Browsing starts with "where", and a
-            category strip above the regions asked visitors to filter a set they had not chosen
-            yet. The strip now lives on the city page, where a category is a real narrowing. */}
-
-        {/* Regions — always present at every width, so home is never an empty page */}
-        <RegionGrid d={d} />
-
+    <>
         <HomeAds d={d} />
 
         {!showEmpty ? (
@@ -211,11 +198,19 @@ export function Home({ d }: { d: HomeDiscovery }) {
             <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "var(--text-base)" }}>{t("home.emptySub")}</p>
           </section>
         )}
-      </div>
-
-      <SiteFooter />
-
-      {d.toast && <Toast message={d.toast.message} tone={d.toast.tone} onDismiss={d.dismissToast} />}
-    </div>
+    </>
   );
+}
+
+export function Home({ d, secondary, cityCounts }: { d: Pick<HomeDiscovery, 'activeCities' | 'toast' | 'dismissToast'>; secondary: React.ReactNode; cityCounts: Record<string, React.ReactNode> }) {
+  return <div style={{ minHeight: '100dvh', background: 'var(--surface-app)', fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column' }}>
+    <SiteHeader active="home" />
+    <Hero />
+    <div style={{ maxWidth: MAXW, margin: '0 auto', width: '100%', padding: '0 clamp(16px, 4vw, 32px)', flex: 1 }}>
+      <RegionGrid d={d} cityCounts={cityCounts} />
+      {secondary}
+    </div>
+    <SiteFooter />
+    {d.toast && <Toast message={d.toast.message} tone={d.toast.tone} onDismiss={d.dismissToast} />}
+  </div>;
 }

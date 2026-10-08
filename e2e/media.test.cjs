@@ -197,9 +197,9 @@ test('existing server place fetch supplies the initial responsive cover preload 
   const { renderToStaticMarkup } = require('react-dom/server');
   const exported = {};
   const calls = [];
-  const source = ts.transpileModule(fs.readFileSync('src/app/explorer/[citySlug]/[placeSlug]/layout.tsx', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const seo = { currentLocale: async () => 'en', urlFor: (value) => `https://www.5argny.com/en${value}/`, clampDescription: (value) => value, graph: (...schemas) => ({ '@graph': schemas }), breadcrumbSchema: () => ({}), jsonLdScript: (value) => JSON.stringify(value).replace(/</g, '\\u003c') };
   const dependencies = {
+    react: { ...React, cache(callback) { const values = new Map(); return (...args) => { const key = JSON.stringify(args); if (!values.has(key)) values.set(key, callback(...args)); return values.get(key); }; } },
     '@/lib/region-location': {},
     '@/lib/egypt-regions': { regionLabel: () => '' },
     '@/lib/price-bands': { priceBandLabel: () => undefined },
@@ -211,10 +211,10 @@ test('existing server place fetch supplies the initial responsive cover preload 
     'next/headers': { headers: async () => new Headers() },
     'next/navigation': { permanentRedirect: () => { throw new Error('Unexpected redirect'); }, notFound: () => { throw new Error('Unexpected not found'); } },
   };
-  vm.runInNewContext(source, { exports: exported, fetch: async (url) => {
+  Object.assign(exported, require('./offline-loader.cjs').load('src/app/explorer/[citySlug]/[placeSlug]/layout.tsx', { ...dependencies, fetch: async (url) => {
     calls.push(url);
-    return { ok: true, json: async () => ({ data: url.includes('/places/') ? { name: 'A place', images: [photo] } : { name: 'Cairo' } }) };
-  }, require: (name) => name in dependencies ? dependencies[name] : require(name) });
+    return { ok: true, json: async () => ({ data: url.includes('/places/') ? { slug: 'a-place', cityId: 'city-cairo', name: 'A place', images: [photo] } : [{ id: 'city-cairo', slug: 'cairo', name: 'Cairo' }] }) };
+  } }));
   const markup = renderToStaticMarkup(await exported.default({ params: Promise.resolve({ citySlug: 'cairo', placeSlug: 'a-place' }), children: React.createElement('main') }));
   assert.equal(calls.length, 2);
   const cover = renderToStaticMarkup(React.createElement(photoImageModule().PhotoImage, { photo, alt: 'Cover', frame: 'hero', priority: true }));
@@ -247,7 +247,7 @@ test('the lead gallery exposes a distinct lazy medium candidate and does not pre
   assert.ok(markup.includes('decoding="async"'));
   assert.ok(!markup.includes('rel="preload"'));
   assert.ok(!markup.includes('/medium.webp'));
-  const page = fs.readFileSync('src/app/explorer/[citySlug]/[placeSlug]/page.tsx', 'utf8');
+  const page = fs.readFileSync('src/app/explorer/[citySlug]/[placeSlug]/PlaceClient.tsx', 'utf8');
   assert.ok(page.includes('const cover = allImages[0]'));
   assert.ok(page.includes('const galleryImages = allImages.slice(1)'));
   const plan = fs.readFileSync('src/app/plan/page.tsx', 'utf8');

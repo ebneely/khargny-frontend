@@ -84,7 +84,8 @@ test('server settings fetch revalidates hourly and degrades on errors or bad env
   response = new Error('offline');
   assert.equal(await getSiteSettings(), null);
   const layout = fs.readFileSync('src/app/layout.tsx', 'utf8');
-  assert.ok(layout.includes('await getSiteSettings()'));
+  assert.ok(layout.includes('getSiteSettings()'));
+  assert.ok(layout.includes('await Promise.all('));
   assert.ok(layout.includes('organizationSchema(locale, settings)'));
   assert.ok(layout.includes('SiteSettingsProvider settings={settings}'));
 });
@@ -106,10 +107,12 @@ test('root SSR provides settings to actual footer hooks so links are in the craw
     './globals.css': {},
     '@/components/QueryProvider': { QueryProvider: ({ children }) => React.createElement(query.QueryClientProvider, { client: new query.QueryClient() }, children) },
     '@/components/ui/toaster': { Toaster: noop },
+    '@/components/NavProgress': { NavProgress: noop },
     '@/components/analytics/PageViewTracker': { PageViewTracker: noop },
     '@/i18n/LocaleProvider': { LocaleProvider: wrapper },
     '@/lib/seo': load('src/lib/seo.ts'),
     '@/lib/api/site-settings': { getSiteSettings: async () => all },
+    '@/lib/server/public-data': { primePublicRoute: async () => {}, markPublicError: (error) => error },
     '@/lib/api/hooks/use-site-settings': settingsHooks,
     'next/headers': { headers: async () => new Map([['x-khargny-locale', 'en']]), cookies: async () => new Map() },
   });

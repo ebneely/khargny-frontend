@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { normalizePlaceFlags } from '@/lib/api/normalize-place';
-import type { Place, PlaceDetail, PlaceFilters, PlaceList } from '@/lib/api/types';
+import type { Place, PlaceDetail, PlaceFilters } from '@/lib/api/types';
+import { normalizePlaceList } from '@/lib/api/normalize-place-list';
+export { normalizePlaceList } from '@/lib/api/normalize-place-list';
 
 export const placesKeys = {
   all: ['places'] as const,
@@ -9,35 +11,6 @@ export const placesKeys = {
   detail: (slug: string) => ['places', 'detail', slug] as const,
   similar: (id: string) => ['places', 'similar', id] as const,
 };
-
-/**
- * Normalize a places-list payload to the `{ items, skip, limit }` shape the UI
- * consumes. The backend's public list endpoints return the paginated envelope
- * `{ data: Place[], meta: { skip, limit, total } }`, not `{ items }`.
- */
-export function normalizePlaceList(raw: unknown): PlaceList {
-  if (Array.isArray(raw)) {
-    const items = (raw as Place[]).map(normalizePlaceFlags);
-    return { items, skip: 0, limit: items.length, total: items.length };
-  }
-  const r = (raw ?? {}) as {
-    items?: Place[];
-    data?: Place[];
-    skip?: number;
-    limit?: number;
-    total?: number;
-    meta?: { skip?: number; limit?: number; total?: number };
-  };
-  const items = (r.items ?? r.data ?? []).map(normalizePlaceFlags);
-  return {
-    items,
-    skip: r.skip ?? r.meta?.skip ?? 0,
-    limit: r.limit ?? r.meta?.limit ?? items.length,
-    // Dropping total meant a caller could not tell a full page from the whole set, so
-    // "All" silently showed the first page and called it everything.
-    total: r.total ?? r.meta?.total,
-  };
-}
 
 /** GET /v1/places. `enabled` gates the query — pass false while a required filter
  *  (e.g. cityId) is still unresolved, so it does NOT fire unscoped and return ALL

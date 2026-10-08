@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { NavProgress } from "@/components/NavProgress";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { SITE_URL } from "@/lib/config";
@@ -10,6 +11,7 @@ import { cookies, headers } from "next/headers";
 import type { Locale } from "@/i18n/dictionaries";
 import { getSiteSettings } from '@/lib/api/site-settings';
 import { SiteSettingsProvider } from '@/lib/api/hooks/use-site-settings';
+import { primePublicRoute, markPublicError } from '@/lib/server/public-data';
 
 /**
  * Root layout — single light theme (no `next-themes` / dark mode).
@@ -72,7 +74,11 @@ export default async function RootLayout({
   const chosen = urlLocale ?? cookieLocale;
   const locale: Locale = chosen === "en" ? "en" : "ar";
   const dir = locale === "ar" ? "rtl" : "ltr";
-  const settings = await getSiteSettings();
+  const requestHeaders = await headers();
+  const [settings] = await Promise.all([
+    getSiteSettings(),
+    primePublicRoute(requestHeaders.get('x-khargny-path') ?? '', requestHeaders.get('x-khargny-search') ?? '').catch((error: unknown) => { throw markPublicError(error, locale); }),
+  ]);
 
   return (
     // Scrollbars are hidden globally in globals.css. The `scrollbar-hide` class that used to
@@ -94,6 +100,7 @@ export default async function RootLayout({
             {/* The floating LanguageToggle was removed: SiteHeader already carries a language
                 control, so on mobile the language switch rendered TWICE (once in the nav, once
                 floating at the bottom). The header is now the single place to switch. */}
+              <NavProgress />
               <Toaster />
               <PageViewTracker />
             </SiteSettingsProvider>

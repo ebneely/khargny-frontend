@@ -55,6 +55,7 @@ type PlaceCardProps = {
   image?: string;
   imageSizes?: string;
   title: string;
+  category?: string;
   searchReason?: string;
   area: string;
   rating?: string;
@@ -79,14 +80,16 @@ type PlaceCardProps = {
 };
 
 function PlaceCardLink({ href, onTitleClick, children }: Pick<PlaceCardProps, "href" | "onTitleClick"> & { children: React.ReactNode }) {
-  // Warm the route when the visitor shows intent (pointer over the card, finger down, keyboard
-  // focus), not for every card on screen: a grid of 24 would otherwise ask the server for 24
-  // pages nobody opens. With the explorer's loading boundary the tap then lands instantly.
+  const { locale } = useI18n();
+  // Fetch the whole page when the visitor shows intent (pointer over the card, finger down,
+  // keyboard focus), not for every card on screen: a grid of 24 would otherwise ask the server
+  // for 24 pages nobody opens. By the time the finger lifts the page is on its way or here.
   const [intent, setIntent] = React.useState(false);
   const warm = React.useCallback(() => setIntent(true), []);
   if (!href) return <>{children}</>;
+  const address = href.startsWith('/explorer/') ? `/${locale}${href.replace(/\/+$/, '')}/` : href;
   return (
-    <Link href={href} prefetch={intent ? null : false} onClick={onTitleClick} onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className="khg-place-card-link" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+    <Link href={address} prefetch={intent ? true : false} onClick={onTitleClick} onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className="khg-place-card-link" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
       {children}
     </Link>
   );
@@ -113,6 +116,7 @@ export function PlaceCard({
   title,
   searchReason,
   area,
+  category,
   rating,
   priceRange,
   hasMenu = false,
@@ -255,7 +259,7 @@ export function PlaceCard({
             }}
             title={area}
           >
-            {area}
+            {[category, area].filter(Boolean).join(' · ')}
           </span>
         )}
 

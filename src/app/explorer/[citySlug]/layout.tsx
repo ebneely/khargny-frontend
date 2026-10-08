@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { cityRedirect } from '@/lib/city-address';
-import { API_BASE_URL, SITE_URL } from '@/lib/config';
+import { SITE_URL } from '@/lib/config';
 import {
   breadcrumbSchema,
   clampDescription,
@@ -23,11 +23,15 @@ import {
  * the site root. Nine of the site's most searchable pages were telling Google they were
  * duplicates of the home page.
  */
+import { getCity, getCityPage } from '@/lib/server/public-data';
+import { ApiError } from '@/lib/api/client';
+import { cityPageNumber, CITY_PAGE_SIZE } from '@/lib/city-pagination';
+
 type Params = { citySlug: string };
 
 type City = {
   name?: string;
-  nameEn?: string;
+  nameEn?: string | null;
   slug?: string;
   descriptionAr?: string | null;
   descriptionEn?: string | null;
@@ -35,25 +39,11 @@ type City = {
   areaKeys?: string[] | null;
 };
 
-async function fetchCity(slug: string): Promise<City | null> {
-  if (!API_BASE_URL) return null;
-  let missing = false;
-  try {
-    const res = await fetch(`${API_BASE_URL}/v1/cities/${encodeURIComponent(slug)}`, {
-      cache: 'no-store',
-    });
-    missing = res.status === 404;
-    if (res.ok) {
-      const json = await res.json();
-      if (json?.success === false) return null;
-      const data = json?.data ?? json;
-      return (data?.city ?? data) as City;
-    }
-  } catch {
-    return null;
+async function fetchCity(slug: string): Promise<City> {
+  try { return await getCity(slug); } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
   }
-  if (missing) notFound();
-  return null;
 }
 
 async function resolveCity(citySlug: string, locale: 'ar' | 'en'): Promise<City | null> {
@@ -66,19 +56,8 @@ async function resolveCity(citySlug: string, locale: 'ar' | 'en'): Promise<City 
 
 /** How many places the city has, for a description that states a real number. */
 async function fetchCount(slug: string): Promise<number | null> {
-  if (!API_BASE_URL) return null;
-  try {
-    const res = await fetch(`${API_BASE_URL}/v1/cities/${slug}/places?limit=1`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    // The envelope is {success, data:{data:[…], meta}} — the meta sits one level deeper
-    // than the outer `data`, so reading json.meta.total silently returned nothing.
-    return json?.data?.meta?.total ?? json?.meta?.total ?? null;
-  } catch {
-    return null;
-  }
+  const search = (await headers()).get('x-khargny-search') ?? '';
+  return (await getCityPage(slug, cityPageNumber(new URLSearchParams(search).get('page')))).places.total ?? null;
 }
 
 export async function generateMetadata({
@@ -113,11 +92,22 @@ export async function generateMetadata({
       : `Discover the best places in ${name} — restaurants, cafes, beaches, hotels and landmarks${count ? `, ${count} curated spots` : ''}. Browse by area and category on Khargny.`);
 
   const search = (await headers()).get('x-khargny-search') ?? '';
-  return pageMetadata({
+  const page = new URLSearchParams(search).has('q') ? 1 : cityPageNumber(new URLSearchParams(search).get('page'));
+  const metadata = pageMetadata({
     path, locale, title, description,
     image: city?.imageUrl ? { url: city.imageUrl, alt: name } : undefined,
     noindex: !city || new URLSearchParams(search).has('q'),
   });
+  if (page > 1 && metadata.alternates) {
+    metadata.alternates.canonical = `${urlFor(path, locale)}?page=${page}`;
+    metadata.alternates.languages = Object.fromEntries(Object.entries(metadata.alternates.languages ?? {}).map(([language, url]) => [language, `${url}?page=${page}`]));
+  }
+  const pages = Math.ceil((count ?? 0) / CITY_PAGE_SIZE);
+  metadata.pagination = {
+    previous: page > 1 ? `${urlFor(path, locale)}${page > 2 ? `?page=${page - 1}` : ''}` : null,
+    next: page < pages ? `${urlFor(path, locale)}?page=${page + 1}` : null,
+  };
+  return metadata;
 }
 
 export default async function CityLayout({

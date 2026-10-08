@@ -85,7 +85,7 @@ async function renderedCity(context, address = '/en/explorer/aswan/') {
     for (const [path, name] of [['ds/SiteHeader','SiteHeader'], ['ds/CategoryChip','CategoryChip'], ['explorer/CitySelector','CitySelector'], ['explorer/RegionSelector','RegionSelector'], ['explorer/FilterPanel','FilterPanel'], ['explorer/PlaceFilters','PlaceFilters'], ['explorer/LoadingSkeleton','LoadingSkeleton'], ['explorer/ErrorState','ErrorState']]) dependencies['@/components/' + path] = { [name]:empty };
     dependencies['@/lib/use-search-term'] = load('src/lib/use-search-term.ts', dependencies);
     dependencies['@/lib/api/hooks/use-search'] = load('src/lib/api/hooks/use-search.ts', dependencies);
-    const Page = load('src/app/explorer/[citySlug]/page.tsx', dependencies).default;
+    const Page = load('src/app/explorer/[citySlug]/CityClient.tsx', dependencies).default;
     client = new QueryClient({ defaultOptions:{ queries:{ retry:false, gcTime:0 } } });
     return React.createElement(require('@tanstack/react-query').QueryClientProvider, { client }, React.createElement(Page));
   }, address);
@@ -360,7 +360,7 @@ function renderCity(locale, result, extra = {}) {
       const values = { 0: extra.category ?? null, 1: extra.region ?? null, 4: extra.filters ?? {} };
       return [index in values ? values[index] : initial, empty];
     }, useEffect: empty },
-    'next/navigation': { useParams: () => ({ citySlug: 'aswan' }), useRouter: () => ({ push: empty }) },
+    'next/navigation': { useParams: () => ({ citySlug: 'aswan' }), useRouter: () => ({ push: empty }), useSearchParams: () => new URLSearchParams('?q=roof') },
     'next/link': { default: ({ children, prefetch, ...props }) => React.createElement('a', props, children) },
     '@/i18n/LocaleProvider': translations(locale),
     '@/lib/use-search-term': { useSearchTerm: () => ({ search: 'roof', debouncedSearch: 'roof', isDebouncing: false, setSearch: empty }) },
@@ -378,7 +378,7 @@ function renderCity(locale, result, extra = {}) {
     '@/components/explorer/LoadingSkeleton': { LoadingSkeleton: () => React.createElement('div', null, 'skeleton') },
     '@/components/explorer/ErrorState': { ErrorState: empty },
   };
-  const Page = load('src/app/explorer/[citySlug]/page.tsx', dependencies).default;
+  const Page = load('src/app/explorer/[citySlug]/CityClient.tsx', dependencies).default;
   const markup = renderToStaticMarkup(React.createElement(Page));
   return { markup, captured };
 }
@@ -405,7 +405,7 @@ test('actual empty search renders other-city links/names or an honest global-emp
     const { markup } = renderCity(locale, result);
     assert.ok(markup.includes(locale === 'ar' ? 'في مدن تانية' : 'In other cities'));
     assert.ok(markup.includes(locale === 'ar' ? 'القاهرة' : 'Cairo'));
-    assert.match(markup, /href="\/explorer\/cairo\/cairo-place"/);
+    assert.ok(markup.includes(`href="/${locale}/explorer/cairo/cairo-place/"`));
     assert.match(markup, /data-search-reason/);
     const waiting = renderCity(locale, result, { loading: true }).markup;
     assert.match(waiting, /cairo-place/);

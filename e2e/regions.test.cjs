@@ -182,7 +182,7 @@ function callsIn(source, name) {
 
 test('city listing retains the two-argument single-value query; area discovery needs no request', () => {
   const root = path.join(__dirname, '..');
-  const cityPath = 'src/app/explorer/[citySlug]/page.tsx';
+  const cityPath = 'src/app/explorer/[citySlug]/CityClient.tsx';
   const source = fs.readFileSync(path.join(root, cityPath), 'utf8');
   const actual = callsIn(source, 'usePlaces');
   assert.equal(actual.calls.length, 1);
@@ -210,7 +210,7 @@ test('city listing retains the two-argument single-value query; area discovery n
 });
 
 test('a card says only the area: the city page never passes the street address to a card', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'src/app/explorer/[citySlug]/page.tsx'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src/app/explorer/[citySlug]/CityClient.tsx'), 'utf8');
   const { parsed, calls } = callsIn(source, 'cardArea');
   assert.equal(calls.length, 1);
   assert.deepEqual(Array.from(calls[0].arguments).slice(0, 2).map((argument) => argument.getText(parsed)), ['place.region', 'locale']);
@@ -226,7 +226,7 @@ test('a card says only the area: the city page never passes the street address t
 });
 
 test('the place page calls the imported production location composition', () => {
-  for (const file of ['src/app/explorer/[citySlug]/[placeSlug]/page.tsx']) {
+  for (const file of ['src/app/explorer/[citySlug]/[placeSlug]/PlaceClient.tsx']) {
     const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
     const { parsed, calls } = callsIn(source, 'regionLocation');
     const sharedImport = parsed.statements.find((statement) => ts.isImportDeclaration(statement)
@@ -257,6 +257,7 @@ function placesHook(apiRequest) {
     '@tanstack/react-query': { useQuery: (options) => options },
     '@/lib/api/client': { apiRequest },
     '@/lib/api/normalize-place': loadModule('src/lib/api/normalize-place.ts'),
+    '@/lib/api/normalize-place-list': loadModule('src/lib/api/normalize-place-list.ts', { './normalize-place': loadModule('src/lib/api/normalize-place.ts') }),
   });
 }
 

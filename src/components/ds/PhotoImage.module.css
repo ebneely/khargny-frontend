@@ -25,7 +25,7 @@
 }
 
 .sharp {
-  opacity: 0;
+  opacity: 1;
   transition: opacity 180ms ease-out;
 }
 

@@ -262,6 +262,8 @@ export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
         )}
       </div>
 
+      <noscript>{items.slice(6).map((item, index) => item.type === 'image' ? <PhotoImage key={index + 6} photo={item.photo ?? item.url} alt={item.alt || ''} frame="gallery" /> : null)}</noscript>
+
       {active && (
         <div
           className="khg-lightbox"

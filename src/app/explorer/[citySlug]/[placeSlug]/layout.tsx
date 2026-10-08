@@ -4,8 +4,8 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { placePath, placeRedirect } from '@/lib/place-address';
 import { regionLabel } from '@/lib/egypt-regions';
 import { priceBandLabel, type PriceLevel } from '@/lib/price-bands';
-import { normalizePlaceFlags, type PlaceFlags } from '@/lib/api/normalize-place';
-import { API_BASE_URL, SITE_URL } from '@/lib/config';
+import type { PlaceFlags } from '@/lib/api/normalize-place';
+import { SITE_URL } from '@/lib/config';
 import {
   breadcrumbSchema,
   clampDescription,
@@ -24,6 +24,9 @@ import { photoCandidates, photoSrcSet, PHOTO_SIZES, type Photo } from '@/lib/pla
 // presence: a title and description built from its own facts, and LocalBusiness structured
 // data carrying the address, coordinates, phone, hours and price band the API already
 // returns and the page previously threw away.
+import { getPlace, getCities, getCategories } from '@/lib/server/public-data';
+import { ApiError } from '@/lib/api/client';
+
 type Params = { citySlug: string; placeSlug: string };
 
 type Hour = {
@@ -62,69 +65,29 @@ type Place = Partial<PlaceFlags> & {
 
 /**
  * The place detail endpoint returns `cityId` and `categoryId` but not the city or category
- * objects, so their names have to be looked up. Both lists are small and cached for an hour.
+ * objects, so their names have to be looked up. Both lists are small and cached for five minutes.
  */
 async function fetchCityName(slug: string, isAr: boolean): Promise<string | null> {
-  if (!API_BASE_URL) return null;
-  try {
-    const res = await fetch(`${API_BASE_URL}/v1/cities/${slug}`, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const city = json?.data?.city ?? json?.data ?? json;
-    return (isAr ? city?.name : city?.nameEn) || city?.name || null;
-  } catch {
-    return null;
-  }
+  const city = (await getCities()).find((item) => item.slug === slug);
+  return (isAr ? city?.name : city?.nameEn) || city?.name || null;
 }
 
 async function fetchCategoryName(id: string | undefined, isAr: boolean): Promise<string | null> {
-  if (!API_BASE_URL || !id) return null;
-  try {
-    const res = await fetch(`${API_BASE_URL}/v1/categories`, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const list: { id?: string; nameAr?: string; nameEn?: string | null }[] =
-      json?.data?.data ?? json?.data ?? [];
-    const hit = Array.isArray(list) ? list.find((c) => c.id === id) : null;
-    if (!hit) return null;
-    return (isAr ? hit.nameAr : hit.nameEn) || hit.nameAr || hit.nameEn || null;
-  } catch {
-    return null;
-  }
+  if (!id) return null;
+  const category = (await getCategories()).find((item) => item.id === id);
+  return (isAr ? category?.nameAr : category?.nameEn) || category?.nameAr || category?.nameEn || null;
 }
 
-async function fetchPlace(slug: string): Promise<Place | null> {
-  if (!API_BASE_URL) return null;
-  let missing = false;
-  try {
-    const res = await fetch(`${API_BASE_URL}/v1/places/${encodeURIComponent(slug)}`, {
-      cache: 'no-store',
-    });
-    missing = res.status === 404;
-    if (res.ok) {
-      const json = await res.json();
-      const payload = json?.data ?? json;
-      return payload && typeof payload === 'object' ? normalizePlaceFlags(payload as Place) : null;
-    }
-  } catch {
-    return null;
+async function fetchPlace(slug: string): Promise<Place> {
+  try { return await getPlace(slug) as unknown as Place; } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
   }
-  if (missing) notFound();
-  return null;
 }
 
 async function fetchPlaceCity(place: Place, requestedCity: string): Promise<string> {
   if (place.city?.slug) return place.city.slug;
-  if (!place.cityId || !API_BASE_URL) return requestedCity;
-  try {
-    const response = await fetch(`${API_BASE_URL}/v1/cities`, { cache: 'no-store' });
-    if (!response.ok) return requestedCity;
-    const json = await response.json();
-    const cities: { id: string; slug: string }[] = json?.data?.data ?? json?.data ?? [];
-    return (Array.isArray(cities) ? cities.find((city) => city.id === place.cityId)?.slug : null) || requestedCity;
-  } catch {
-    return requestedCity;
-  }
+  return (await getCities()).find((city) => city.id === place.cityId)?.slug || requestedCity;
 }
 
 async function resolvePlace(params: Params, locale: Locale) {
