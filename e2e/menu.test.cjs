@@ -102,7 +102,7 @@ function placePage(locale, flags) {
     'next/navigation': { useParams: () => ({ citySlug: 'test-city', placeSlug: place.slug }), useRouter: () => ({ back: empty }) },
     '@/components/ds/SiteHeader': { SiteHeader: empty },
     '@/components/ds/PlaceBadges': badgeModule(locale),
-    '@/components/explorer/MediaShowcase': { MediaShowcase: empty },
+    '@/components/explorer/MediaShowcase': { MediaShowcase: empty, usePlaceGallery: () => ({ warm: empty, open: empty, error: false }) },
     '@/components/explorer/HoursTable': { HoursTable: empty },
     '@/components/explorer/SimilarPlaces': { SimilarPlaces: () => React.createElement('section', { 'data-similar': true }) },
     '@/components/explorer/PlaceMenuSection': { PlaceMenuSection: empty },
@@ -123,15 +123,16 @@ function placePage(locale, flags) {
 
 function assertStatuses(markup, expected, locale) {
   const names = locale === 'en' ? ['Services listed', 'Price match', 'Visited by 5argny'] : ['الخدمات معروضة', 'مطابقة الأسعار', 'زرناه'];
+  const negatives = locale === 'en' ? ['No services listed yet', 'Prices not checked yet', 'Not visited yet'] : ['مفيش خدمات معروضة لسه', 'الأسعار لسه متراجعتش', 'لسه مزرناهوش'];
   const chips = [...markup.matchAll(/<span\b[^>]*data-place-status="([^"]+)"[^>]*>/g)];
   assert.equal(chips.length, 3);
   assert.deepEqual(chips.map((chip) => chip[1]), ['hasMenu', 'priceVerified', 'visitedByUs']);
   chips.forEach((chip, index) => {
     const state = expected[index] ? 'available' : 'not-yet';
-    const stateText = expected[index] ? (locale === 'en' ? 'Available' : 'متاح') : (locale === 'en' ? 'Not yet' : 'ليس بعد');
+    const name = expected[index] ? names[index] : negatives[index];
     assert.ok(chip[0].includes(`data-state="${state}"`));
-    assert.ok(chip[0].includes(`aria-label="${names[index]}: ${stateText}"`));
-    assert.ok(chip[0].includes(`title="${names[index]}: ${stateText}"`));
+    assert.ok(chip[0].includes(`aria-label="${name}"`));
+    assert.ok(chip[0].includes(`title="${name}"`));
     assert.ok(chip[0].includes('role="img"'));
   });
 }
@@ -168,7 +169,8 @@ for (const [label, flags, expected] of [
       assert.ok(rows);
       assertStatuses(rows, expected, locale);
       assert.ok(rows.includes(locale === 'en' ? 'Place badges' : 'شارات المكان'));
-      for (const state of expected) assert.ok(rows.includes(`>${state ? (locale === 'en' ? 'Available' : 'متاح') : (locale === 'en' ? 'Not yet' : 'ليس بعد')}<`));
+      assert.ok(!rows.includes(locale === 'en' ? '>Available<' : '>متاح<'));
+      assert.ok(!rows.includes(locale === 'en' ? '>Not yet<' : '>ليس بعد<'));
       const identity = page.match(/<header>[\s\S]*?<\/header>/)?.[0];
       assert.ok(identity);
       assertStatuses(identity, expected, locale);
@@ -490,7 +492,7 @@ test('legend explains green and grey before the three badges, with full-stop pri
     assert.ok(key);
     assert.equal((key.match(/data-badge-color=/g) ?? []).length, 2);
     assert.ok(!/class="[^"]*\b(?:badge|available|notYet)\b/.test(key));
-    const labels = locale === 'en' ? ['Green: this place has it', 'Grey: not yet'] : ['الأخضر: متوفر في هذا المكان', 'الرمادي: ليس بعد'];
+    const labels = locale === 'en' ? ['Green: this place has it', 'Grey: not yet'] : ['الأخضر: المكان ده عنده الشارة', 'الرمادي: لسه'];
     for (const label of labels) assert.ok(key.includes(label));
     assert.ok(markup.indexOf('data-place-badge-colors') < markup.indexOf('<ul'));
     assert.ok(!markup.includes('data-place-status='));
@@ -517,6 +519,27 @@ test('renamed badges are distinct, neutral-priced and use the decorative real vi
   const source = fs.readFileSync(path.join(__dirname, '../src/components/ds/PlaceBadges.tsx'), 'utf8');
   assert.ok(!source.includes('Utensils'));
   assert.ok(!source.includes('Receipt'));
+});
+
+test('a not-held text or icon chip never names the positive badge; the legend still does', () => {
+  for (const locale of ['en', 'ar']) {
+    const { PlaceBadges, PlaceStatuses, PlaceBadgeLegend } = badgeModule(locale);
+    const dictionary = translations(locale).useI18n().t;
+    for (const props of [{}, { hasMenu: false, priceVerified: false, visitedByUs: false }]) {
+      for (const element of [React.createElement(PlaceBadges, props), React.createElement(PlaceBadges, { ...props, variant: 'compact' }), React.createElement(PlaceStatuses, props)]) {
+        const markup = renderToStaticMarkup(element);
+        for (const key of ['place.noMenu', 'place.priceNotChecked', 'place.notVisited']) assert.ok(markup.includes(dictionary(key)));
+        for (const key of ['place.menu', 'place.priceVerified', 'place.visitedByUs']) {
+          const name = dictionary(key);
+          assert.ok(!markup.includes(`>${name}<`));
+          assert.ok(!markup.includes(`aria-label="${name}"`));
+          assert.ok(!markup.includes(`title="${name}"`));
+        }
+      }
+    }
+    const legend = renderToStaticMarkup(React.createElement(PlaceBadgeLegend));
+    for (const key of ['place.menu', 'place.priceVerified', 'place.visitedByUs']) assert.ok(legend.includes(dictionary(key)));
+  }
 });
 
 test('the existing save action renders an outline or brand-filled heart, retaining labels and sibling links', () => {

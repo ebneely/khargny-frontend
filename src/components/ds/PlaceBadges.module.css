@@ -104,11 +104,6 @@
   gap: 8px;
 }
 
-.state {
-  flex-shrink: 0;
-  margin-inline-start: auto;
-}
-
 .legendList {
   gap: 16px;
 }

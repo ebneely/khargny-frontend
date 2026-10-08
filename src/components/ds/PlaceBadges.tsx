@@ -27,21 +27,20 @@ function VisitedMark() {
 }
 
 const STATUS_DEFINITIONS = [
-  { id: "hasMenu", Icon: Tag, nameKey: "place.menu", explanationKey: "place.menuHint" },
-  { id: "priceVerified", Icon: BadgeCheck, nameKey: "place.priceVerified", explanationKey: "place.priceVerifiedHint" },
-  { id: "visitedByUs", Icon: VisitedMark, nameKey: "place.visitedByUs", explanationKey: "place.visitedByUsHint" },
+  { id: "hasMenu", Icon: Tag, nameKey: "place.menu", negativeKey: "place.noMenu", explanationKey: "place.menuHint" },
+  { id: "priceVerified", Icon: BadgeCheck, nameKey: "place.priceVerified", negativeKey: "place.priceNotChecked", explanationKey: "place.priceVerifiedHint" },
+  { id: "visitedByUs", Icon: VisitedMark, nameKey: "place.visitedByUs", negativeKey: "place.notVisited", explanationKey: "place.visitedByUsHint" },
 ] as const;
 
 export function getPlaceStatuses(flags: PlaceStatusFlags, t: (key: string) => string) {
-  return STATUS_DEFINITIONS.map(({ id, Icon, nameKey, explanationKey }) => {
+  return STATUS_DEFINITIONS.map(({ id, Icon, nameKey, negativeKey, explanationKey }) => {
     const available = flags[id] === true;
     return {
       id,
       Icon,
-      name: t(nameKey),
+      name: t(available ? nameKey : negativeKey),
       explanation: t(explanationKey),
       available,
-      state: t(available ? "place.badgeAvailable" : "place.badgeNotYet"),
     };
   });
 }
@@ -49,8 +48,8 @@ export function getPlaceStatuses(flags: PlaceStatusFlags, t: (key: string) => st
 type PlaceStatus = ReturnType<typeof getPlaceStatuses>[number];
 
 function StatusBadge({ status, compact = false, row = false }: { status: PlaceStatus; compact?: boolean; row?: boolean }) {
-  const { Icon, name, state, available } = status;
-  const label = `${name}: ${state}`;
+  const { Icon, name, available } = status;
+  const label = name;
   return (
     <span
       className={`${styles.badge} ${available ? styles.available : styles.notYet}${compact ? ` ${styles.compactBadge}` : ""}${row ? ` ${styles.statusRow}` : ""}`}
@@ -62,7 +61,6 @@ function StatusBadge({ status, compact = false, row = false }: { status: PlaceSt
     >
       <Icon size={16} aria-hidden="true" />
       {!compact && <span>{name}</span>}
-      {row && <span className={styles.state}>{state}</span>}
     </span>
   );
 }

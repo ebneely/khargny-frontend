@@ -236,6 +236,7 @@ test('the lead gallery exposes a distinct lazy medium candidate and does not pre
   vm.runInNewContext(source, { exports: exported, require: (name) => {
     if (name === '@/components/ds/PhotoImage') return photoImageModule();
     if (name === '@/lib/place-photo') return media;
+    if (name === '@/i18n/LocaleProvider') return { useI18n: () => ({ locale: 'en', t: (key) => key }) };
     if (name === 'lucide-react') return new Proxy({}, { get: () => () => null });
     return require(name);
   } });

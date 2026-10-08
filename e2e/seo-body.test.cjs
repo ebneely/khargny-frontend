@@ -40,7 +40,7 @@ for (const locale of ['ar', 'en']) for (const route of routes) {
     if (route.kind === 'home') { assert.ok(result.places.length >= 5); assert.ok(html.includes(dictionary.home.sponsored)); }
     if (route.kind === 'place') {
       assert.ok(result.links.includes('tel:+201234567890'));
-      for (const text of ['12 Nile Road', locale === 'ar' ? 'مشروبات' : 'Drinks', locale === 'ar' ? 'شاي' : 'Tea', '25', '9:00', locale === 'ar' ? 'مطاعم' : 'Restaurants']) assert.ok(html.includes(text), text);
+      for (const text of ['12 Nile Road', locale === 'ar' ? 'مشروبات' : 'Drinks', locale === 'ar' ? 'شاي' : 'Tea', locale === 'ar' ? '٢٥ جنيه' : '25 EGP', '9:00', locale === 'ar' ? 'مطاعم' : 'Restaurants']) assert.ok(result.text.includes(text), text);
       for (const key of ['menu', 'priceVerified', 'visitedByUs']) assert.ok(html.includes(dictionary.place[key]), key);
       const photos = result.photos.filter((photo) => /alt="(?:Place 1|مكان 1) — \d+"/.test(photo));
       assert.equal(photos.length, 3);
@@ -119,8 +119,9 @@ test('hydrated public hooks mount fresh, with no duplicate API read; saved state
 test('gallery overflow photos remain real lazy images without JavaScript', () => {
   const context = fixture();
   const Showcase = load('src/components/explorer/MediaShowcase.tsx', context.dependencies).MediaShowcase;
+  const LocaleProvider = load('src/i18n/LocaleProvider.tsx', context.dependencies).LocaleProvider;
   const items = Array.from({ length: 9 }, (_, index) => ({ type: 'image', photo: places[0].images[0], alt: `Place 1 — ${index + 2}` }));
-  const html = renderToStaticMarkup(React.createElement(Showcase, { items }));
+  const html = renderToStaticMarkup(React.createElement(LocaleProvider, { initialLocale: 'en' }, React.createElement(Showcase, { items })));
   const photos = inspectHtml(html).photos.filter((photo) => /alt="Place 1/.test(photo));
   assert.equal(photos.length, 9);
   assert.ok(html.includes('<noscript>'));

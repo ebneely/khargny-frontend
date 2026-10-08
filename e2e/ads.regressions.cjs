@@ -439,6 +439,7 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
     const effects = [];
     let published = false;
     const { HomeRails } = load("src/app/_home/Home.tsx", {}, {
+      "./HomeHero": { HomeHero: () => null },
       react: { useState: () => [published, (next) => { published = next; }], useEffect: (callback) => effects.push(callback) },
       "react/jsx-runtime": require("react/jsx-runtime"),
       "lucide-react": { Search: () => null, ArrowRight: () => null, MapPin: () => null },

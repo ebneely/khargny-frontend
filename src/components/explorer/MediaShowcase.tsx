@@ -1,49 +1,75 @@
 "use client";
-/**
- * MediaShowcase — the place's photos AND videos, as one gallery with a full-screen lightbox.
- *
- * Replaces ImageGallery, which rendered a flat 2-column grid of photos only. Videos existed
- * in the payload (backend returns `videos` on the public detail) but were never shown — this
- * is the fix, plus a redesign so the media reads as a showcase rather than a contact sheet:
- *
- *   - a mosaic: the first item spans large, the rest tile beside it, so the eye has a focal
- *     point instead of N equal squares
- *   - videos carry a play badge and a duration pill over their poster frame
- *   - the lightbox handles both types: an image, or a real <video controls> that autoplays
- *   - arrow-key / swipe navigation across the whole set, Escape to close, focus trapped
- *
- * One responsive component, phone → desktop. No media query forks a second tree; the mosaic
- * reflows via grid.
- */
+
 import * as React from "react";
-import { ImageOff, X, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { ImageOff, Play } from "lucide-react";
 import { PhotoImage } from "@/components/ds/PhotoImage";
-import { normalizePhoto, type Photo } from "@/lib/place-photo";
+import { useI18n } from "@/i18n/LocaleProvider";
+import type { ShowcaseItem } from "@/lib/place-gallery";
+export type {
+  ShowcaseItem,
+  ShowcaseImage,
+  ShowcaseVideo,
+} from "@/lib/place-gallery";
 
-export type ShowcaseImage = { type: "image"; url?: string; photo?: Photo; alt?: string };
-export type ShowcaseVideo = {
-  type: "video";
-  url: string;
-  poster?: string | null;
-  durationSeconds?: number | null;
-  alt?: string;
-};
-export type ShowcaseItem = ShowcaseImage | ShowcaseVideo;
+const loadGallery = () => import("./place-lightbox");
 
-function formatDuration(sec?: number | null): string | null {
-  if (!sec || sec <= 0) return null;
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
+export function usePlaceGallery() {
+  const { locale, t } = useI18n();
+  const [error, setError] = React.useState(false);
+  const controller =
+    React.useRef<
+      Awaited<ReturnType<(typeof import("./place-lightbox"))["openGallery"]>>
+    >(null);
+  const busy = React.useRef(false);
+  const mounted = React.useRef(true);
+  React.useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      controller.current?.close();
+    };
+  }, []);
+  const warm = () => {
+    void loadGallery()
+      .then((module) => module.warmGallery())
+      .catch(() => {});
+  };
+  const open = async (
+    items: ShowcaseItem[],
+    index: number,
+    trigger: HTMLElement,
+    title: string,
+  ) => {
+    if (busy.current || controller.current?.isOpen) return;
+    busy.current = true;
+    setError(false);
+    try {
+      const module = await loadGallery();
+      controller.current = await module.openGallery({
+        items,
+        index,
+        trigger,
+        root:
+          trigger.closest<HTMLElement>("[data-place-gallery]") ?? document.body,
+        title,
+        rtl: locale === "ar",
+        t,
+        cancelled: () => !mounted.current,
+      });
+    } catch {
+      if (mounted.current) setError(true);
+    } finally {
+      busy.current = false;
+    }
+  };
+  return { open, warm, error };
 }
 
-/** One tile — a photo, or a video thumbnail with a play badge.
- *
- *  A video without a poster frame renders its own first frame through a muted, preloaded
- *  <video> element. Feeding the video URL to an <img> shows a broken icon, and the plain
- *  gradient that replaced it meant videos had no thumbnail at all on the web while the app
- *  showed one — the vanished-thumbnail report. The gradient now only backs the element, so
- *  it still covers a video the browser cannot decode. */
+function formatDuration(seconds?: number | null) {
+  if (!seconds || seconds <= 0) return null;
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+}
+
 function Tile({
   item,
   index,
@@ -55,28 +81,43 @@ function Tile({
   item: ShowcaseItem;
   index: number;
   total: number;
-  onOpen: (i: number) => void;
+  onOpen: (index: number, trigger: HTMLElement) => void;
   hero?: boolean;
   moreCount?: number;
 }) {
-  const dur = item.type === "video" ? formatDuration(item.durationSeconds) : null;
-  const posterSrc = item.type === "video" ? item.poster : item.url;
-  const showMore = moreCount > 0;
+  const { t } = useI18n();
+  const duration =
+    item.type === "video" ? formatDuration(item.durationSeconds) : null;
   return (
     <button
       type="button"
+      data-gallery-index={index}
       className={`khg-media-tile${hero ? " khg-media-hero" : ""}`}
-      onClick={() => onOpen(index)}
-      aria-label={item.type === "video" ? `Play video ${index + 1}` : `View photo ${index + 1} of ${total}`}
+      onClick={(event) =>
+        onOpen(moreCount ? index + 1 : index, event.currentTarget)
+      }
+      aria-label={
+        moreCount
+          ? t("gallery.more", { count: moreCount })
+          : t(item.type === "video" ? "gallery.video" : "gallery.photo", {
+              index: index + 1,
+              total,
+            })
+      }
     >
       {item.type === "image" ? (
-        <PhotoImage photo={item.photo ?? item.url} alt={item.alt || ""} frame={hero ? "gallery" : "strip"} />
-      ) : posterSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={posterSrc} alt={item.alt || ""} loading={hero ? "eager" : "lazy"} />
-      ) : item.type === "video" ? (
-        // `preload="metadata"` is enough for the browser to paint the first frame; muted +
-        // playsInline keep it inert and stop iOS from trying to take over the screen.
+        <PhotoImage
+          photo={item.photo ?? item.url}
+          alt={item.alt || ""}
+          frame={hero ? "gallery" : "strip"}
+        />
+      ) : item.poster ? (
+        <img
+          src={item.poster}
+          alt={item.alt || ""}
+          loading={hero ? "eager" : "lazy"}
+        />
+      ) : (
         <video
           className="khg-media-poster-video"
           src={item.url}
@@ -86,18 +127,18 @@ function Tile({
           tabIndex={-1}
           aria-hidden="true"
         />
-      ) : (
-        <span className="khg-media-noposter" aria-hidden="true" />
       )}
-      {item.type === "video" && !showMore && (
+      {item.type === "video" && !moreCount && (
         <span className="khg-media-play" aria-hidden="true">
           <span className="khg-media-play-btn">
-            <Play size={hero ? 26 : 20} fill="#fff" />
+            <Play size={hero ? 26 : 20} fill="var(--white)" />
           </span>
         </span>
       )}
-      {dur && !showMore && <span className="khg-media-dur">{dur}</span>}
-      {showMore && (
+      {duration && !moreCount && (
+        <span className="khg-media-dur">{duration}</span>
+      )}
+      {moreCount > 0 && (
         <span className="khg-media-more" aria-hidden="true">
           +{moreCount}
         </span>
@@ -106,226 +147,95 @@ function Tile({
   );
 }
 
-export function MediaShowcase({ items }: { items: ShowcaseItem[] }) {
-  const [openAt, setOpenAt] = React.useState<number | null>(null);
-
-  const close = React.useCallback(() => setOpenAt(null), []);
-  const go = React.useCallback(
-    (dir: 1 | -1) =>
-      setOpenAt((i) => (i === null ? i : (i + dir + items.length) % items.length)),
-    [items.length],
-  );
-
-  React.useEffect(() => {
-    if (openAt === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-      else if (e.key === "ArrowRight") go(1);
-      else if (e.key === "ArrowLeft") go(-1);
-    };
-    window.addEventListener("keydown", onKey);
-    // Lock body scroll while the lightbox owns the screen.
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [openAt, close, go]);
-
-  if (items.length === 0) {
+export function MediaShowcase({
+  items,
+  allItems = items,
+  offset = 0,
+  title = "",
+}: {
+  items: ShowcaseItem[];
+  allItems?: ShowcaseItem[];
+  offset?: number;
+  title?: string;
+}) {
+  const gallery = usePlaceGallery();
+  const { t } = useI18n();
+  if (!items.length)
     return (
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          aspectRatio: "16 / 9",
-          borderRadius: "var(--radius-xl)",
-          background: "var(--gradient-sunset-radial)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "rgba(255,255,255,0.7)",
-        }}
-      >
+      <div className="khg-media-empty">
         <ImageOff size={48} strokeWidth={1.5} />
       </div>
     );
-  }
-
-  const active = openAt === null ? null : items[openAt];
-
+  const open = (index: number, trigger: HTMLElement) => {
+    void gallery.open(allItems, index, trigger, title);
+  };
   return (
     <>
       <style>{`
-        /* Hero + thumbnail strip. A fixed-row mosaic cropped the lead photo hard on desktop
-           (a wide 2:1 cell over a normal 4:3 photo). The hero now keeps a real 4/3 ratio on
-           phones and a gentler 16/9 on desktop, so the main image reads whole; the rest sit
-           in a strip below at a consistent square-ish ratio. */
-        .khg-media-showcase { display: flex; flex-direction: column; gap: 8px; }
-        .khg-media-hero { aspect-ratio: 4 / 3; }
-        @media (min-width: 768px) { .khg-media-hero { aspect-ratio: 16 / 9; } }
-        .khg-media-strip {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-        }
-        @media (min-width: 768px) { .khg-media-strip { grid-template-columns: repeat(4, 1fr); } }
-        @media (min-width: 1024px) { .khg-media-strip { grid-template-columns: repeat(5, 1fr); } }
-        .khg-media-strip .khg-media-tile { aspect-ratio: 1 / 1; }
-        .khg-media-tile {
-          position: relative; overflow: hidden; cursor: pointer; width: 100%;
-          border-radius: var(--radius-lg); border: none; padding: 0;
-          background: var(--gray-100);
-          transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
-        }
-        .khg-media-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .khg-media-tile:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
-        .khg-media-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        /* First-frame thumbnail for a posterless video — sized exactly like an <img> tile, on
-           the gradient so a video the browser can't decode still shows something. */
-        .khg-media-poster-video {
-          width: 100%; height: 100%; object-fit: cover; display: block;
-          background: var(--gradient-sunset-radial); pointer-events: none;
-        }
-        /* A video with no poster frame: a branded gradient instead of a broken <img>. */
-        .khg-media-noposter { width: 100%; height: 100%; background: var(--gradient-sunset-radial); }
-        .khg-media-play {
-          position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(to top, rgba(0,0,0,0.35), rgba(0,0,0,0.05));
-          color: #fff;
-        }
-        .khg-media-play-btn {
-          display: flex; align-items: center; justify-content: center;
-          width: 48px; height: 48px; border-radius: var(--radius-full);
-          background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-        }
-        .khg-media-dur {
-          position: absolute; inset-block-end: 8px; inset-inline-end: 8px;
-          font-size: 11px; font-weight: 600; color: #fff;
-          background: rgba(0,0,0,0.6); padding: 2px 7px; border-radius: var(--radius-full);
-        }
-        .khg-media-more {
-          position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-          background: rgba(0,0,0,0.55); color: #fff; font-family: var(--font-display);
-          font-size: var(--text-xl); font-weight: 700;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .khg-media-tile { transition: none; }
-          .khg-media-tile:hover { transform: none; }
-        }
-        .khg-lightbox {
-          position: fixed; inset: 0; z-index: 100;
-          background: rgba(12, 8, 5, 0.94);
-          display: flex; align-items: center; justify-content: center;
-          animation: khg-lb-in 0.2s ease both;
-        }
-        @keyframes khg-lb-in { from { opacity: 0; } to { opacity: 1; } }
-        @media (prefers-reduced-motion: reduce) { .khg-lightbox { animation: none; } }
-        .khg-lb-media { max-width: min(92vw, 1200px); max-height: 86vh; border-radius: var(--radius-lg); }
-        .khg-lb-btn {
-          position: absolute; top: 50%; transform: translateY(-50%);
-          display: flex; align-items: center; justify-content: center;
-          width: 44px; height: 44px; border-radius: var(--radius-full);
-          background: rgba(255,255,255,0.12); color: #fff; border: none; cursor: pointer;
-          transition: background 0.2s ease;
-        }
-        .khg-lb-btn:hover { background: rgba(255,255,255,0.24); }
-        .khg-lb-close { top: 20px; right: 20px; transform: none; }
-        .khg-lb-count {
-          position: absolute; inset-block-start: 24px; inset-inline-start: 24px;
-          color: rgba(255,255,255,0.8); font-size: var(--text-sm); font-weight: 600;
-        }
-      `}</style>
-
-      {/* Hero = first item; the rest tile below. A large set is capped, the overflow folding
-          behind a "+N" on the last visible thumbnail rather than flooding the page. */}
-      <div className="khg-media-showcase">
-        <Tile item={items[0]} index={0} total={items.length} onOpen={setOpenAt} hero />
+      .khg-media-showcase { display: flex; flex-direction: column; gap: 8px; }
+      .khg-media-hero { aspect-ratio: 4 / 3; }
+      @media (min-width: 768px) { .khg-media-hero { aspect-ratio: 16 / 9; } }
+      .khg-media-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      @media (min-width: 768px) { .khg-media-strip { grid-template-columns: repeat(4, 1fr); } }
+      @media (min-width: 1024px) { .khg-media-strip { grid-template-columns: repeat(5, 1fr); } }
+      .khg-media-strip .khg-media-tile { aspect-ratio: 1 / 1; }
+      .khg-media-tile { position: relative; overflow: hidden; cursor: pointer; width: 100%; border-radius: var(--radius-lg); border: none; padding: 0; background: var(--gray-100); transition: var(--motion-transform), var(--motion-shadow); }
+      .khg-media-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+      .khg-media-tile:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+      .khg-media-tile > img, .khg-media-poster-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .khg-media-poster-video { background: var(--gradient-sunset-radial); pointer-events: none; }
+      .khg-media-play, .khg-media-more { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--black) 35%, transparent); color: var(--white); }
+      .khg-media-play-btn { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--black) 50%, transparent); }
+      .khg-media-dur { position: absolute; inset-block-end: 8px; inset-inline-end: 8px; font-size: var(--text-xs); font-weight: 600; color: var(--white); background: var(--gray-900); padding: 2px 7px; border-radius: var(--radius-full); }
+      .khg-media-more { background: color-mix(in srgb, var(--black) 55%, transparent); font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; }
+      .khg-media-empty { aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--radius-xl); background: var(--gradient-sunset-radial); color: var(--white); }
+      @media (prefers-reduced-motion: reduce) { .khg-media-tile { transition: none; } .khg-media-tile:hover { transform: none; } }
+    `}</style>
+      <div
+        className="khg-media-showcase"
+        onPointerEnter={gallery.warm}
+        onTouchStart={gallery.warm}
+        onFocus={gallery.warm}
+      >
+        <Tile
+          item={items[0]}
+          index={offset}
+          total={allItems.length}
+          onOpen={open}
+          hero
+        />
         {items.length > 1 && (
           <div className="khg-media-strip">
-            {items.slice(1, 6).map((item, idx) => {
-              const i = idx + 1;
-              const moreCount = idx === 4 && items.length > 6 ? items.length - 6 : 0;
-              return (
-                <Tile
-                  key={i}
-                  item={item}
-                  index={i}
-                  total={items.length}
-                  onOpen={setOpenAt}
-                  moreCount={moreCount}
-                />
-              );
-            })}
+            {items.slice(1, 6).map((item, index) => (
+              <Tile
+                key={index + 1}
+                item={item}
+                index={offset + index + 1}
+                total={allItems.length}
+                onOpen={open}
+                moreCount={
+                  index === 4 && items.length > 6 ? items.length - 6 : 0
+                }
+              />
+            ))}
           </div>
         )}
       </div>
-
-      <noscript>{items.slice(6).map((item, index) => item.type === 'image' ? <PhotoImage key={index + 6} photo={item.photo ?? item.url} alt={item.alt || ''} frame="gallery" /> : null)}</noscript>
-
-      {active && (
-        <div
-          className="khg-lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Media viewer"
-          onClick={close}
-        >
-          <span className="khg-lb-count">
-            {(openAt ?? 0) + 1} / {items.length}
-          </span>
-          <button type="button" className="khg-lb-btn khg-lb-close" onClick={close} aria-label="Close">
-            <X size={22} />
-          </button>
-
-          {items.length > 1 && (
-            <>
-              <button
-                type="button"
-                className="khg-lb-btn"
-                style={{ insetInlineStart: 16 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  go(-1);
-                }}
-                aria-label="Previous"
-              >
-                <ChevronLeft size={24} />
-              </button>
-              <button
-                type="button"
-                className="khg-lb-btn"
-                style={{ insetInlineEnd: 16 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  go(1);
-                }}
-                aria-label="Next"
-              >
-                <ChevronRight size={24} />
-              </button>
-            </>
+      <noscript>
+        {items
+          .slice(6)
+          .map((item, index) =>
+            item.type === "image" ? (
+              <PhotoImage
+                key={index + 6}
+                photo={item.photo ?? item.url}
+                alt={item.alt || ""}
+                frame="gallery"
+              />
+            ) : null,
           )}
-
-          {active.type === "video" ? (
-            <video
-              key={active.url}
-              className="khg-lb-media"
-              src={active.url}
-              poster={active.poster || undefined}
-              controls
-              autoPlay
-              playsInline
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <div className="khg-lb-media" style={{ position: "relative", width: "90vw", height: "85vh" }}>
-              <PhotoImage photo={active.photo ?? normalizePhoto(active.url)} alt={active.alt || ""} frame="gallery" sizes="90vw" fullPhoto onClick={(event) => event.stopPropagation()} />
-            </div>
-          )}
-        </div>
-      )}
+      </noscript>
+      {gallery.error && <p role="alert">{t("gallery.unavailable")}</p>}
     </>
   );
 }

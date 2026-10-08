@@ -18,7 +18,7 @@ import { ArrowLeft, Star, Share, Navigation, Heart, Phone, Globe, MapPin, Eye } 
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { PhotoImage } from "@/components/ds/PhotoImage";
 import type { Photo } from "@/lib/place-photo";
-import { MediaShowcase, type ShowcaseItem } from "@/components/explorer/MediaShowcase";
+import { MediaShowcase, usePlaceGallery, type ShowcaseItem } from "@/components/explorer/MediaShowcase";
 import { HoursTable } from "@/components/explorer/HoursTable";
 import { PlaceBadges, PlaceStatuses, PlaceBadgeLegend } from "@/components/ds/PlaceBadges";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
@@ -98,6 +98,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
   const { data: categories } = useCategories();
   const { data: cities } = useCities();
 
+  const gallery = usePlaceGallery();
   const currentCity = cities?.find((c) => c.slug === citySlug);
   const canonicalCity = cities?.find((city) => city.id === place?.cityId);
   React.useEffect(() => {
@@ -193,6 +194,10 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
       poster: v.posterUrl ?? null,
       durationSeconds: v.durationSeconds ?? null,
     })),
+  ];
+  const completeGallery: ShowcaseItem[] = [
+    ...(cover ? [{ type: 'image' as const, photo: typeof cover === 'string' ? undefined : cover, url: typeof cover === 'string' ? cover : undefined, alt: `${title} — 1` }] : []),
+    ...showcaseItems,
   ];
 
   const amenities = (place.amenities ?? []) as {
@@ -290,7 +295,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
   ) : renderSaveButton("primary");
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
+    <div data-place-gallery="true" style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
       <SiteHeader active="explore" />
 
       <style>{`
@@ -308,6 +313,8 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
                    background:var(--gradient-sunset-radial); }
         .pd-hero-img { position:absolute; inset:0; width:100%; height:100%;
                        object-fit:cover; display:block; }
+        .pd-hero-photo { display:block; width:100%; height:100%; padding:0; border:0; background:transparent; cursor:pointer; }
+        .pd-hero-photo:focus-visible { outline:2px solid var(--brand-600); outline-offset:-4px; }
         .pd-hero-controls { position:absolute; inset:12px 12px auto 12px; z-index:1;
                             display:flex; align-items:center; justify-content:space-between; }
         @media (min-width:640px){ .pd-hero-controls { inset:16px 16px auto 16px; } }
@@ -426,7 +433,12 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
           {/* The page's primary image, as a real <img> with the place's name as alt. As a
               CSS background it could not be indexed by image search and announced nothing
               to a screen reader — on a place page, that is the main content. */}
-          <PhotoImage photo={cover} fallbackPhotos={allImages.slice(1)} alt={`${title} — 1`} frame="hero" priority />
+          <button type="button" className="pd-hero-photo" data-gallery-index={0} aria-label={t('gallery.photo', { index: 1, total: completeGallery.length })}
+            onPointerEnter={gallery.warm} onTouchStart={gallery.warm} onFocus={gallery.warm}
+            onClick={(event) => { void gallery.open(completeGallery, 0, event.currentTarget, title); }}>
+            <PhotoImage photo={cover} fallbackPhotos={allImages.slice(1)} alt={`${title} — 1`} frame="hero" priority />
+          </button>
+          {gallery.error && <p role="alert">{t('gallery.unavailable')}</p>}
           <div className="pd-hero-controls">
             <button type="button" aria-label={t("explorer.back")} onClick={() => router.back()} className="pd-iconbtn">
               <ArrowLeft size={18} color="var(--gray-900)" />
@@ -543,7 +555,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
             {showcaseItems.length > 0 && (
               <section>
                 <h2 className="pd-section-title">{t("place.gallery")}</h2>
-                <MediaShowcase items={showcaseItems} />
+                <MediaShowcase items={showcaseItems} allItems={completeGallery} offset={cover ? 1 : 0} title={title} />
               </section>
             )}
 

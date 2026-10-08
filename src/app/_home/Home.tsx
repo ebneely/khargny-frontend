@@ -12,7 +12,7 @@
  * All state/actions still come from useHomeDiscovery(). Icons are bundled (lucide-react).
  */
 import * as React from "react";
-import { Search, ArrowRight } from "lucide-react";
+import { HomeHero } from "./HomeHero";
 import { PlaceCard } from "@/components/ds/PlaceCard";
 import { CARD_RAIL_SIZES } from '@/lib/place-photo';
 import { Toast } from "@/components/ds/Toast";
@@ -24,105 +24,6 @@ import { useI18n } from "@/i18n/LocaleProvider";
 import { HomeAds } from "./HomeAds";
 
 const MAXW = 1120;
-
-function scrollToRegions() {
-  document.getElementById("khg-regions")?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function Hero() {
-  const { t } = useI18n();
-  return (
-    <section style={{ background: "var(--brand-50)", borderBottom: "1px solid var(--gray-200)" }}>
-      <div
-        style={{
-          maxWidth: MAXW,
-          margin: "0 auto",
-          padding: "clamp(32px, 7vw, 72px) clamp(16px, 4vw, 32px) clamp(28px, 6vw, 64px)",
-          textAlign: "center",
-        }}
-      >
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.75rem, 5vw, 3.5rem)",
-            fontWeight: 700,
-            lineHeight: 1.08,
-            letterSpacing: "-0.03em",
-            color: "var(--text-primary)",
-            margin: 0,
-            textWrap: "balance",
-          }}
-        >
-          {t("home.heroTitle")}
-        </h1>
-        <p
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: "clamp(var(--text-base), 2.5vw, var(--text-lg))",
-            color: "var(--text-secondary)",
-            margin: "clamp(10px, 2vw, 16px) auto 0",
-            maxWidth: "44ch",
-            lineHeight: 1.5,
-          }}
-        >
-          {t("home.heroSubtitle")}
-        </p>
-        <button
-          type="button"
-          onClick={scrollToRegions}
-          className="khg-herosearch"
-          style={{
-            marginTop: "clamp(20px, 4vw, 32px)",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 14,
-            width: "min(560px, 100%)",
-            padding: "14px 18px",
-            borderRadius: "var(--radius-full)",
-            border: "1px solid var(--gray-300)",
-            background: "var(--white)",
-            boxShadow: "var(--shadow-md)",
-            cursor: "pointer",
-            transition: "var(--motion-shadow), var(--motion-transform)",
-            textAlign: "start",
-          }}
-        >
-          <span style={{ display: "inline-flex", color: "var(--brand-600)", flexShrink: 0 }}>
-            <Search size={20} aria-hidden="true" />
-          </span>
-          <span
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: "var(--text-base)",
-              color: "var(--text-secondary)",
-              flex: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {t("home.whereTo")} &nbsp;·&nbsp; {t("home.anywhere")}
-          </span>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 36,
-              height: 36,
-              borderRadius: "var(--radius-full)",
-              background: "var(--brand-600)",
-              color: "var(--white)",
-              flexShrink: 0,
-            }}
-          >
-            <ArrowRight size={18} aria-hidden="true" />
-          </span>
-        </button>
-      </div>
-    </section>
-  );
-}
 
 function RegionGrid({ d, cityCounts }: { d: Pick<HomeDiscovery, 'activeCities'>; cityCounts?: Record<string, React.ReactNode> }) {
   const { t } = useI18n();
@@ -205,7 +106,7 @@ export function HomeRails({ d }: { d: HomeDiscovery }) {
 export function Home({ d, secondary, cityCounts }: { d: Pick<HomeDiscovery, 'activeCities' | 'toast' | 'dismissToast'>; secondary: React.ReactNode; cityCounts: Record<string, React.ReactNode> }) {
   return <div style={{ minHeight: '100dvh', background: 'var(--surface-app)', fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column' }}>
     <SiteHeader active="home" />
-    <Hero />
+    <HomeHero cities={d.activeCities} />
     <div style={{ maxWidth: MAXW, margin: '0 auto', width: '100%', padding: '0 clamp(16px, 4vw, 32px)', flex: 1, ['--rail-gutter' as string]: 'clamp(16px, 4vw, 32px)' }}>
       <RegionGrid d={d} cityCounts={cityCounts} />
       {secondary}

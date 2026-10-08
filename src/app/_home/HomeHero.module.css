@@ -1,0 +1,200 @@
+.hero {
+  background: var(--brand-50);
+  border-block-end: 1px solid var(--gray-200);
+}
+.inner {
+  max-inline-size: 1120px;
+  margin-inline: auto;
+  padding: clamp(32px, 7vw, 72px) clamp(16px, 4vw, 32px) clamp(28px, 6vw, 64px);
+  text-align: center;
+  --rail-gutter: clamp(16px, 4vw, 32px);
+}
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0;
+  text-wrap: balance;
+}
+.description {
+  font-family: var(--font-body);
+  font-size: clamp(var(--text-base), 2.5vw, var(--text-lg));
+  color: var(--text-secondary);
+  margin: clamp(10px, 2vw, 16px) auto 0;
+  line-height: 1.5;
+}
+.searchRoot {
+  position: relative;
+  max-inline-size: 560px;
+  margin: clamp(20px, 4vw, 32px) auto 0;
+  text-align: start;
+  z-index: 20;
+}
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px 6px 18px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-full);
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+  color: var(--brand-600);
+}
+.field:focus-within {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+.field input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+}
+.field input::placeholder {
+  color: var(--text-secondary);
+}
+.field > button {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  background: var(--brand-600);
+  color: var(--white);
+  border: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+.panel {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: calc(100% + 8px);
+  max-block-size: min(65dvh, 480px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 8px;
+}
+.panelHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+  padding-inline: 8px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  min-block-size: 44px;
+}
+.panelHeading button {
+  min-block-size: 44px;
+  background: transparent;
+  border: 0;
+  color: var(--text-link);
+  cursor: pointer;
+}
+.option {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 52px;
+  padding: 10px;
+  text-align: start;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.option[aria-selected="true"],
+.option:hover {
+  background: var(--brand-50);
+}
+.optionName {
+  display: block;
+  font-weight: 600;
+}
+.option small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+.option .reason {
+  color: var(--text-link);
+}
+/* PhotoImage fills its nearest positioned ancestor; without this it fills the whole panel. */
+.photo {
+  position: relative;
+  inline-size: 48px;
+  block-size: 48px;
+  flex: 0 0 48px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+/* No snapping here: "Near me" joins the row after load, and a snapping row would keep the old
+   first chip in place and push the new one off the edge. */
+.intents.intents {
+  gap: 8px;
+  margin-block: 16px 0;
+  scroll-snap-type: none;
+}
+.intents > a {
+  scroll-snap-align: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  max-width: none;
+  min-block-size: 44px;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--gray-300);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.intents > a:hover {
+  border-color: var(--brand-600);
+  background: var(--brand-50);
+}
+.intents a:focus-visible,
+.panel button:focus-visible,
+.panel a:focus-visible,
+.field button:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+@media (max-width: 639px) {
+  .panel {
+    inset-inline: calc(-1 * var(--rail-gutter));
+    border-radius: var(--radius-md);
+  }
+}
+@media (min-width: 1024px) {
+  .intents.intents {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .intents > a {
+    width: auto;
+    max-width: none;
+  }
+}

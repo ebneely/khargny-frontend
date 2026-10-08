@@ -392,6 +392,7 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
     assert.ok(!skeleton.includes("<h2"));
 
     const { Home, HomeRails } = load("src/app/_home/Home.tsx", {}, {
+      "./HomeHero": { HomeHero: () => null },
       react: React, "react/jsx-runtime": jsx,
       "lucide-react": { Search: () => null, ArrowRight: () => null, MapPin: () => null },
       "@/components/ds/PlaceCard": { PlaceCard: ({ title }) => React.createElement("div", null, title) },

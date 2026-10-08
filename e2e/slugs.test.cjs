@@ -195,7 +195,7 @@ test('client fallback replaces address without history push; menu uses payload s
     '@/lib/analytics/track': { trackPlaceAction: empty, trackPlaceView: empty },
     '@/lib/icon-catalog': { icon: empty },
     '@/components/ds/SiteHeader': { SiteHeader: empty },
-    '@/components/explorer/MediaShowcase': { MediaShowcase: empty },
+    '@/components/explorer/MediaShowcase': { MediaShowcase: empty, usePlaceGallery: () => ({ warm: empty, open: empty, error: false }) },
     '@/components/explorer/HoursTable': { HoursTable: empty },
     '@/components/explorer/SimilarPlaces': { SimilarPlaces: empty },
     '@/components/explorer/PlaceMenuSection': { PlaceMenuSection: ({ slug }) => { menuSlugs.push(slug); return null; } },
