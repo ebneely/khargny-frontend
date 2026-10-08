@@ -165,7 +165,8 @@ const en = {
   },
   plan: {
     title: "My visit plan",
-    empty: "Your plan is empty. Save places while you explore.",
+    emptyTitle: "Your plan is empty",
+    empty: "Save places while you explore and they will wait for you here.",
     startExploring: "Start exploring",
     remove: "Remove",
     scheduled: "Scheduled",
@@ -343,7 +344,8 @@ const ar: typeof en = {
   },
   plan: {
     title: "خطة خروجتي",
-    empty: "خطتك فاضية. احفظ الأماكن وانت بتتفرج.",
+    emptyTitle: "خطتك فاضية",
+    empty: "احفظ الأماكن وانت بتتفرج، وهتلاقيها مستنياك هنا.",
     startExploring: "ابدأ اتفرج",
     remove: "شيل",
     scheduled: "متحدد ليه يوم",

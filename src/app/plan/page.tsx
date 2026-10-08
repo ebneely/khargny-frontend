@@ -254,7 +254,7 @@ export default function PlanPage() {
                 margin: "0 0 var(--space-4)",
               }}
             >
-              {t("plan.empty")}
+              {t("plan.emptyTitle")}
             </h2>
             <p
               style={{
