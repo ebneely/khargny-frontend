@@ -168,7 +168,7 @@ test('legacy region resolver uses the fetched city slug after a rename, never a 
   assert.equal(getRegionToCitySlug('Cairo & Giza', []), null);
 });
 
-test('client fallback replaces address without history push; menu uses payload slug, similar uses ID', () => {
+test('client fallback replaces address without history push; menu uses payload slug; no similar request', () => {
   const React = require('react');
   const empty = () => null;
   const effects = [];
@@ -204,7 +204,9 @@ test('client fallback replaces address without history push; menu uses payload s
     '@/components/explorer/NotFoundState': { NotFoundState: empty },
   };
   const Page = load('src/app/explorer/[citySlug]/[placeSlug]/PlaceClient.tsx', pageDependencies).default;
-  const Related = load('src/app/explorer/[citySlug]/[placeSlug]/RelatedPlacesClient.tsx', pageDependencies).RelatedPlacesClient;
+  // The related rail is rendered on the server from the city's list (cards with photos); the
+  // client no longer asks the similar-places endpoint, which carries no photo.
+  const Related = () => null;
   const Menu = pageDependencies['@/components/explorer/PlaceMenuSection'].PlaceMenuSection;
   const element = () => React.createElement(Page, { menu: React.createElement(Menu, { slug: place.slug }), related: React.createElement(Related, { id: place.id, citySlug: 'cairo' }) });
   require('react-dom/server').renderToStaticMarkup(element());
@@ -212,7 +214,7 @@ test('client fallback replaces address without history push; menu uses payload s
   assert.equal(replacements[0].target, '/en/explorer/cairo/new/?q=roof#menu');
   assert.equal(replacements[0].options.scroll, false);
   assert.deepEqual(menuSlugs, ['new']);
-  assert.deepEqual(similarIds, ['venue-id']);
+  assert.deepEqual(similarIds, []);
   effects.length = 0;
   require('react-dom/server').renderToStaticMarkup(element());
   for (const effect of effects) effect();

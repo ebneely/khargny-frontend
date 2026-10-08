@@ -3,12 +3,12 @@ import { HydrationBoundary } from '@tanstack/react-query';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import PlaceClient from './PlaceClient';
-import { getPlacePage, getMenu, getSimilar, getPlaceList, optional, publicHydration } from '@/lib/server/public-data';
+import { getPlacePage, getMenu, getPlaceList, optional, publicHydration } from '@/lib/server/public-data';
 import { ApiError } from '@/lib/api/client';
 import { currentLocale } from '@/lib/seo';
 import { placeRedirect } from '@/lib/place-address';
 import { PlaceMenuSection } from '@/components/explorer/PlaceMenuSection';
-import { RelatedPlacesClient } from './RelatedPlacesClient';
+import { SimilarPlaces } from '@/components/explorer/SimilarPlaces';
 import type { PlaceDetail, CityWithAreas } from '@/lib/api/types';
 import type { Locale } from '@/i18n/dictionaries';
 
@@ -18,17 +18,18 @@ async function Menu({ slug }: { slug: string }) {
 }
 
 async function Related({ place, city, locale }: { place: PlaceDetail; city: CityWithAreas; locale: Locale }) {
-  const [similar, category, others] = await Promise.all([
-    optional(getSimilar(place.id), []),
+  const [category, others] = await Promise.all([
     optional(getPlaceList(city.id, 1, place.categoryId, 9), { items: [], skip: 0, limit: 9 }),
     optional(getPlaceList(city.id, 1, '', 9), { items: [], skip: 0, limit: 9 }),
   ]);
+  // Same category first, then the rest of the city; never the place itself, never one twice.
   const places = [...new Map([...category.items, ...others.items].filter((item) => item.id !== place.id && item.cityId === city.id).map((item) => [item.id, item])).values()].slice(0, 8);
   const cityName = locale === 'ar' ? city.name : city.nameEn || city.name;
-  return <>
-    <HydrationBoundary state={publicHydration([[['places', 'similar', place.id], similar]])}><RelatedPlacesClient id={place.id} citySlug={city.slug} /></HydrationBoundary>
-    {places.length > 0 && <section><h2 className="pd-section-title">{locale === 'ar' ? `أماكن أخرى في ${cityName}` : `More in ${cityName}`}</h2><ul>{places.map((item) => <li key={item.id}><a href={`/${locale}/explorer/${city.slug}/${item.slug}/`}>{locale === 'ar' ? item.name : item.nameEn || item.name}</a></li>)}</ul></section>}
-  </>;
+  // One rail of real cards. It used to be two blocks: "Similar places" from an endpoint that
+  // carries no photo (so every card was an empty box), and a bare list of the same links.
+  return places.length > 0
+    ? <SimilarPlaces places={places} citySlug={city.slug} title={locale === 'ar' ? `أماكن تانية في ${cityName}` : `More in ${cityName}`} />
+    : null;
 }
 
 export default async function PlacePage({ params }: { params: Promise<{ citySlug: string; placeSlug: string }> }) {
