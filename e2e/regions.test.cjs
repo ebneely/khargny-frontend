@@ -209,8 +209,24 @@ test('city listing retains the two-argument single-value query; area discovery n
   assert.ok(!source.includes('cityPlaces'));
 });
 
-test('city and place pages both call the imported production location composition', () => {
-  for (const file of ['src/app/explorer/[citySlug]/page.tsx', 'src/app/explorer/[citySlug]/[placeSlug]/page.tsx']) {
+test('a card says only the area: the city page never passes the street address to a card', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src/app/explorer/[citySlug]/page.tsx'), 'utf8');
+  const { parsed, calls } = callsIn(source, 'cardArea');
+  assert.equal(calls.length, 1);
+  assert.deepEqual(Array.from(calls[0].arguments).slice(0, 2).map((argument) => argument.getText(parsed)), ['place.region', 'locale']);
+  assert.equal(callsIn(source, 'regionLocation').calls.length, 0);
+  assert.ok(!/area={[^}]*address/.test(source), 'no card area may be built from an address');
+  const similar = fs.readFileSync(path.join(__dirname, '..', 'src/components/explorer/SimilarPlaces.tsx'), 'utf8');
+  assert.ok(!similar.includes('p.address'), 'similar-place cards must not print the address');
+  const regions = catalogue();
+  const { cardArea } = loadModule('src/lib/region-location.ts', { './egypt-regions': regions });
+  assert.equal(cardArea('El Sheikh Zayed', 'en', 'Ismailia'), 'El Sheikh Zayed');
+  assert.equal(cardArea('El Sheikh Zayed', 'ar', 'Ismailia'), 'الشيخ زايد');
+  assert.equal(cardArea(null, 'en', 'Ismailia'), '');
+});
+
+test('the place page calls the imported production location composition', () => {
+  for (const file of ['src/app/explorer/[citySlug]/[placeSlug]/page.tsx']) {
     const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
     const { parsed, calls } = callsIn(source, 'regionLocation');
     const sharedImport = parsed.statements.find((statement) => ts.isImportDeclaration(statement)

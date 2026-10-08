@@ -26,7 +26,7 @@ import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName, displayNameAr } from "@/lib/display-name";
 import { RegionSelector } from "@/components/explorer/RegionSelector";
-import { regionLocation } from "@/lib/region-location";
+import { cardArea } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
 import { ChevronRight } from "lucide-react";
 import { useSearchTerm } from '@/lib/use-search-term';
@@ -292,9 +292,8 @@ function CityExplorerPage() {
                   placeId={place.id}
                   title={locale === "ar" ? place.name : place.nameEn || place.name}
                   searchReason={searching ? matchReason(place.matchedOn) : undefined}
-                  area={regionLocation(
+                  area={cardArea(
                     place.region,
-                    place.address,
                     locale,
                     cityNameById.get(place.cityId) || place.cityId,
                   )}

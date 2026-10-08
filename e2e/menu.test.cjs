@@ -120,7 +120,7 @@ function placePage(locale, flags) {
 }
 
 function assertStatuses(markup, expected, locale) {
-  const names = locale === 'en' ? ['Prices listed', 'Price match', 'Visited by 5argny'] : ['الأسعار معروضة', 'مطابقة الأسعار', 'زرناه'];
+  const names = locale === 'en' ? ['Services listed', 'Price match', 'Visited by 5argny'] : ['الخدمات معروضة', 'مطابقة الأسعار', 'زرناه'];
   const chips = [...markup.matchAll(/<span\b[^>]*data-place-status="([^"]+)"[^>]*>/g)];
   assert.equal(chips.length, 3);
   assert.deepEqual(chips.map((chip) => chip[1]), ['hasMenu', 'priceVerified', 'visitedByUs']);
@@ -143,7 +143,7 @@ test('rendered cards retain legacy text and put the name before three passive st
     assertStatuses(legacy, [false, false, false], locale);
     assert.ok(legacy.includes('Test area'));
     const modern = renderToStaticMarkup(React.createElement(PlaceCard, { ...props, hasMenu: true, priceVerified: true, visitedByUs: true }));
-    const menuLabel = locale === 'en' ? 'Prices listed' : 'الأسعار معروضة';
+    const menuLabel = locale === 'en' ? 'Services listed' : 'الخدمات معروضة';
     assert.ok(modern.indexOf('title="Test place"') < modern.indexOf(menuLabel));
     assert.ok(modern.includes('flex-wrap:wrap'));
   }
@@ -493,7 +493,7 @@ test('legend explains green and grey before the three badges, with full-stop pri
     assert.ok(!markup.includes('data-place-status='));
     assert.equal((markup.match(/<li>/g) ?? []).length, 3);
     const hint = translations(locale).useI18n().t('place.priceVerifiedHint');
-    assert.equal(hint, locale === 'en' ? 'Reviewed by the 5argny team: the prices listed here match the place\'s real prices.' : 'راجعها فريق خرجني: الأسعار المعروضة هنا مطابقة لأسعار المكان الفعلية.');
+    assert.equal(hint, locale === 'en' ? 'Reviewed by the 5argny team: the prices of the services listed here match the place\'s real prices.' : 'راجعها فريق خرجني: أسعار الخدمات المعروضة هنا مطابقة لأسعار المكان الفعلية.');
     assert.ok(markup.includes(hint.replace(/'/g, '&#x27;')));
   }
 });
@@ -558,7 +558,10 @@ test('existing green and grey tokens meet text and icon contrast without opacity
     assert.ok(css.includes(`color: var(--${foreground})`));
     assert.ok(css.includes(`background: var(--${background})`));
   }
-  const textStyles = css.replace(/\.notYet \.mark\s*\{[^}]*\}/, '');
+  // The owner asked for a not-held badge's icon to recede like the greyed 5argny mark. Only the
+  // two decorative icon rules may use opacity; a label's text never does.
+  assert.match(css, /\.notYet svg\s*\{\s*opacity: 0\.4;\s*\}/);
+  const textStyles = css.replace(/\.notYet \.mark\s*\{[^}]*\}/, '').replace(/\.notYet svg\s*\{[^}]*\}/, '');
   assert.ok(!/opacity|#[\da-f]{3,8}\b|text-decoration:\s*line-through/i.test(textStyles));
 });
 

@@ -29,6 +29,12 @@
   opacity: 0.55;
 }
 
+/* A badge the place does not hold recedes as a whole: its line icon is as quiet as the
+   greyed 5argny mark beside it, so the eye lands on the green ones first. */
+.notYet svg {
+  opacity: 0.4;
+}
+
 .priceGroup {
   display: inline-flex;
   flex-wrap: wrap;

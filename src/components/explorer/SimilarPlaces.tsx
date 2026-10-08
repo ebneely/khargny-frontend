@@ -55,10 +55,7 @@ export function SimilarPlaces({ places, citySlug }: SimilarPlacesProps) {
             placeId={p.id}
             size="sm"
             title={displayName(p, locale)}
-            area={[
-              regionLabel(p.region, locale, cityNameById.get(p.cityId) || p.cityId),
-              p.address,
-            ].filter(Boolean).join(" · ")}
+            area={regionLabel(p.region, locale, cityNameById.get(p.cityId) || p.cityId)}
             rating={p.rating > 0 ? p.rating.toString() : undefined}
             priceRange={p.priceVerified ? p.priceRange : undefined}
             hasMenu={p.hasMenu}
