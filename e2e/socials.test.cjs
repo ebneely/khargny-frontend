@@ -16,6 +16,8 @@ function load(filename, dependencies = {}, globals = {}) {
     if (name === '@/i18n/routing') return { stripLocale: (value) => value, withLocale: (value, locale) => `/${locale}${value}` };
     if (name === 'next/headers') return {};
     if (name === '@/lib/site-socials') return load('src/lib/site-socials.ts');
+    if (name === '@/lib/place-photo') return load('src/lib/place-photo.ts', dependencies, globals);
+    if (name === '@/lib/seo-environment') return load('src/lib/seo-environment.ts', dependencies, globals);
     return require(name);
   } });
   return exported;

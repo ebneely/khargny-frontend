@@ -15,12 +15,12 @@ export type RegionName =
   | "Siwa & Western Desert"
   | "Luxor & Aswan";
 
-export const REGIONS: { label: RegionName; labelAr: string; defaultCitySlug: string }[] = [
-  { label: "Cairo & Giza", labelAr: "القاهرة والجيزة", defaultCitySlug: "cairo" },
-  { label: "Alexandria & North Coast", labelAr: "الإسكندرية والساحل الشمالي", defaultCitySlug: "alexandria" },
-  { label: "Red Sea (Sokhna, Sharm, Hurghada)", labelAr: "البحر الأحمر (السخنة، شرم، الغردقة)", defaultCitySlug: "hurghada" },
-  { label: "Siwa & Western Desert", labelAr: "سيوة والصحراء الغربية", defaultCitySlug: "siwa" },
-  { label: "Luxor & Aswan", labelAr: "الأقصر وأسوان", defaultCitySlug: "luxor" },
+export const REGIONS: { label: RegionName; labelAr: string; primaryCityName: string; primaryCityNameAr: string }[] = [
+  { label: "Cairo & Giza", labelAr: "القاهرة والجيزة", primaryCityName: "Cairo", primaryCityNameAr: "القاهرة" },
+  { label: "Alexandria & North Coast", labelAr: "الإسكندرية والساحل الشمالي", primaryCityName: "Alexandria", primaryCityNameAr: "الإسكندرية" },
+  { label: "Red Sea (Sokhna, Sharm, Hurghada)", labelAr: "البحر الأحمر (السخنة، شرم، الغردقة)", primaryCityName: "Hurghada", primaryCityNameAr: "الغردقة" },
+  { label: "Siwa & Western Desert", labelAr: "سيوة والصحراء الغربية", primaryCityName: "Siwa", primaryCityNameAr: "سيوة" },
+  { label: "Luxor & Aswan", labelAr: "الأقصر وأسوان", primaryCityName: "Luxor", primaryCityNameAr: "الأقصر" },
 ];
 
 /**
@@ -29,10 +29,10 @@ export const REGIONS: { label: RegionName; labelAr: string; defaultCitySlug: str
  * new region label must update this file (and the design kit stays the source
  * of truth for the literal labels).
  */
-export function getRegionToCitySlug(regionLabel: RegionName): string {
+export function getRegionToCitySlug(regionLabel: RegionName, cities: { name?: string; nameEn?: string | null; slug: string }[]): string | null {
   const found = REGIONS.find((r) => r.label === regionLabel);
   if (!found) {
     throw new Error(`getRegionToCitySlug: unknown region label "${regionLabel}"`);
   }
-  return found.defaultCitySlug;
+  return cities.find((city) => city.nameEn === found.primaryCityName || city.name === found.primaryCityNameAr)?.slug || null;
 }

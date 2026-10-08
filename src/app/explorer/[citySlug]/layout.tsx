@@ -1,16 +1,17 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { cityRedirect } from '@/lib/city-address';
 import { API_BASE_URL, SITE_URL } from '@/lib/config';
 import {
-  alternatesFor,
   breadcrumbSchema,
   clampDescription,
   currentLocale,
   currentPath,
+  fitCityTitle,
   graph,
   jsonLdScript,
-  ogAlternateLocale,
-  ogLocale,
+  pageMetadata,
   urlFor,
 } from '@/lib/seo';
 
@@ -34,24 +35,33 @@ type City = {
   areaKeys?: string[] | null;
 };
 
-async function fetchCity(slug: string, requireExisting = true): Promise<City | null> {
+async function fetchCity(slug: string): Promise<City | null> {
   if (!API_BASE_URL) return null;
   let missing = false;
   try {
     const res = await fetch(`${API_BASE_URL}/v1/cities/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 3600 },
+      cache: 'no-store',
     });
     missing = res.status === 404;
     if (res.ok) {
       const json = await res.json();
+      if (json?.success === false) return null;
       const data = json?.data ?? json;
       return (data?.city ?? data) as City;
     }
   } catch {
     return null;
   }
-  if (missing && requireExisting) notFound();
+  if (missing) notFound();
   return null;
+}
+
+async function resolveCity(citySlug: string, locale: 'ar' | 'en'): Promise<City | null> {
+  const city = await fetchCity(citySlug);
+  const search = (await headers()).get('x-khargny-search') ?? '';
+  const target = cityRedirect({ citySlug, locale, search }, city);
+  if (target) permanentRedirect(target);
+  return city;
 }
 
 /** How many places the city has, for a description that states a real number. */
@@ -79,20 +89,21 @@ export async function generateMetadata({
   const { citySlug } = await params;
   const locale = await currentLocale();
   const isAr = locale === 'ar';
-  const path = `/explorer/${citySlug}`;
-
   const requestPath = await currentPath();
   const isCityPage = requestPath.replace(/\/+$/, '').split('/').filter(Boolean).length <= 2;
-  const [city, count] = await Promise.all([fetchCity(citySlug, isCityPage), fetchCount(citySlug)]);
+  if (!isCityPage) return {};
+  const city = await resolveCity(citySlug, locale);
+  const path = `/explorer/${city?.slug || citySlug}`;
+  const count = await fetchCount(city?.slug || citySlug);
 
   const name =
     (isAr ? city?.name : city?.nameEn) || city?.name || city?.nameEn || citySlug;
 
   // The title carries the words someone actually types: the city, what they want, and the
   // country. "Cairo" alone competes with the whole internet.
-  const title = isAr
-    ? `أماكن ${name} — مطاعم وكافيهات وخروجات${count ? ` (${count} مكان)` : ''}`
-    : `Things to do in ${name}${count ? ` — ${count} places` : ''}`;
+  const title = fitCityTitle(isAr
+    ? `أماكن ${name} — مطاعم وكافيهات وخروجات`
+    : `Things to do in ${name}`, count, locale);
 
   const editorial = isAr ? city?.descriptionAr : city?.descriptionEn;
   const description =
@@ -101,23 +112,12 @@ export async function generateMetadata({
       ? `اكتشف أحلى الأماكن في ${name}: مطاعم وكافيهات وشواطئ وفنادق ومعالم${count ? ` — ${count} مكان مختار` : ''}. اتفرج حسب المنطقة والنوع على خرجني.`
       : `Discover the best places in ${name} — restaurants, cafes, beaches, hotels and landmarks${count ? `, ${count} curated spots` : ''}. Browse by area and category on Khargny.`);
 
-  const image = city?.imageUrl || '/images/logo-en.png';
-
-  return {
-    title,
-    description,
-    alternates: alternatesFor(path, locale),
-    openGraph: {
-      type: 'website',
-      title,
-      description,
-      url: urlFor(path, locale),
-      images: [{ url: image, alt: name }],
-      locale: ogLocale(locale),
-      alternateLocale: ogAlternateLocale(locale),
-    },
-    twitter: { card: 'summary_large_image', title, description, images: [image] },
-  };
+  const search = (await headers()).get('x-khargny-search') ?? '';
+  return pageMetadata({
+    path, locale, title, description,
+    image: city?.imageUrl ? { url: city.imageUrl, alt: name } : undefined,
+    noindex: !city || new URLSearchParams(search).has('q'),
+  });
 }
 
 export default async function CityLayout({
@@ -138,7 +138,8 @@ export default async function CityLayout({
   const isCityPage = path.replace(/\/+$/, '').split('/').filter(Boolean).length <= 2;
   if (!isCityPage) return <>{children}</>;
 
-  const city = await fetchCity(citySlug);
+  const city = await resolveCity(citySlug, locale);
+  const currentSlug = city?.slug || citySlug;
   const name = (isAr ? city?.name : city?.nameEn) || city?.name || citySlug;
 
   return (
@@ -152,14 +153,14 @@ export default async function CityLayout({
                 [
                   { name: isAr ? 'الرئيسية' : 'Home', path: '/' },
                   { name: isAr ? 'استكشف' : 'Explore', path: '/explorer' },
-                  { name, path: `/explorer/${citySlug}` },
+                  { name, path: `/explorer/${currentSlug}` },
                 ],
                 locale,
               ),
               {
                 '@type': 'CollectionPage',
-                '@id': `${urlFor(`/explorer/${citySlug}`, locale)}#page`,
-                url: urlFor(`/explorer/${citySlug}`, locale),
+                '@id': `${urlFor(`/explorer/${currentSlug}`, locale)}#page`,
+                url: urlFor(`/explorer/${currentSlug}`, locale),
                 name,
                 isPartOf: { '@id': `${SITE_URL}/#website` },
                 about: {

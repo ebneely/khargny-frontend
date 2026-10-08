@@ -5,7 +5,14 @@ const { test } = require("node:test");
 const ts = require("typescript");
 const path = require("node:path");
 const { createRequire } = require("node:module");
-const backendRoot = path.resolve("../ads-identity-backend");
+// These tests check the website against the backend's own validation rules, so they need a
+// backend checkout with its dependencies installed. KHARGNY_BACKEND_ROOT names it; otherwise
+// the usual sibling folders are tried.
+const backendRoot = [process.env.KHARGNY_BACKEND_ROOT, "../backend", "../ads-identity-backend", "../../ads-identity-backend", "../khargny-backend"]
+  .filter(Boolean)
+  .map((candidate) => path.resolve(candidate))
+  .find((candidate) => fs.existsSync(path.join(candidate, "node_modules", "reflect-metadata")) && fs.existsSync(path.join(candidate, "src/ads/dto/ads.dto.ts")));
+if (!backendRoot) throw new Error("No backend checkout with installed dependencies found; set KHARGNY_BACKEND_ROOT");
 const backendRequire = createRequire(path.join(backendRoot, "package.json"));
 backendRequire("reflect-metadata");
 const validators = backendRequire("class-validator");

@@ -287,7 +287,7 @@ function CityExplorerPage() {
               >
                 {/* No `rating` prop: no review system yet — places.rating is always 0. */}
                 <PlaceCard
-                  href={`/explorer/${citySlug}/${place.slug}`}
+                  href={`/explorer/${currentCity?.slug || citySlug}/${place.slug}`}
                   size="md"
                   placeId={place.id}
                   title={locale === "ar" ? place.name : place.nameEn || place.name}

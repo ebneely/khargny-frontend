@@ -50,10 +50,21 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  env: { SEO_BUILD_DATE: new Date().toISOString() },
+  outputFileTracingIncludes: {
+    '/og/default.png': ['./public/images/5argny-mark-96.png', './public/images/khargny-ar-wordmark.svg'],
+  },
   // SSR mode enabled (no static export)
   trailingSlash: true,
   htmlLimitedBots: /.*/,
   poweredByHeader: false,
+  async rewrites() {
+    return {
+      beforeFiles: [],
+      afterFiles: [{ source: '/:keyFile([A-Za-z0-9-]{8,128}\\.txt)', destination: '/api/indexnow/:keyFile' }],
+      fallback: [],
+    };
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

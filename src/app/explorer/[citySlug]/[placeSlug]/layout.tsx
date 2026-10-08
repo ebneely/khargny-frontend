@@ -7,14 +7,14 @@ import { priceBandLabel, type PriceLevel } from '@/lib/price-bands';
 import { normalizePlaceFlags, type PlaceFlags } from '@/lib/api/normalize-place';
 import { API_BASE_URL, SITE_URL } from '@/lib/config';
 import {
-  alternatesFor,
   breadcrumbSchema,
   clampDescription,
   currentLocale,
+  fitPlaceTitle,
   graph,
   jsonLdScript,
-  ogAlternateLocale,
-  ogLocale,
+  pageMetadata,
+  shareImageFor,
   urlFor,
 } from '@/lib/seo';
 import type { Locale } from '@/i18n/dictionaries';
@@ -53,6 +53,7 @@ type Place = Partial<PlaceFlags> & {
   facebook?: string | null;
   priceRange?: PriceLevel | null;
   coverImage?: string | null;
+  coverImageDimensions?: { width?: number | null; height?: number | null } | null;
   images?: Photo[];
   placeHours?: Hour[];
   category?: { nameAr?: string; nameEn?: string | null };
@@ -116,7 +117,7 @@ async function fetchPlaceCity(place: Place, requestedCity: string): Promise<stri
   if (place.city?.slug) return place.city.slug;
   if (!place.cityId || !API_BASE_URL) return requestedCity;
   try {
-    const response = await fetch(`${API_BASE_URL}/v1/cities`, { next: { revalidate: 3600 } });
+    const response = await fetch(`${API_BASE_URL}/v1/cities`, { cache: 'no-store' });
     if (!response.ok) return requestedCity;
     const json = await response.json();
     const cities: { id: string; slug: string }[] = json?.data?.data ?? json?.data ?? [];
@@ -173,11 +174,12 @@ export async function generateMetadata({
   // API failure never publishes a page pointing at the wrong URL. It is marked noindex
   // rather than indexed with a placeholder title.
   if (!place) {
-    return {
+    return pageMetadata({
+      path, locale,
       title: isAr ? 'مكان' : 'Place',
-      alternates: alternatesFor(path, locale),
-      robots: { index: false, follow: true },
-    };
+      description: isAr ? 'تفاصيل المكان على خرجني.' : 'Place details on Khargny.',
+      noindex: true,
+    });
   }
 
   const name = pickName(place, locale);
@@ -191,7 +193,7 @@ export async function generateMetadata({
 
   // Name, what it is, and where — the three things a search for this place contains.
   const where = [area, cityName].filter(Boolean).join(', ');
-  const title = [name, categoryName, where].filter(Boolean).join(' — ');
+  const title = fitPlaceTitle({ name, category: categoryName, area, city: cityName }, locale);
 
   const editorial = isAr ? place.description : place.descriptionEn;
   const description =
@@ -202,28 +204,7 @@ export async function generateMetadata({
         : `${name}${categoryName ? `, ${categoryName}` : ''} in ${where || cityName}. Address, opening hours, photos and directions on Khargny.`,
     );
 
-  const image = photoCandidates(place.images?.[0] ?? {}).at(-1)?.url || place.coverImage || '/images/logo-en.png';
-
-  return {
-    title,
-    description,
-    alternates: alternatesFor(path, locale),
-    openGraph: {
-      type: 'article',
-      title: `${name} · Khargny`,
-      description,
-      url: urlFor(path, locale),
-      images: [{ url: image, alt: name }],
-      locale: ogLocale(locale),
-      alternateLocale: ogAlternateLocale(locale),
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `${name} · Khargny`,
-      description,
-      images: [image],
-    },
-  };
+  return pageMetadata({ path, locale, title, description, type: 'article', image: { ...shareImageFor(place), alt: name } });
 }
 
 export default async function PlaceDetailLayout({

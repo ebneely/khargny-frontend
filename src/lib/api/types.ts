@@ -54,6 +54,7 @@ export interface PlaceListByCategory {
 export type CityStatus = 'active' | 'draft';
 
 export interface City {
+  redirectedFrom?: string;
   id: string;
   name: string;
   nameEn: string | null;
@@ -124,6 +125,7 @@ export interface Place extends PlaceFlags {
   status: PlaceStatus;
   /** Card cover — small WebP variant of the first image, from the public list. */
   coverImage?: string | null;
+  coverImageDimensions?: { width: number; height: number } | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;

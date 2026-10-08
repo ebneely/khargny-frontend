@@ -55,6 +55,7 @@ lerna-debug.log*
 *.env.*
 # Exception: Sentry build plugin config (not sensitive)
 !.env.sentry-build-plugin
+!.env.example
 
 # vercel
 .vercel

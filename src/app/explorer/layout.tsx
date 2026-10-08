@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 import {
-  alternatesFor,
   currentLocale,
-  ogAlternateLocale,
-  ogLocale,
-  urlFor,
+  pageMetadata,
 } from '@/lib/seo';
 
 /**
@@ -17,26 +14,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const isAr = locale === 'ar';
 
   const title = isAr
-    ? 'استكشف مدن مصر — أماكن مختارة في كل محافظة'
-    : 'Explore Egypt by city — curated places in every governorate';
+    ? 'استكشف مصر مدينة مدينة'
+    : 'Explore Egypt by city';
   const description = isAr
     ? 'تصفح الأماكن حسب المدينة: القاهرة، الجيزة، الإسكندرية، الإسماعيلية، بورسعيد، الأقصر، أسوان، الغردقة ومطروح. مطاعم ومقاهي وشواطئ وفنادق ومعالم.'
     : 'Browse places by city — Cairo, Giza, Alexandria, Ismailia, Port Said, Luxor, Aswan, Hurghada and Matrouh. Restaurants, cafes, beaches, hotels and landmarks.';
 
-  return {
-    title,
-    description,
-    alternates: alternatesFor('/explorer', locale),
-    openGraph: {
-      type: 'website',
-      title,
-      description,
-      url: urlFor('/explorer', locale),
-      locale: ogLocale(locale),
-      alternateLocale: ogAlternateLocale(locale),
-    },
-    twitter: { card: 'summary_large_image', title, description },
-  };
+  return pageMetadata({ path: '/explorer', locale, title, description });
 }
 
 export default function ExplorerLayout({ children }: { children: React.ReactNode }) {

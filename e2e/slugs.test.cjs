@@ -18,7 +18,7 @@ test('redirect decisions: same, slug, city, both, locale, repeated query, slash 
 function layout(place, { status = 200, locale = 'en', failure = false, redirectThrows = true } = {}) {
   const decisions = [];
   const headers = new Headers({ 'x-khargny-locale': locale, 'x-khargny-path': '/explorer/aswan/old', 'x-khargny-search': '?q=roof&tag=a&tag=b' });
-  const module = load('src/app/explorer/[citySlug]/[placeSlug]/layout.tsx', {
+  const layoutModule = load('src/app/explorer/[citySlug]/[placeSlug]/layout.tsx', {
     fetch: async (url) => {
       if (failure) throw new Error('Offline simulated outage');
       if (url.endsWith('/v1/cities')) return { ok: true, json: async () => ({ data: [{ id: 'city-aswan', slug: 'aswan', name: 'Aswan' }, { id: 'city-cairo', slug: 'cairo', name: 'Cairo' }] }) };
@@ -30,7 +30,7 @@ function layout(place, { status = 200, locale = 'en', failure = false, redirectT
     'next/navigation': { permanentRedirect: (target) => { decisions.push(target); if (redirectThrows) throw new Error('REDIRECT:' + target); }, notFound: () => { throw new Error('NOT_FOUND'); } },
     '@/lib/config': { API_BASE_URL: 'https://api.invalid', SITE_URL: 'https://web.invalid' },
   });
-  return { ...module, decisions };
+  return { ...layoutModule, decisions };
 }
 
 const args = { params: Promise.resolve({ citySlug: 'aswan', placeSlug: 'old' }), children: 'existing page' };
@@ -65,9 +65,9 @@ test('city metadata and server layout signal 404 only for an unknown city; empty
 });
 
 test('server layout invokes permanentRedirect with current slug/city, locale and original query', async () => {
-  const module = layout({ slug: 'new', redirectedFrom: 'old', cityId: 'city-cairo', name: 'Venue' }, { locale: 'ar' });
-  await assert.rejects(module.default(args), /REDIRECT/);
-  assert.deepEqual(module.decisions, ['/ar/explorer/cairo/new/?q=roof&tag=a&tag=b']);
+  const layoutModule = layout({ slug: 'new', redirectedFrom: 'old', cityId: 'city-cairo', name: 'Venue' }, { locale: 'ar' });
+  await assert.rejects(layoutModule.default(args), /REDIRECT/);
+  assert.deepEqual(layoutModule.decisions, ['/ar/explorer/cairo/new/?q=roof&tag=a&tag=b']);
 });
 
 test('metadata blocks redirects before streaming; payload builds canonical, alternates and OG', async () => {
@@ -76,7 +76,7 @@ test('metadata blocks redirects before streaming; payload builds canonical, alte
   const current = layout({ slug: 'new', cityId: 'city-cairo', name: 'Venue' });
   const metadata = await current.generateMetadata({ params: Promise.resolve({ citySlug: 'cairo', placeSlug: 'new' }) });
   assert.equal(metadata.alternates.canonical, 'https://web.invalid/en/explorer/cairo/new/');
-  assert.equal(metadata.alternates.languages['ar-EG'], 'https://web.invalid/ar/explorer/cairo/new/');
+  assert.equal(metadata.alternates.languages.ar, 'https://web.invalid/ar/explorer/cairo/new/');
   assert.equal(metadata.alternates.languages.en, metadata.alternates.canonical);
   assert.equal(metadata.openGraph.url, metadata.alternates.canonical);
   const config = fs.readFileSync(path.join(__dirname, '../next.config.ts'), 'utf8');
@@ -104,6 +104,53 @@ test('unknown slug signals framework 404; API failure keeps children/noindex, ne
     assert.equal(metadata.robots.index, false);
     assert.equal(failed.decisions.length, 0);
   }
+});
+
+test('old city redirects in both languages with the whole query and trailing slash', async () => {
+  const { dependencies, city } = require('./seo-fixtures.cjs');
+  const { getRedirectStatusCodeFromError, getURLFromRedirectError } = require('next/dist/client/components/redirect');
+  for (const locale of ['ar', 'en']) {
+    const deps = dependencies({ locale, route: '/explorer/alqahrh/', search: '?q=roof&tag=a&tag=b&area=a%2Fb' });
+    deps['next/navigation'] = require('next/navigation');
+    const layoutModule = load('src/app/explorer/[citySlug]/layout.tsx', deps);
+    const cityArgs = { params: Promise.resolve({ citySlug: 'alqahrh' }), children: 'city page' };
+    const target = `/${locale}/explorer/${city.slug}/?q=roof&tag=a&tag=b&area=a%2Fb`;
+    const redirect = (error) => getRedirectStatusCodeFromError(error) === 308 && getURLFromRedirectError(error) === target;
+    await assert.rejects(layoutModule.default(cityArgs), redirect);
+    await assert.rejects(layoutModule.generateMetadata(cityArgs), redirect);
+  }
+});
+
+test('an API failure envelope cannot redirect an old city or signal a missing city', async () => {
+  const { dependencies, city } = require('./seo-fixtures.cjs');
+  const deps = dependencies({ route: '/explorer/alqahrh/', fetch: async () => ({
+    ok: true, json: async () => ({ success: false, data: city }),
+  }) });
+  const layoutModule = load('src/app/explorer/[citySlug]/layout.tsx', deps);
+  const cityArgs = { params: Promise.resolve({ citySlug: 'alqahrh' }), children: 'city page' };
+  assert.match(require('react-dom/server').renderToStaticMarkup(await layoutModule.default(cityArgs)), /city page/);
+  assert.equal((await layoutModule.generateMetadata(cityArgs)).robots.index, false);
+});
+
+test('old city plus old place redirects once, directly to both current slugs', async () => {
+  const { dependencies } = require('./seo-fixtures.cjs');
+  const redirects = [];
+  const deps = dependencies({ locale: 'ar', route: '/explorer/alqahrh/old-place/', search: '?q=tea&tag=a&tag=b' });
+  deps['next/navigation'].permanentRedirect = (target) => { redirects.push(target); throw new Error('REDIRECT:' + target); };
+  const cityArgs = { params: Promise.resolve({ citySlug: 'alqahrh', placeSlug: 'old-place' }), children: 'place page' };
+  const parent = load('src/app/explorer/[citySlug]/layout.tsx', deps);
+  await parent.default(cityArgs);
+  await parent.generateMetadata(cityArgs);
+  assert.equal(redirects.length, 0);
+  const detail = load('src/app/explorer/[citySlug]/[placeSlug]/layout.tsx', deps);
+  await assert.rejects(detail.default(cityArgs), /REDIRECT/);
+  assert.deepEqual(redirects, ['/ar/explorer/cairo/new-place/?q=tea&tag=a&tag=b']);
+});
+
+test('legacy region resolver uses the fetched city slug after a rename, never a literal slug', () => {
+  const { getRegionToCitySlug } = load('src/lib/regions.ts');
+  assert.equal(getRegionToCitySlug('Cairo & Giza', [{ name: 'القاهرة', nameEn: 'Cairo', slug: 'renamed-cairo' }]), 'renamed-cairo');
+  assert.equal(getRegionToCitySlug('Cairo & Giza', []), null);
 });
 
 test('client fallback replaces address without history push; menu uses payload slug, similar uses ID', () => {

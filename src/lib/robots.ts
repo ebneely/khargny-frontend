@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/config";
+import { isPreviewDeployment } from '@/lib/seo-environment';
 
 export default function robots(): MetadataRoute.Robots {
+  if (isPreviewDeployment()) return { rules: { userAgent: '*', disallow: '/' } };
   return {
     rules: {
       userAgent: "*",

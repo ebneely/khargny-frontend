@@ -9,8 +9,8 @@ function load(relativePath, dependencies = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   const exports = {};
-  vm.runInNewContext(output, { exports, URL, URLSearchParams, setTimeout, clearTimeout,
-    window: dependencies.window, fetch: dependencies.fetch, process: { env: { NODE_ENV: 'test', CI: '1' } },
+  vm.runInNewContext(output, { exports, URL, URLSearchParams, Headers, Request, Response, setTimeout, clearTimeout,
+    window: dependencies.window, fetch: dependencies.fetch, process: dependencies.process ?? { env: { NODE_ENV: 'test', CI: '1' } },
     require(name) {
       if (name in dependencies) return dependencies[name];
       if (name.endsWith('.module.css')) return { default: new Proxy({}, { get: (target, key) => String(key) }) };

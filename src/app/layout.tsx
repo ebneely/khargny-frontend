@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { SITE_URL } from "@/lib/config";
-import { alternatesFor, currentLocale, urlFor, ogLocale, ogAlternateLocale, graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
+import { currentLocale, fitTitle, pageMetadata, graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
 import { cookies, headers } from "next/headers";
 import type { Locale } from "@/i18n/dictionaries";
 import { getSiteSettings } from '@/lib/api/site-settings';
@@ -43,31 +43,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: title, template: isAr ? "%s · خرجني" : "%s · Khargny" },
-    description,
+    ...pageMetadata({ path: '/', locale, title, description }),
+    title: { default: fitTitle(title, locale), template: isAr ? '%s · خرجني' : '%s · Khargny' },
     applicationName: "Khargny",
     icons: { icon: "/images/logo-en.png" },
-    alternates: alternatesFor("/", locale),
-    openGraph: {
-      type: "website",
-      siteName: "Khargny",
-      title,
-      description,
-      url: urlFor("/", locale),
-      images: [{ url: "/images/logo-en.png", width: 1200, height: 630, alt: "Khargny" }],
-      locale: ogLocale(locale),
-      alternateLocale: ogAlternateLocale(locale),
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: ["/images/logo-en.png"],
-    },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    verification: {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+      other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+        ? { 'msvalidate.01': process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION } : undefined,
     },
   };
 }
