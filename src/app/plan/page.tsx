@@ -164,7 +164,8 @@ export default function PlanPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "flex-end",
-          padding: "14px 0 0",
+          // Block only: a shorthand `padding` here cancels the container's side gutter.
+          paddingBlock: "14px 0",
           flexShrink: 0,
         }}
       >
@@ -192,7 +193,7 @@ export default function PlanPage() {
       <header
         className="khg-plan-container"
         style={{
-          padding: "24px 0 16px",
+          paddingBlock: "24px 16px",
           flexShrink: 0,
         }}
       >
@@ -239,7 +240,7 @@ export default function PlanPage() {
           <div
             className="khg-plan-container"
             style={{
-              padding: "64px 0",
+              paddingBlock: 64,
               textAlign: "center",
             }}
           >
