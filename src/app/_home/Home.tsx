@@ -206,7 +206,7 @@ export function Home({ d, secondary, cityCounts }: { d: Pick<HomeDiscovery, 'act
   return <div style={{ minHeight: '100dvh', background: 'var(--surface-app)', fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column' }}>
     <SiteHeader active="home" />
     <Hero />
-    <div style={{ maxWidth: MAXW, margin: '0 auto', width: '100%', padding: '0 clamp(16px, 4vw, 32px)', flex: 1 }}>
+    <div style={{ maxWidth: MAXW, margin: '0 auto', width: '100%', padding: '0 clamp(16px, 4vw, 32px)', flex: 1, ['--rail-gutter' as string]: 'clamp(16px, 4vw, 32px)' }}>
       <RegionGrid d={d} cityCounts={cityCounts} />
       {secondary}
     </div>

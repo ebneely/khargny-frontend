@@ -16,6 +16,7 @@
  * moves into it and returns to whatever opened it.
  */
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 type SheetProps = {
@@ -108,9 +109,12 @@ export function Sheet({ open, onClose, title, closeLabel = "Close", headerAction
     if (state === "open") panelRef.current?.focus({ preventScroll: true });
   }, [state]);
 
-  if (!mounted) return null;
+  if (!mounted || typeof document === "undefined") return null;
 
-  return (
+  // Rendered at the end of <body>, not where it is used. A sheet opened from inside a section
+  // that animates in (a transform) was trapped by it: "fixed" then means fixed to that section,
+  // so the dimmed backdrop covered only the section, as a box, and the panel rose inside it.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -222,6 +226,7 @@ export function Sheet({ open, onClose, title, closeLabel = "Close", headerAction
           .khg-sheet-panel, .khg-sheet-backdrop { transition-duration: 1ms; }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body,
   );
 }

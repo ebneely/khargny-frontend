@@ -317,10 +317,29 @@ body::-webkit-scrollbar {
   overflow-x: auto;
   scroll-snap-type: x proximity;
 }
+/* The size is the flex basis, not a width: a card whose own root sets an inline width (the
+   sections under Top 10 did) ignored a width rule and filled the screen, so nothing hinted
+   that the row scrolls. A basis cannot be overridden that way: every rail shows one card and
+   the edge of the next. */
 .khg-home-rail > * {
-  flex: 0 0 auto;
-  width: min(72vw, 260px);
+  flex: 0 0 min(72vw, 260px);
+  min-width: 0;
+  max-width: min(72vw, 260px);
   scroll-snap-align: start;
+}
+/* On a phone a rail runs the full width of the screen: cards slide off the screen's edges
+   instead of being cut off inside the page's side margins, and the first card still starts
+   in line with the text above it. The rail pulls itself out by its page's side padding and
+   pads itself by the same amount. That amount is --rail-gutter, which each page container
+   sets to its own side padding (16px when a container says nothing, which every page has at
+   least). It is a length, not a percentage, because scroll snapping needs it too. */
+:root { --rail-gutter: 16px; }
+@media (max-width: 1023px) {
+  .khg-home-rail {
+    margin-inline: calc(-1 * var(--rail-gutter));
+    padding-inline: var(--rail-gutter);
+    scroll-padding-inline: var(--rail-gutter);
+  }
 }
 @media (min-width: 1024px) {
   .khg-home-rail {
@@ -329,7 +348,7 @@ body::-webkit-scrollbar {
     gap: 20px;
     overflow-x: visible;
   }
-  .khg-home-rail > * { width: 100%; }
+  .khg-home-rail > * { width: 100%; max-width: none; }
 }
 
 /* Browsing results (explorer city page): a responsive grid, one column on the narrowest

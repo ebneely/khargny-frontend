@@ -299,7 +299,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
            so the last content isn't hidden behind the bar on notched phones. */
         .pd-shell { width:100%; max-width:1200px; margin:0 auto;
                     padding:16px 16px calc(104px + env(safe-area-inset-bottom)); }
-        @media (min-width:640px){ .pd-shell { padding:20px 24px 96px; } }
+        @media (min-width:640px){ .pd-shell { padding:20px 24px 96px; --rail-gutter:24px; } }
         @media (min-width:1024px){ .pd-shell { padding:24px 40px 64px; } }
 
         /* ── Hero: constrained so content stays above the fold ───────────────── */
