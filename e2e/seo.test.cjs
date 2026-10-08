@@ -208,3 +208,18 @@ test('robots blocks previews completely while production retains its sitemap and
   assert.equal(preview.rules.allow, undefined);
   assert.equal(preview.sitemap, undefined);
 });
+
+test('the spelling people type, 5argny, is stated where a crawler reads names', () => {
+  const { homeTitle, organizationSchema, webSiteSchema, brandAlternateNames } = load('src/lib/seo.ts', dependencies());
+  for (const locale of ['ar', 'en']) {
+    const title = homeTitle(locale);
+    assert.match(title, /5argny/);
+    assert.match(title, locale === 'ar' ? /خرجني/ : /Khargny/);
+    assert.ok(title.length <= 60, `${locale} home title is ${title.length} characters`);
+    assert.equal(brandAlternateNames(locale)[0], '5argny');
+    assert.ok(webSiteSchema(locale).alternateName.includes('5argny'));
+    assert.ok(organizationSchema(locale, {}).alternateName.includes('5argny'));
+    // The primary name stays the language's own name.
+    assert.equal(webSiteSchema(locale).name, locale === 'ar' ? 'خرجني' : 'Khargny');
+  }
+});

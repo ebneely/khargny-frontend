@@ -6,7 +6,7 @@ import { NavProgress } from "@/components/NavProgress";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { SITE_URL } from "@/lib/config";
-import { currentLocale, fitTitle, pageMetadata, graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
+import { currentLocale, homeTitle, pageMetadata, graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
 import { cookies, headers } from "next/headers";
 import type { Locale } from "@/i18n/dictionaries";
 import { getSiteSettings } from '@/lib/api/site-settings';
@@ -26,9 +26,9 @@ import { primePublicRoute, markPublicError } from '@/lib/server/public-data';
 const TITLE_AR = "خرجني — اكتشف أحلى أماكن تخرج فيها في مصر";
 const TITLE_EN = "Khargny — Find your next outing in Egypt";
 const DESC_AR =
-  "خرجني دليلك لأحلى الأماكن في مصر: مطاعم وكافيهات وشواطئ وفنادق ومعالم في القاهرة والإسكندرية والأقصر وأسوان والغردقة والإسماعيلية وبورسعيد ومطروح.";
+  "خرجني (5argny) دليلك لأحلى الأماكن في مصر: مطاعم وكافيهات وشواطئ وفنادق ومعالم في القاهرة والإسكندرية والأقصر وأسوان.";
 const DESC_EN =
-  "A curated guide to Egypt's best places — restaurants, cafes, beaches, hotels and historic landmarks across Cairo, Alexandria, Luxor, Aswan, Hurghada and Ismailia.";
+  "5argny (Khargny) is a curated guide to Egypt's best places: restaurants, cafes, beaches, hotels and landmarks in Cairo, Alexandria, Luxor and Aswan.";
 
 /**
  * Root metadata is per-request because the canonical depends on the locale segment the
@@ -43,10 +43,17 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = isAr ? TITLE_AR : TITLE_EN;
   const description = isAr ? DESC_AR : DESC_EN;
 
+  const base = pageMetadata({ path: '/', locale, title, description });
+  // The home page's own title states the name as people type it; every other page keeps the
+  // short suffix from the template.
+  const home = homeTitle(locale);
+
   return {
     metadataBase: new URL(SITE_URL),
-    ...pageMetadata({ path: '/', locale, title, description }),
-    title: { default: fitTitle(title, locale), template: isAr ? '%s · خرجني' : '%s · Khargny' },
+    ...base,
+    title: { default: home, template: isAr ? '%s · خرجني' : '%s · Khargny' },
+    openGraph: { ...base.openGraph, title: home },
+    twitter: { ...base.twitter, title: home },
     applicationName: "Khargny",
     icons: { icon: "/images/logo-en.png" },
     verification: {

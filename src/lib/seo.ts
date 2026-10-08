@@ -164,6 +164,25 @@ export function robotsFor(noindex = false): Metadata['robots'] {
   };
 }
 
+/**
+ * The name as people type it. The logo reads 5ARGNY and the domain is 5argny.com, but a search
+ * engine cannot read a logo: while the site wrote only "Khargny" and "خرجني" in text, Google
+ * treated a search for "5argny" as a spelling mistake. So the spelling is stated where a
+ * crawler reads names: the structured data, the home page's title and the footer.
+ */
+export const BRAND_SPELLING = '5argny';
+
+export function brandAlternateNames(locale: Locale): string[] {
+  return [BRAND_SPELLING, locale === 'ar' ? 'Khargny' : 'خرجني', '5argny.com'];
+}
+
+/** The home page's title is the one place a title carries both spellings. */
+export function homeTitle(locale: Locale): string {
+  return locale === 'ar'
+    ? `اكتشف أحلى أماكن تخرج فيها في مصر · خرجني (${BRAND_SPELLING})`
+    : `Find your next outing in Egypt · ${BRAND_SPELLING} (Khargny)`;
+}
+
 export function pageMetadata({ path, locale, title, description, image = defaultShareImage(), type = 'website', noindex = false }: {
   path: string;
   locale: Locale;
@@ -211,7 +230,7 @@ export function organizationSchema(locale: Locale, rawSettings?: unknown) {
     '@id': `${SITE_URL}/#organization`,
     // On the Arabic site the Arabic name is the name, not a footnote to the Latin one.
     name: locale === 'ar' ? 'خرجني' : 'Khargny',
-    alternateName: locale === 'ar' ? 'Khargny' : 'خرجني',
+    alternateName: brandAlternateNames(locale),
     url: urlFor('/', locale),
     logo: { '@type': 'ImageObject', url: `${SITE_URL}/images/logo-en.png` },
     ...(sameAs.length ? { sameAs } : {}),
@@ -226,7 +245,7 @@ export function webSiteSchema(locale: Locale) {
     '@id': `${SITE_URL}/#website`,
     url: urlFor('/', locale),
     name: locale === 'ar' ? 'خرجني' : 'Khargny',
-    alternateName: locale === 'ar' ? 'Khargny' : 'خرجني',
+    alternateName: brandAlternateNames(locale),
     inLanguage: locale === 'ar' ? 'ar-EG' : 'en',
     publisher: { '@id': `${SITE_URL}/#organization` },
     potentialAction: {

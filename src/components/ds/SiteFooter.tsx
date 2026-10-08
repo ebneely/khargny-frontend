@@ -133,7 +133,7 @@ export function SiteFooter() {
             textAlign: "center",
           }}
         >
-          © 2026 {t("common.appName")} · {t("home.subtitle")}
+          © 2026 5argny · {t("common.appName")} · {t("home.subtitle")}
         </div>
       </div>
 
