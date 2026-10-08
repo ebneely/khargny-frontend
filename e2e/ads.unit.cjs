@@ -370,7 +370,10 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
     assert.ok(markup.includes(locale === "ar" ? "أماكن مميزة" : "Featured places"));
     assert.ok(markup.includes('href="/explorer/cairo/test-place"'));
     assert.ok(markup.includes('aria-controls="home-top10-list"'));
-    assert.ok(markup.includes(locale === "ar" ? "٣" : "3"));
+    // The owner: "just a tag like mobile with blue sponsored ... and hide position #".
+    assert.ok(!markup.includes(locale === "ar" ? "المركز" : "Position"));
+    assert.ok(!markup.includes(" ? "));
+    assert.ok(markup.includes('data-badge-tone="sponsored"'));
     const empty = renderToStaticMarkup(React.createElement(HomeAds, { d: discovery({ cities: [city], locale }) }));
     assert.equal(empty, "");
     const skeleton = renderToStaticMarkup(React.createElement(HomeAds, { d: { ...data, featured: null, topPlaces: null, featuredLoading: true, topPlacesInitialLoading: true } }));

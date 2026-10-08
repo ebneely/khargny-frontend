@@ -80,7 +80,16 @@ test('metadata blocks redirects before streaming; payload builds canonical, alte
   assert.equal(metadata.alternates.languages.en, metadata.alternates.canonical);
   assert.equal(metadata.openGraph.url, metadata.alternates.canonical);
   const config = fs.readFileSync(path.join(__dirname, '../next.config.ts'), 'utf8');
-  assert.match(config, /htmlLimitedBots:\s*\/\.\*\//);
+  // Crawlers get blocking metadata; people's browsers must not (it made every tap wait for the server).
+  assert.match(config, /htmlLimitedBots:\s*CRAWLERS/);
+  const crawlers = new RegExp(config.match(/const CRAWLERS =\s*\/(.+)\/i;/)[1], 'i');
+  for (const bot of ['Googlebot/2.1', 'facebookexternalhit/1.1', 'WhatsApp/2.23', 'TelegramBot', 'Twitterbot/1.0', 'bingbot/2.0', 'curl/8.5.0']) assert.ok(crawlers.test(bot), bot);
+  for (const person of [
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Linux; Android 15; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/27.0 Chrome/125.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/22F76 Instagram 390.0.0.28.85',
+  ]) assert.ok(!crawlers.test(person), person);
   const observable = layout({ slug: 'new', cityId: 'city-cairo', name: 'Venue' }, { redirectThrows: false });
   const aliasMetadata = await observable.generateMetadata(args);
   assert.equal(aliasMetadata.alternates.canonical, metadata.alternates.canonical);

@@ -77,6 +77,8 @@ body::-webkit-scrollbar {
   --error: #C1391A;
   --error-bg: #FDEEE9;
   --info: #2E6E8E;
+  /* Paid placements: the same navy as the app's Sponsored pill (white on it is 11.6:1). */
+  --sponsored: #173B57;
   --info-bg: #EAF4F8;
 
   --gradient-sunset: linear-gradient(120deg, #FF6100 0%, #D9622A 55%, #B4410F 100%);

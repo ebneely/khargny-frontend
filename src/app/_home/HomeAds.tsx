@@ -33,10 +33,10 @@ function TrackedCard({ item, citySlug, area, placement, bucket, tracker, onSave,
       tracker.flush(true);
     }
   };
-  const badge = [
-    position === undefined ? "" : `${t("home.position")} ${position.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")}`,
-    item.sponsored ? t("home.sponsored") : "",
-  ].filter(Boolean).join(" ? ");
+  // A paid placement says so and nothing more. The label used to read "Position 3 ? Sponsored":
+  // the separator was a character lost in an encoding, and the position is ours to know, not the
+  // visitor's (the order of the list already shows it).
+  const badge = item.sponsored ? t("home.sponsored") : "";
   return (
     <div
       ref={ref}
@@ -52,6 +52,7 @@ function TrackedCard({ item, citySlug, area, placement, bucket, tracker, onSave,
         title={locale === "ar" ? item.place.name : item.place.nameEn || item.place.name}
         area={area}
         badge={badge || undefined}
+        badgeTone="sponsored"
         priceRange={item.place.priceVerified ? item.place.priceRange : undefined}
         hasMenu={item.place.hasMenu}
         priceVerified={item.place.priceVerified}

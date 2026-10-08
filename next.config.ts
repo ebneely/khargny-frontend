@@ -49,6 +49,12 @@ const securityHeaders = [
     : []),
 ];
 
+// Anything that is not a person's browser. Deliberately broad: an unknown fetcher that names
+// itself with any of these words is treated as a crawler. Ordinary and in-app browsers (Chrome,
+// Safari, Firefox, Samsung, Instagram, Facebook's FBAN/FBAV) match none of them.
+const CRAWLERS =
+  /bot|crawl|spider|slurp|preview|fetch|scrap|facebookexternalhit|facebookcatalog|meta-external|whatsapp|telegram|discord|slack|skype|linkedin|pinterest|vkshare|embed|validator|lighthouse|pagespeed|headless|monitor|uptime|curl|wget|python|java|go-http|okhttp|axios|node|ruby|perl|php|libwww|httpclient|postman|insomnia|seo|check|google|bing|yandex|baidu|duckduck|applebot|ia_archiver/i;
+
 const nextConfig: NextConfig = {
   env: { SEO_BUILD_DATE: new Date().toISOString() },
   outputFileTracingIncludes: {
@@ -56,7 +62,11 @@ const nextConfig: NextConfig = {
   },
   // SSR mode enabled (no static export)
   trailingSlash: true,
-  htmlLimitedBots: /.*/,
+  // Crawlers and link-preview fetchers get every meta tag in <head> before any content
+  // (they do not run scripts, and many read only the head). People's browsers do not: for
+  // them metadata streams, so a tap shows the loading placeholder at once instead of waiting
+  // for the place to be fetched for its title. This was /.*/, which made every visitor wait.
+  htmlLimitedBots: CRAWLERS,
   poweredByHeader: false,
   async rewrites() {
     return {

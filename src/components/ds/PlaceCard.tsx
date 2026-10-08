@@ -31,17 +31,19 @@ const SaveIcon = ({ filled }: { filled: boolean }) => (
 // appears. lucide-react is already a dependency.
 const StarIcon = () => <Star size={14} aria-hidden />;
 
-type BadgeProps = { children: React.ReactNode; tone?: "white" };
+type BadgeProps = { children: React.ReactNode; tone?: "white" | "sponsored" };
+// "sponsored" is the app's paid-placement pill: the same navy, white bold text, nothing else in it.
 const Badge = ({ children, tone = "white" }: BadgeProps) => (
   <span
+    data-badge-tone={tone}
     style={{
       display: "inline-block",
-      padding: "2px 8px",
+      padding: tone === "sponsored" ? "3px 10px" : "2px 8px",
       borderRadius: "var(--radius-full)",
-      background: tone === "white" ? "rgba(255,255,255,0.95)" : "var(--surface-sunken)",
-      color: "var(--gray-900)",
+      background: tone === "sponsored" ? "var(--sponsored)" : tone === "white" ? "rgba(255,255,255,0.95)" : "var(--surface-sunken)",
+      color: tone === "sponsored" ? "var(--white)" : "var(--gray-900)",
       fontSize: "var(--text-xs)",
-      fontWeight: 500,
+      fontWeight: tone === "sponsored" ? 700 : 500,
       boxShadow: tone === "white" ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
     }}
   >
@@ -61,6 +63,8 @@ type PlaceCardProps = {
   priceVerified?: boolean;
   visitedByUs?: boolean;
   badge?: string;
+  /** "sponsored" draws the badge as the paid-placement pill. */
+  badgeTone?: "white" | "sponsored";
   /** Optional — if provided, the heart icon wires to the saved-places backend. */
   placeId?: string;
   /** External saved state — used by the homepage rails (no per-card useSavedPlaces query, no useSaveToggle). */
@@ -115,6 +119,7 @@ export function PlaceCard({
   priceVerified = false,
   visitedByUs = false,
   badge,
+  badgeTone,
   placeId,
   favorite = false,
   onToggleFavorite,
@@ -184,7 +189,7 @@ export function PlaceCard({
           }}
         >
           <div style={{ minWidth: 0, flex: badge ? "0 1 auto" : "0 0 0" }}>
-            {badge && <Badge>{badge}</Badge>}
+            {badge && <Badge tone={badgeTone}>{badge}</Badge>}
           </div>
         </div>
       </div>
