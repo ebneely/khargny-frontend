@@ -44,12 +44,12 @@ export function SimilarPlaces({ places, citySlug, title }: SimilarPlacesProps) {
         {title ?? t("explorer.similarTitle")}
       </h2>
       {/* The home page's rail: swiped sideways on a phone, a grid on a wide screen, each card
-          at its full size. The cards used to share one row and shrink to fit it, which left
+          at its full size (each in a plain wrapper, which is what the rail sizes). The cards used to share one row and shrink to fit it, which left
           77px tiles with the save button over the photo and the badges running into each other. */}
       <div className="khg-home-rail no-scrollbar">
         {places.map((p) => (
+          <div key={p.id} style={{ minWidth: 0 }}>
           <PlaceCard
-            key={p.id}
             placeId={p.id}
             size="md"
             title={displayName(p, locale)}
@@ -66,6 +66,7 @@ export function SimilarPlaces({ places, citySlug, title }: SimilarPlacesProps) {
               // (TASK-0009) automatically. The callback is unused in this path.
             }}
           />
+          </div>
         ))}
       </div>
     </section>
