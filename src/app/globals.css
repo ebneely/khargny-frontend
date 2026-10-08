@@ -99,6 +99,10 @@ body::-webkit-scrollbar {
   --border-focus: var(--brand-600);
 }
 
+/* The tap is acknowledged under the finger, before the next page draws. */
+.khg-place-card-link { transition: transform var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard); }
+.khg-place-card-link:active { transform: scale(0.985); opacity: 0.85; }
+@media (prefers-reduced-motion: reduce) { .khg-place-card-link { transition: none; } .khg-place-card-link:active { transform: none; } }
 .khg-place-card-link:focus-visible {
   outline: 2px solid var(--brand-700);
   outline-offset: 4px;

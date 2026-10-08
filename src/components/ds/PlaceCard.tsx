@@ -75,9 +75,14 @@ type PlaceCardProps = {
 };
 
 function PlaceCardLink({ href, onTitleClick, children }: Pick<PlaceCardProps, "href" | "onTitleClick"> & { children: React.ReactNode }) {
+  // Warm the route when the visitor shows intent (pointer over the card, finger down, keyboard
+  // focus), not for every card on screen: a grid of 24 would otherwise ask the server for 24
+  // pages nobody opens. With the explorer's loading boundary the tap then lands instantly.
+  const [intent, setIntent] = React.useState(false);
+  const warm = React.useCallback(() => setIntent(true), []);
   if (!href) return <>{children}</>;
   return (
-    <Link href={href} prefetch={false} onClick={onTitleClick} className="khg-place-card-link" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+    <Link href={href} prefetch={intent ? null : false} onClick={onTitleClick} onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className="khg-place-card-link" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
       {children}
     </Link>
   );
