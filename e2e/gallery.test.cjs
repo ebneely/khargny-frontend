@@ -98,3 +98,14 @@ test('missing dimensions activate lazy thumbnails, read natural pixels and relea
   await assert.rejects(timeout, /Thumbnail unavailable/);
   assert.equal(events.size, 0); assert.equal(timers.size, 0);
 });
+
+test('a closed viewer is let go, so the next photo of the grid opens', () => {
+  // PhotoSwipe keeps reporting isOpen after it is destroyed. The hook's guard reads that flag,
+  // so it must drop the instance on destroy; without this only the first photo ever opened.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src/components/explorer/MediaShowcase.tsx'), 'utf8');
+  assert.match(source, /gallery\?\.on\("destroy",[\s\S]{0,120}controller\.current = null/);
+  const lightbox = fs.readFileSync(path.join(__dirname, '..', 'src/components/explorer/place-lightbox.ts'), 'utf8');
+  assert.doesNotMatch(lightbox, /document\.body\.style\.(position|top)/, 'the page is locked without pinning <body>');
+});

@@ -1,3 +1,4 @@
+import { lockPageScroll } from "@/lib/page-scroll-lock";
 import type PhotoSwipe from "photoswipe";
 import {
   galleryItems,
@@ -154,15 +155,8 @@ export async function openGallery({
     padding: { top: 64, bottom: 96, left: 16, right: 16 },
   });
   const navigation = galleryHistory(window, () => gallery.close());
-  const scrollY = window.scrollY;
-  const oldStyle = document.body.style.cssText;
-  const oldRootOverflow = document.documentElement.style.overflow;
+  const releaseScroll = lockPageScroll();
   trigger.focus({ preventScroll: true });
-  document.body.style.position = "fixed";
-  document.body.style.top = `-${scrollY}px`;
-  document.body.style.width = "100%";
-  document.body.style.overflow = "hidden";
-  document.documentElement.style.overflow = "hidden";
   gallery.on("uiRegister", () => {
     gallery.ui?.registerElement({
       name: "caption",
@@ -236,6 +230,7 @@ export async function openGallery({
       ?.querySelectorAll("video")
       .forEach((video) => video.pause());
     navigation.close();
+    releaseScroll();
   });
   gallery.on("afterInit", () => {
     gallery.element?.setAttribute("aria-label", title);
@@ -244,9 +239,7 @@ export async function openGallery({
   });
   gallery.on("destroy", () => {
     navigation.dispose();
-    document.body.style.cssText = oldStyle;
-    document.documentElement.style.overflow = oldRootOverflow;
-    window.scrollTo({ top: scrollY, behavior: "instant" });
+    releaseScroll();
     if (trigger.isConnected) trigger.focus({ preventScroll: true });
   });
   try {

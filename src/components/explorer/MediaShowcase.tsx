@@ -45,7 +45,7 @@ export function usePlaceGallery() {
     setError(false);
     try {
       const module = await loadGallery();
-      controller.current = await module.openGallery({
+      const gallery = await module.openGallery({
         items,
         index,
         trigger,
@@ -55,6 +55,12 @@ export function usePlaceGallery() {
         rtl: locale === "ar",
         t,
         cancelled: () => !mounted.current,
+      });
+      controller.current = gallery;
+      // A closed viewer keeps reporting `isOpen`, so holding on to it made the guard above
+      // refuse every later tap: the first photo opened and the rest of the grid went dead.
+      gallery?.on("destroy", () => {
+        if (controller.current === gallery) controller.current = null;
       });
     } catch {
       if (mounted.current) setError(true);
