@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@/lib/config';
+import { fetchApi } from './transport';
 import type { ApiErrorBody, ApiSuccess } from './types';
 
 export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -30,7 +30,7 @@ interface ApiRequestOptions {
 }
 
 function buildUrl(path: string, params?: ApiRequestOptions['params']): string {
-  const url = new URL(`${API_BASE_URL}${path}`);
+  const url = new URL(path, 'https://api.invalid');
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === null) continue;
@@ -41,7 +41,7 @@ function buildUrl(path: string, params?: ApiRequestOptions['params']): string {
       }
     }
   }
-  return url.toString();
+  return `${url.pathname}${url.search}`;
 }
 
 /**
@@ -56,7 +56,7 @@ export async function apiRequest<TData>(
 ): Promise<TData> {
   const { body, params, signal } = opts;
 
-  const res = await fetch(buildUrl(path, params), {
+  const res = await fetchApi(buildUrl(path, params), {
     method,
     credentials: 'include',
     headers: { ...opts.headers, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },

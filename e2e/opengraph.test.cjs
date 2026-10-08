@@ -31,7 +31,7 @@ test('default share image renders a real 1200x630 PNG offline, without remote fo
 });
 
 test('file-extension share route bypasses locale middleware without a slash redirect', () => {
-  const middleware = load('src/middleware.ts', dependencies()).middleware;
+  const middleware = load('src/proxy.ts', dependencies()).proxy;
   for (const pathname of ['/og/default.png']) {
     const response = middleware(new NextRequest(origin + pathname));
     assert.equal(response.headers.get('x-middleware-next'), '1');

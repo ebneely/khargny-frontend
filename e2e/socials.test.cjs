@@ -11,11 +11,12 @@ function load(filename, dependencies = {}, globals = {}) {
   const exported = {};
   vm.runInNewContext(output, { exports: exported, URL, AbortSignal, ...globals, require: (name) => {
     if (name in dependencies) return dependencies[name];
-    if (name === '@/lib/config' || name === './config') return { SITE_URL: 'https://www.5argny.com', API_BASE_URL: 'https://api.example.invalid' };
+    if (name === '@/lib/config' || name === './config') return { SITE_URL: 'https://www.5argny.com', getApiBaseUrl: () => 'https://api.example.invalid' };
     if (name === '@/i18n/dictionaries') return { LOCALES: ['ar', 'en'], DEFAULT_LOCALE: 'ar' };
     if (name === '@/i18n/routing') return { stripLocale: (value) => value, withLocale: (value, locale) => `/${locale}${value}` };
     if (name === 'next/headers') return {};
     if (name === '@/lib/site-socials') return load('src/lib/site-socials.ts');
+    if (name === './transport') return { fetchApi: (route, options) => globals.fetch(`https://api.example.invalid${route}`, options) };
     if (name === '@/lib/place-photo') return load('src/lib/place-photo.ts', dependencies, globals);
     if (name === '@/lib/seo-environment') return load('src/lib/seo-environment.ts', dependencies, globals);
     return require(name);

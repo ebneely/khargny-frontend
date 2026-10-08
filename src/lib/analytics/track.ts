@@ -1,6 +1,6 @@
 "use client";
 
-import { API_BASE_URL } from "@/lib/config";
+import { fetchApi } from "@/lib/api/transport";
 
 /**
  * Audience analytics for the web: page, place and city views plus intent actions.
@@ -37,7 +37,7 @@ export function isTrackingAllowed(): boolean {
 
 export function sendTrackingBatch(path: string, body: unknown, keepalive: boolean): Promise<boolean> {
   try {
-    return fetch(`${API_BASE_URL}${path}`, {
+    return fetchApi(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

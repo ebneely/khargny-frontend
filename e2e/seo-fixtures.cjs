@@ -24,7 +24,7 @@ function dependencies({ locale = 'en', route = '/', search = '', env = {}, fetch
     }),
     'next/headers': { headers: async () => requestHeaders, cookies: async () => ({ get: () => undefined }) },
     'next/navigation': { notFound: () => { throw new Error('NOT_FOUND'); }, permanentRedirect: (target) => { throw new Error('REDIRECT:' + target); } },
-    '@/lib/config': { API_BASE_URL: 'https://api.invalid', SITE_URL: origin },
+    '@/lib/config': { getApiBaseUrl: () => 'https://api.invalid', SITE_URL: origin },
     './globals.css': {},
     '@/components/QueryProvider': { QueryProvider: empty },
     '@/components/ui/toaster': { Toaster: empty },

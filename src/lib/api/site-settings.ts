@@ -1,9 +1,9 @@
-import { API_BASE_URL } from '@/lib/config';
+import { fetchApi } from './transport';
 import { normalizeSiteSettings } from '@/lib/site-socials';
 
 export async function getSiteSettings() {
   try {
-    const response = await fetch(`${API_BASE_URL}/v1/site-settings`, {
+    const response = await fetchApi('/v1/site-settings', {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(3000),
     });

@@ -28,7 +28,7 @@ function layout(place, { status = 200, locale = 'en', failure = false, redirectT
     },
     'next/headers': { headers: async () => headers, cookies: async () => ({ get: () => undefined }) },
     'next/navigation': { permanentRedirect: (target) => { decisions.push(target); if (redirectThrows) throw new Error('REDIRECT:' + target); }, notFound: () => { throw new Error('NOT_FOUND'); } },
-    '@/lib/config': { API_BASE_URL: 'https://api.invalid', SITE_URL: 'https://web.invalid' },
+    '@/lib/config': { getApiBaseUrl: () => 'https://api.invalid', SITE_URL: 'https://web.invalid' },
   });
   return { ...layoutModule, decisions };
 }
@@ -46,7 +46,7 @@ function cityLayout({ status = 200, failure = false, route = '/explorer/aswan', 
     },
     'next/navigation': { notFound: () => { throw new Error('NOT_FOUND'); } },
     'next/headers': { headers: async () => new Headers({ 'x-khargny-locale': 'en', 'x-khargny-path': route }), cookies: async () => ({ get: () => undefined }) },
-    '@/lib/config': { API_BASE_URL: 'https://api.invalid', SITE_URL: 'https://web.invalid' },
+    '@/lib/config': { getApiBaseUrl: () => 'https://api.invalid', SITE_URL: 'https://web.invalid' },
   });
 }
 

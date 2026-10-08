@@ -14,8 +14,8 @@ function load(relativePath, dependencies = {}) {
   }).outputText;
   const exports = {};
   modules.set(filename, exports);
-  vm.runInNewContext(output, { exports, URL, URLSearchParams, Headers, Request, Response, AbortSignal, setTimeout, clearTimeout,
-    window: dependencies.window, fetch: dependencies.fetch, process: dependencies.process ?? { env: { NODE_ENV: 'test', CI: '1' } },
+  vm.runInNewContext(output, { exports, URL, URLSearchParams, Headers, Request, Response, AbortSignal, AbortController, setTimeout, clearTimeout,
+    window: dependencies.window, navigator: dependencies.navigator, fetch: dependencies.fetch, process: dependencies.process ?? { env: { NODE_ENV: 'test', CI: '1' } },
     require(name) {
       if (name in dependencies) return dependencies[name];
       if (name === 'server-only') return {};

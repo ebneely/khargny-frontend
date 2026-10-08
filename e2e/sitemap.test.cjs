@@ -79,7 +79,7 @@ test('any upstream error, malformed payload or missing API config rejects instea
   }
   const deps = dependencies({ fetch: async () => { throw new Error('Simulated network outage'); } });
   await assert.rejects(load('src/lib/sitemap.ts', deps).default());
-  deps['@/lib/config'].API_BASE_URL = '';
+  deps['@/lib/config'].getApiBaseUrl = () => '';
   await assert.rejects(load('src/lib/sitemap.ts', deps).default());
   const paginated = dependencies({ fetch: async (url) => {
     if (url.endsWith('/v1/cities')) return { ok: true, json: async () => ({ data: [city] }) };

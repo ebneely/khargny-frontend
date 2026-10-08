@@ -204,7 +204,7 @@ test('existing server place fetch supplies the initial responsive cover preload 
     '@/lib/egypt-regions': { regionLabel: () => '' },
     '@/lib/price-bands': { priceBandLabel: () => undefined },
     '@/lib/api/normalize-place': { normalizePlaceFlags: (value) => value },
-    '@/lib/config': { API_BASE_URL: 'https://api.example.invalid', SITE_URL: 'https://www.5argny.com' },
+    '@/lib/config': { getApiBaseUrl: () => 'https://api.example.invalid', SITE_URL: 'https://www.5argny.com' },
     '@/lib/seo': seo,
     '@/lib/place-photo': media,
     '@/lib/place-address': require('./offline-loader.cjs').load('src/lib/place-address.ts'),

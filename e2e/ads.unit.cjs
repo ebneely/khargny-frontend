@@ -62,6 +62,7 @@ function load(file, globals = {}, imports = {}, sourceOverride) {
   const javascript = ts.transpileModule(source, { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const exports = {};
   vm.runInNewContext(javascript, { exports, require: (name) => {
+    if (name === '@/lib/api/transport') return require('./offline-loader.cjs').load('src/lib/api/transport.ts', { ...globals, ...imports });
     assert.ok(Object.hasOwn(imports, name), `Unmocked import: ${name}`);
     return imports[name];
   }, ...globals });
@@ -289,7 +290,7 @@ test("existing analytics keeps its envelope, credentials, privacy and batching",
     window: { addEventListener() {} }, document: { addEventListener() {} }, navigator,
     setTimeout: () => 1, clearTimeout() {},
     fetch: (url, options) => { requests.push({ url, options }); return Promise.resolve({ ok: true }); },
-  }, { "@/lib/config": { API_BASE_URL: "https://mock.invalid" } });
+  }, { "@/lib/config": { getApiBaseUrl: () => "https://mock.invalid" } });
   tracker.trackPageView("/");
   tracker.trackPlaceView(place.id);
   tracker.flushAnalytics(true);
@@ -315,11 +316,11 @@ test("existing analytics keeps its envelope, credentials, privacy and batching",
 test("shared sender silently drops both synchronous and asynchronous transport failures", async () => {
   const tracker = load("src/lib/analytics/track.ts", {
     fetch: () => { throw new Error("blocked"); },
-  }, { "@/lib/config": { API_BASE_URL: "https://mock.invalid" } });
+  }, { "@/lib/config": { getApiBaseUrl: () => "https://mock.invalid" } });
   assert.doesNotThrow(() => tracker.sendTrackingBatch("/v1/ads/events", { deviceId: "mock-session", events: [] }, true));
   const asynchronous = load("src/lib/analytics/track.ts", {
     fetch: () => Promise.reject(new Error("offline")),
-  }, { "@/lib/config": { API_BASE_URL: "https://mock.invalid" } });
+  }, { "@/lib/config": { getApiBaseUrl: () => "https://mock.invalid" } });
   assert.doesNotThrow(() => asynchronous.sendTrackingBatch("/v1/ads/events", {}, true));
   await Promise.resolve();
 });

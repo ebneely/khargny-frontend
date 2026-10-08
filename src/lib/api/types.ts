@@ -159,7 +159,7 @@ export interface PlaceTag {
 }
 
 // GET /v1/places/:slug — the real aggregation now returns images + videos AND
-// placeHours + amenities + tags (verified against backend.5argny.com 2026-07-19).
+// placeHours + amenities + tags (verified against the backend 2026-07-19).
 // The earlier "hours/amenities/tags do not exist" note is STALE — they are live.
 export interface PlaceDetail extends Place {
   images: unknown[]; // → Modules/media/contract.ts TransformedImage

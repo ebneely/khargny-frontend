@@ -2,6 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 // Force reload
 import type { NextConfig } from "next";
 import { IMAGE_HOSTS, LEGACY_IMAGE_HOST_PATTERNS } from "./src/lib/image-hosts";
+import { getApiBaseUrl } from "./src/lib/config";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -10,27 +11,42 @@ const isProd = process.env.NODE_ENV === "production";
 // script-src still allows 'unsafe-inline' because the App Router injects inline hydration
 // scripts (JSON-LD blocks are data, not script, and are unaffected); a nonce-based
 // script-src is the High-level follow-up. Dev adds 'unsafe-eval' + ws/http for HMR.
-// connect-src https: covers the API origin (NEXT_PUBLIC_API_URL) and Sentry ingestion.
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
-  "style-src 'self' 'unsafe-inline'",
-  // Place/city photos: storage.5argny.com, img.5argny.com (imgproxy), Google place photos.
-  "img-src 'self' data: blob: https:",
-  "media-src 'self' https:",
-  "font-src 'self' data:",
-  "worker-src 'self' blob:",
-  `connect-src 'self' https:${isProd ? "" : " ws: wss: http:"}`,
-  "frame-src 'none'",
-  ...(isProd ? ["upgrade-insecure-requests"] : []),
-].join("; ");
+export function buildContentSecurityPolicy({
+  mode = process.env.NEXT_PUBLIC_API_MODE,
+  production = isProd,
+}: { mode?: string; production?: boolean } = {}): string {
+  const sentryOrigins = new Set([
+    'https://*.ingest.sentry.io', 'https://*.ingest.us.sentry.io', 'https://*.ingest.de.sentry.io',
+  ]);
+  if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+    try {
+      const dsn = new URL(process.env.NEXT_PUBLIC_SENTRY_DSN);
+      if (dsn.protocol === 'https:' || dsn.protocol === 'http:') sentryOrigins.add(dsn.origin);
+    } catch {}
+  }
+  const connections = mode === 'same-origin'
+    ? `${new URL(getApiBaseUrl({ browser: false })).origin} ${[...sentryOrigins].join(' ')}`
+    : `https:${production ? '' : ' ws: wss: http:'}`;
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    `script-src 'self' 'unsafe-inline'${production ? "" : " 'unsafe-eval'"}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' https:",
+    "font-src 'self' data:",
+    "worker-src 'self' blob:",
+    `connect-src 'self' ${connections}`,
+    "frame-src 'none'",
+    ...(production ? ["upgrade-insecure-requests"] : []),
+  ].join("; ");
+}
 
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  { key: "Content-Security-Policy", value: buildContentSecurityPolicy() },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -76,7 +92,18 @@ const nextConfig: NextConfig = {
     };
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      ...(process.env.NEXT_PUBLIC_API_MODE === 'same-origin' ? [{
+        source: '/api/v1/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store' },
+          { key: 'CDN-Cache-Control', value: 'no-store' },
+          { key: 'Vercel-CDN-Cache-Control', value: 'no-store' },
+          { key: 'x-vercel-enable-rewrite-caching', value: '0' },
+        ],
+      }] : []),
+    ];
   },
   images: {
     remotePatterns: [...IMAGE_HOSTS, ...LEGACY_IMAGE_HOST_PATTERNS].map((hostname) => ({

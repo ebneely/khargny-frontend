@@ -115,7 +115,7 @@ function placePage(locale, flags) {
     '@/lib/api/hooks/use-saved-places': { useSaveToggle: () => ({ saved: false, toggle: empty }) },
     '@/lib/region-location': { regionLocation: () => '', cardArea: () => '' },
     '@/lib/icon-catalog': { icon: empty },
-    '@/lib/config': { API_BASE_URL: 'https://api.example.invalid' },
+    '@/lib/config': { getApiBaseUrl: () => 'https://api.example.invalid' },
     '@/lib/analytics/track': { trackPlaceAction: empty, trackPlaceView: empty },
   }).default;
   return () => React.createElement(Page, { related: React.createElement('section', { 'data-similar': true }) });

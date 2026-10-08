@@ -21,7 +21,7 @@ test('exact root key file returns plain text, exactly the key and no locale redi
     assert.equal(response.headers.get('content-type'), 'text/plain; charset=utf-8');
     assert.equal(await response.text(), key);
   }
-  const middleware = load('src/middleware.ts', deps).middleware;
+  const middleware = load('src/proxy.ts', deps).proxy;
   const passed = middleware(new NextRequest(origin + '/' + key + '.txt'));
   assert.equal(passed.headers.get('x-middleware-next'), '1');
   assert.equal(passed.headers.get('location'), null);
@@ -63,7 +63,7 @@ test('no root-level dynamic segment can capture unknown addresses with a route h
 
 test('robots.txt remains exempt and serves production robots independently of the key route', async () => {
   const deps = dependencies({ env: { INDEXNOW_KEY: 'abcdefgh' } });
-  const response = load('src/middleware.ts', deps).middleware(new NextRequest(origin + '/robots.txt'));
+  const response = load('src/proxy.ts', deps).proxy(new NextRequest(origin + '/robots.txt'));
   assert.equal(response.headers.get('x-middleware-next'), '1');
   const robots = load('src/lib/robots.ts', deps).default();
   const { resolveRouteData } = require('next/dist/build/webpack/loaders/metadata/resolve-route-data');

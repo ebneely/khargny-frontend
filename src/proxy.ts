@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { LOCALES, DEFAULT_LOCALE, type Locale } from "@/i18n/dictionaries";
+import { forwardBrowserApi } from "@/lib/server/api-forwarder";
 
 /**
  * Locale in the URL: every visitor page lives under /ar/... or /en/....
@@ -29,7 +30,9 @@ function localeFromPath(pathname: string): Locale | null {
   return (LOCALES as string[]).includes(seg) ? (seg as Locale) : null;
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
+  const forwarded = forwardBrowserApi(req);
+  if (forwarded) return forwarded;
   const { pathname, search } = req.nextUrl;
   if (EXEMPT.test(pathname)) return NextResponse.next();
 

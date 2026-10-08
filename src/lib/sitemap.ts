@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { API_BASE_URL } from "@/lib/config";
+import { getApiBaseUrl } from "@/lib/config";
 import { alternatesFor, urlFor } from '@/lib/seo';
 import { isPreviewDeployment } from '@/lib/seo-environment';
 import { LOCALES } from '@/i18n/dictionaries';
@@ -21,8 +21,8 @@ function isPublic(record: PublicRecord): boolean {
 }
 
 async function getJson<T>(path: string): Promise<T[]> {
-  if (!API_BASE_URL) throw new Error('Sitemap API origin is not configured');
-  const res = await fetch(`${API_BASE_URL}${path}`, { cache: 'no-store' });
+  if (!getApiBaseUrl({ browser: false })) throw new Error('Sitemap API origin is not configured');
+  const res = await fetch(`${getApiBaseUrl({ browser: false })}${path}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`Sitemap upstream failed (${res.status})`);
   const json = await res.json();
   if (json?.success === false) throw new Error('Sitemap upstream reported failure');

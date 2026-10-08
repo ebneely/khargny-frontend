@@ -31,7 +31,7 @@ import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { cardArea, regionLocation } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
-import { API_BASE_URL } from "@/lib/config";
+import { sendApiBeacon } from "@/lib/api/transport";
 import { trackPlaceAction, trackPlaceView } from "@/lib/analytics/track";
 import type { PlaceHour } from "@/lib/api/types";
 import type { HoursRow } from "@/components/explorer/HoursTable";
@@ -224,16 +224,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
   const onDirections = () => {
     if (!place?.id) return;
     trackPlaceAction("directions", place.id);
-    const url = `${API_BASE_URL}/v1/places/${place.id}/directions`;
-    try {
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        navigator.sendBeacon(url);
-      } else {
-        void fetch(url, { method: "POST", keepalive: true }).catch(() => {});
-      }
-    } catch {
-      /* metrics are best-effort */
-    }
+    sendApiBeacon(`/v1/places/${place.id}/directions`);
   };
 
   const onShare = async () => {

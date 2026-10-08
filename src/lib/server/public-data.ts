@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { QueryClient, dehydrate, type QueryKey } from '@tanstack/react-query';
-import { API_BASE_URL } from '@/lib/config';
+import { getApiBaseUrl } from '@/lib/config';
 import { ApiError } from '@/lib/api/client';
 import { normalizePlaceFlags } from '@/lib/api/normalize-place';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
@@ -20,8 +20,8 @@ export function markPublicError(error: unknown, locale: Locale) {
 
 const read = cache(async (path: string, fresh = false): Promise<unknown> => {
   try {
-    if (!API_BASE_URL) throw new ApiError(503, null);
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    if (!getApiBaseUrl({ browser: false })) throw new ApiError(503, null);
+    const response = await fetch(`${getApiBaseUrl({ browser: false })}${path}`, {
       ...(fresh ? { cache: 'no-store' as const } : { next: { revalidate: 300, tags: ['public-discovery', path.split('?')[0]] } }),
       signal: AbortSignal.timeout(10000),
     });

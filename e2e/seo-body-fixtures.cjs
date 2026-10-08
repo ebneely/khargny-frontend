@@ -30,7 +30,7 @@ function fixture({ locale = 'en', route = '/', search = '', sources, failure, se
     process: { env: { NODE_ENV: 'production', CI: '1' } },
     sources,
     react: { ...React, cache(callback) { const cache = new Map(); return (...args) => { const key = JSON.stringify(args); if (!cache.has(key)) cache.set(key, callback(...args)); return cache.get(key); }; } },
-    '@/lib/config': { API_BASE_URL: 'https://api.invalid', SITE_URL: 'https://web.invalid' },
+    '@/lib/config': { getApiBaseUrl: () => 'https://api.invalid', SITE_URL: 'https://web.invalid' },
     'next/navigation': navigation,
     'next/headers': { headers: async () => new Headers({ 'x-khargny-locale': locale, 'x-khargny-path': route, 'x-khargny-search': search }), cookies: async () => ({ get: () => undefined }) },
     'next/link': { __esModule: true, default: ({ children, prefetch: ignored, ...props }) => React.createElement('a', props, children) },

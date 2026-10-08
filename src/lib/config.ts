@@ -30,6 +30,13 @@ export const HEALTH_CHECK_URL = BACKEND_URL ? `${BACKEND_URL}/health` : '';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.5argny.com';
 export const API_BASE_URL = normalizeUrl(API_URL);
 
+export function getApiBaseUrl({
+  mode = process.env.NEXT_PUBLIC_API_MODE,
+  browser = typeof window !== 'undefined',
+}: { mode?: string; browser?: boolean } = {}): string {
+  return mode === 'same-origin' && browser ? '/api' : API_BASE_URL;
+}
+
 // Public site origin — used for SEO canonical URLs, Open Graph, and the sitemap. The whole point
 // of shareable place links: /explorer/{city}/{place} on this origin is the URL a user shares.
 export const SITE_URL = normalizeUrl(
