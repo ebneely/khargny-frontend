@@ -32,7 +32,7 @@ const SaveIcon = ({ filled }: { filled: boolean }) => (
 const StarIcon = () => <Star size={14} aria-hidden />;
 
 type BadgeProps = { children: React.ReactNode; tone?: "white" | "sponsored" };
-// "sponsored" is the app's paid-placement pill: the same navy, white bold text, nothing else in it.
+// "sponsored" is the paid-placement pill, the same as the app's: saturated blue, white bold text, nothing else in it.
 const Badge = ({ children, tone = "white" }: BadgeProps) => (
   <span
     data-badge-tone={tone}
