@@ -44,6 +44,8 @@ type SelectPillProps = {
   /** Accessible name of the sheet's close button. */
   closeLabel?: string;
   disabled?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /** A search field earns its place once the list no longer fits in one look. */
@@ -71,8 +73,15 @@ export function SelectPill({
   noMatchLabel,
   closeLabel,
   disabled,
+  open: controlledOpen,
+  onOpenChange,
 }: SelectPillProps) {
-  const [open, setOpen] = React.useState(false);
+  const [localOpen, setLocalOpen] = React.useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = (next: boolean) => {
+    setLocalOpen(next);
+    onOpenChange?.(next);
+  };
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
   const listRef = React.useRef<HTMLUListElement>(null);
@@ -84,6 +93,11 @@ export function SelectPill({
     [allLabel, options],
   );
   const current = rows.find((r) => r.value === (value ?? ""));
+  React.useEffect(() => {
+    if (!controlledOpen) return;
+    setQuery("");
+    setActiveIndex(Math.max(0, rows.findIndex((row) => row.value === (value ?? ""))));
+  }, [controlledOpen, rows, value]);
   const triggerLabel = value ? current?.label ?? placeholder : allLabel ?? placeholder;
 
   const searchable = options.length >= SEARCH_FROM;

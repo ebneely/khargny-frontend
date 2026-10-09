@@ -65,7 +65,15 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
   const { search, setSearch, debouncedSearch, isDebouncing } = useSearchTerm();
   const searching = Boolean(searchTerm(search));
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [activeRegion, setActiveRegion] = useState<string | null>(null);
+  const [selectedRegion, setActiveRegion] = useState<string | null | undefined>(undefined);
+  const { data: cities, isLoading: loadingCities } = useCities();
+  const { data: categories } = useCategories();
+  const { data: amenities } = useAmenities();
+  const currentCity = cities?.find((c) => c.slug === citySlug);
+  const requestedRegion = address.get('region');
+  const activeRegion = selectedRegion !== undefined
+    ? selectedRegion
+    : requestedRegion && currentCity?.areaKeys?.includes(requestedRegion) ? requestedRegion : null;
   const [filtersOpen, setFiltersOpen] = useState(false);
   // The list used to send no limit or skip at all, so the backend's default of 20 applied and
   // "All" showed a city's first twenty places as though they were the whole set — Cairo has
@@ -83,10 +91,6 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
     setPageState({ scope, page: selected });
   };
 
-  const { data: cities, isLoading: loadingCities } = useCities();
-  const { data: categories } = useCategories();
-  const { data: amenities } = useAmenities();
-  const currentCity = cities?.find((c) => c.slug === citySlug);
   // cities are loaded but this slug isn't among them → the city doesn't exist
   const cityNotFound = !loadingCities && !!cities && !currentCity;
 

@@ -36,8 +36,9 @@
 .field {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 8px 6px 18px;
+  gap: 8px;
+  padding-block: 6px;
+  padding-inline: 6px 8px;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-full);
   background: var(--white);
@@ -49,14 +50,73 @@
   outline-offset: 2px;
 }
 .field input {
+  flex: 1;
   inline-size: 100%;
   min-inline-size: 0;
+  min-block-size: 44px;
   background: transparent;
   border: 0;
   outline: none;
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: var(--text-base);
+}
+.where {
+  flex: 0 1 180px;
+  min-inline-size: 80px;
+  max-inline-size: 42%;
+  border-inline-end: 1px solid var(--border-default);
+  padding-inline-end: 4px;
+}
+.where :global(.khg-pill) {
+  inline-size: 100%;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  padding-inline: 10px;
+}
+.confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  max-inline-size: 640px;
+  margin: 16px auto 0;
+  text-align: start;
+  font-size: var(--text-sm);
+}
+.confirmation p {
+  margin: 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.confirmActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+.confirmActions button {
+  min-block-size: 44px;
+  max-inline-size: 100%;
+  padding: 8px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.confirmActions .confirmPrimary {
+  border-color: var(--brand-600);
+  background: var(--brand-600);
+  color: var(--white);
+}
+.confirmActions button:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
 }
 .field input::placeholder {
   color: var(--text-secondary);
@@ -182,6 +242,16 @@
   outline-offset: 2px;
 }
 @media (max-width: 639px) {
+  .where {
+    flex-basis: 120px;
+  }
+  .where :global(.khg-pill) {
+    gap: 6px;
+    padding-inline: 6px;
+  }
+  .where :global(.khg-pill-chev) {
+    display: none;
+  }
   .panel {
     inset-inline: calc(-1 * var(--rail-gutter));
     border-radius: var(--radius-md);

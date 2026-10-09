@@ -5,12 +5,16 @@ import { Search, MapPin } from "lucide-react";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { useSearchPlaces } from "@/lib/api/hooks/use-search";
 import { useCategories } from "@/lib/api/hooks/use-categories";
+import { apiRequest } from "@/lib/api/client";
+import { SelectPill } from "@/components/explorer/SelectPill";
 import { useDebouncedSearch } from "@/lib/use-search-term";
 import { matchReason, searchAddress, searchTerm } from "@/lib/place-search";
 import { regionLabel } from "@/lib/egypt-regions";
 import { PhotoImage } from "@/components/ds/PhotoImage";
 import {
-  nearestCity,
+  detectNearbyLocation,
+  detectedCityAddress,
+  type DetectedLocation,
   recentSearches,
   moveHighlight,
   bestSearchCity,
@@ -38,9 +42,13 @@ export function HomeHero({ cities }: { cities: City[] }) {
   const [nearMe, setNearMe] = React.useState(false);
   const [locating, setLocating] = React.useState(false);
   const [geoMessage, setGeoMessage] = React.useState("");
+  const [detected, setDetected] = React.useState<DetectedLocation | null>(null);
+  const [selectedCity, setSelectedCity] = React.useState<City | null>(null);
+  const [citySheetOpen, setCitySheetOpen] = React.useState(false);
   const [example, setExample] = React.useState(0);
   const hasTyped = React.useRef(false);
   const geoPending = React.useRef(false);
+  const cityChoiceRestored = React.useRef(false);
   const alive = React.useRef(true);
   const root = React.useRef<HTMLDivElement>(null);
   const field = React.useRef<HTMLInputElement>(null);
@@ -51,28 +59,37 @@ export function HomeHero({ cities }: { cities: City[] }) {
   const term = searchTerm(input);
   const settled = Boolean(term) && debounced === term;
   const result = useSearchPlaces(
-    { q: debounced, limit: 6 },
+    { q: debounced, cityId: selectedCity?.id, limit: 6 },
     { enabled: open && settled, locale },
   );
   const { data: categories } = useCategories();
-  const pick = (ar?: string | null, en?: string | null) =>
-    (locale === "ar" ? ar || en : en || ar) || "";
+  const pick = React.useCallback((ar?: string | null, en?: string | null) =>
+    (locale === "ar" ? ar || en : en || ar) || "", [locale]);
+  const cityOptions = React.useMemo(() => {
+    const available = selectedCity && !cities.some((city) => city.id === selectedCity.id)
+      ? [selectedCity, ...cities]
+      : cities;
+    return available.map((city) => ({ value: city.id, label: pick(city.name, city.nameEn) }));
+  }, [cities, selectedCity, pick]);
   const cityHref = (city: City) =>
     `/${locale}/explorer/${encodeURIComponent(city.slug)}/`;
   const places =
     settled && !result.isPlaceholderData && !result.isError
-      ? (result.data?.items ?? [])
+      ? (result.data?.items ?? []).filter((place) => !selectedCity || place.cityId === selectedCity.id)
       : [];
   const namedCities = cities.filter(
     (city) =>
-      !input.trim() ||
+      (!selectedCity || city.id === selectedCity.id) && (!input.trim() ||
       [city.name, city.nameEn].some((name) =>
         name?.toLocaleLowerCase().includes(input.trim().toLocaleLowerCase()),
-      ),
+      )),
   );
-  const bestCity = bestSearchCity(cities, places, term);
+  const bestCity = selectedCity ? null : bestSearchCity(cities, places, term);
+  const resultsLabel = selectedCity
+    ? t("home.searchResultsIn", { city: pick(selectedCity.name, selectedCity.nameEn) })
+    : t("home.searchResults");
   const allHref = searchAddress(
-    bestCity ? cityHref(bestCity) : `/${locale}/explorer/`,
+    selectedCity ? cityHref(selectedCity) : bestCity ? cityHref(bestCity) : `/${locale}/explorer/`,
     term,
   );
   const options: Option[] = !input.trim()
@@ -90,7 +107,7 @@ export function HomeHero({ cities }: { cities: City[] }) {
       ]
     : [
         ...places.slice(0, 6).flatMap((place) => {
-          const city = cities.find(
+          const city = selectedCity ?? cities.find(
             (candidate) => candidate.id === place.cityId,
           );
           if (!city) return [];
@@ -147,14 +164,36 @@ export function HomeHero({ cities }: { cities: City[] }) {
     try {
       denied = window.localStorage.getItem("khg-geolocation-denied") === "true";
     } catch {}
-    setNearMe(Boolean(window.navigator.geolocation) && !denied);
+    try {
+      setNearMe(typeof window.navigator.geolocation?.getCurrentPosition === "function" && !denied);
+    } catch {
+      setNearMe(false);
+    }
     return () => {
       alive.current = false;
     };
   }, []);
 
   React.useEffect(() => {
-    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (cityChoiceRestored.current) return;
+    try {
+      const savedCityId = window.sessionStorage.getItem("khg-home-city");
+      const savedCity = cities.find((city) => city.id === savedCityId);
+      if (savedCity) setSelectedCity(savedCity);
+      if (!savedCityId || savedCity) cityChoiceRestored.current = true;
+    } catch {
+      cityChoiceRestored.current = true;
+    }
+  }, [cities]);
+
+  React.useEffect(() => {
+    let preference: MediaQueryList;
+    try {
+      if (typeof window.matchMedia !== "function") return;
+      preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    } catch {
+      return;
+    }
     if (hasTyped.current || preference.matches) return;
     const timer = window.setInterval(() => {
       if (!hasTyped.current) setExample((current) => (current + 1) % 3);
@@ -162,10 +201,10 @@ export function HomeHero({ cities }: { cities: City[] }) {
     const stop = () => {
       if (preference.matches) window.clearInterval(timer);
     };
-    preference.addEventListener("change", stop);
+    preference.addEventListener?.("change", stop);
     return () => {
       window.clearInterval(timer);
-      preference.removeEventListener("change", stop);
+      preference.removeEventListener?.("change", stop);
     };
   }, [input]);
 
@@ -183,15 +222,35 @@ export function HomeHero({ cities }: { cities: City[] }) {
 
   React.useEffect(() => {
     setHighlight(-1);
-  }, [input, debounced, result.data]);
+  }, [input, debounced, result.data, selectedCity?.id]);
   React.useEffect(() => {
     list.current
       ?.querySelector<HTMLElement>(`[data-option-index="${highlight}"]`)
-      ?.scrollIntoView({ block: "nearest" });
+      ?.scrollIntoView?.({ block: "nearest" });
   }, [highlight]);
 
   function remember() {
     if (term) setRecents(store.current.add(term));
+  }
+  function selectCity(city?: City) {
+    cityChoiceRestored.current = true;
+    setSelectedCity(city ?? null);
+    setDetected(null);
+    setGeoMessage("");
+    setHighlight(-1);
+    try {
+      if (city) window.sessionStorage.setItem("khg-home-city", city.id);
+      else window.sessionStorage.removeItem("khg-home-city");
+    } catch {}
+    if (input.trim()) {
+      setOpen(true);
+      field.current?.focus();
+    }
+  }
+  function openCitySheet() {
+    setOpen(false);
+    setHighlight(-1);
+    setCitySheetOpen(true);
   }
   function choose(option: Option) {
     if (option.query) {
@@ -212,39 +271,57 @@ export function HomeHero({ cities }: { cities: City[] }) {
     geoPending.current = true;
     setLocating(true);
     setGeoMessage("");
-    window.navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (!alive.current) return;
-        const city = nearestCity(
-          cities,
-          position.coords.latitude,
-          position.coords.longitude,
-        );
-        geoPending.current = false;
-        setLocating(false);
-        if (city) window.location.assign(cityHref(city));
-        else setGeoMessage(t("home.nearUnavailable"));
-      },
-      (error) => {
-        if (!alive.current) return;
-        geoPending.current = false;
-        setLocating(false);
-        if (error.code === 1) {
-          setNearMe(false);
+    setDetected(null);
+    try {
+      window.navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          if (!alive.current) return;
           try {
-            window.localStorage.setItem("khg-geolocation-denied", "true");
-          } catch {}
-        }
-        setGeoMessage(
-          t(error.code === 1 ? "home.nearDenied" : "home.nearUnavailable"),
-        );
-      },
-      { enableHighAccuracy: false, maximumAge: 300000, timeout: 10000 },
-    );
+            const location = await detectNearbyLocation(
+              cities,
+              position.coords.latitude,
+              position.coords.longitude,
+              (path, params) => apiRequest<unknown>("GET", path, {
+                params: params as Record<string, string | number | string[] | undefined>,
+                headers: { "Accept-Language": locale },
+                signal: AbortSignal.timeout(10000),
+              }),
+            );
+            if (!alive.current) return;
+            setDetected(location);
+            if (!location) setGeoMessage(t("home.nearNotFound"));
+          } catch {
+            if (alive.current) setGeoMessage(t("home.nearNotFound"));
+          } finally {
+            geoPending.current = false;
+            if (alive.current) setLocating(false);
+          }
+        },
+        (error) => {
+          if (!alive.current) return;
+          geoPending.current = false;
+          setLocating(false);
+          if (error.code === 1) {
+            setNearMe(false);
+            try {
+              window.localStorage.setItem("khg-geolocation-denied", "true");
+            } catch {}
+          }
+          setGeoMessage(
+            t(error.code === 1 ? "home.nearDenied" : "home.nearUnavailable"),
+          );
+        },
+        { enableHighAccuracy: false, maximumAge: 0, timeout: 10000 },
+      );
+    } catch {
+      geoPending.current = false;
+      setLocating(false);
+      setGeoMessage(t("home.nearUnavailable"));
+    }
   }
 
   return (
-    <section className={styles.hero}>
+    <section className={styles.hero} dir={locale === "ar" ? "rtl" : "ltr"}>
       <div className={styles.inner}>
         <h1 className={styles.title}>{t("home.heroTitle")}</h1>
         <p className={styles.description}>{t("home.heroSubtitle")}</p>
@@ -258,10 +335,43 @@ export function HomeHero({ cities }: { cities: City[] }) {
             }
           }}
         >
-          <div className={styles.field}>
-            <Search size={20} aria-hidden="true" />
+          <form
+            className={styles.field}
+            action={selectedCity ? cityHref(selectedCity) : `/${locale}/explorer/`}
+            method="get"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (term) choose({ key: "all", label: "", href: allHref });
+              else {
+                setOpen(true);
+                field.current?.focus();
+              }
+            }}
+          >
+            <div className={styles.where}>
+              <SelectPill
+                options={cityOptions}
+                value={selectedCity?.id ?? null}
+                onChange={(id) => selectCity(selectedCity?.id === id ? selectedCity : cities.find((city) => city.id === id))}
+                label={t("home.where")}
+                placeholder={t("home.allEgypt")}
+                allLabel={t("home.allEgypt")}
+                emptyLabel={t("explorer.noCities")}
+                icon={<MapPin size={16} />}
+                searchPlaceholder={t("explorer.searchCities")}
+                noMatchLabel={t("explorer.nothingMatches")}
+                closeLabel={t("common.close")}
+                open={citySheetOpen}
+                onOpenChange={(next) => {
+                  setCitySheetOpen(next);
+                  if (next) setOpen(false);
+                }}
+              />
+            </div>
             <input
               ref={field}
+              name="q"
               role="combobox"
               aria-label={t("common.searchPlaces")}
               aria-autocomplete="list"
@@ -306,19 +416,12 @@ export function HomeHero({ cities }: { cities: City[] }) {
               }}
             />
             <button
-              type="button"
+              type="submit"
               aria-label={t("common.search")}
-              onClick={() => {
-                if (term) choose({ key: "all", label: "", href: allHref });
-                else {
-                  setOpen(true);
-                  field.current?.focus();
-                }
-              }}
             >
               <Search size={18} aria-hidden="true" />
             </button>
-          </div>
+          </form>
           {open && (
             <div className={styles.panel}>
               {!input.trim() && recents.length > 0 && (
@@ -345,14 +448,14 @@ export function HomeHero({ cities }: { cities: City[] }) {
                       ? t("common.loading")
                       : result.isError
                         ? t("home.searchFailed")
-                        : t("home.searchResults")}
+                        : resultsLabel}
                 </p>
               )}
               <div
                 ref={list}
                 id={listId}
                 role="listbox"
-                aria-label={t("home.searchResults")}
+                aria-label={resultsLabel}
               >
                 {options.map((option, index) => {
                   const contents = (
@@ -418,11 +521,33 @@ export function HomeHero({ cities }: { cities: City[] }) {
             </div>
           )}
         </div>
+        {(detected || geoMessage) && (
+          <div className={styles.confirmation}>
+            <p role="status">
+              {detected ? t("home.nearDetected", { location: [
+                detected.region && regionLabel(detected.region, locale, detected.city.slug),
+                pick(detected.city.name, detected.city.nameEn),
+              ].filter(Boolean).join(locale === "ar" ? "، " : ", ") }) : geoMessage}
+            </p>
+            <div className={styles.confirmActions}>
+              {detected && (
+                <button type="button" className={styles.confirmPrimary} onClick={() => {
+                  const address = detectedCityAddress(locale, detected);
+                  selectCity(detected.city);
+                  window.location.assign(address);
+                }}>
+                  {t("home.showCity", { city: pick(detected.city.name, detected.city.nameEn) })}
+                </button>
+              )}
+              <button type="button" onClick={openCitySheet}>{t("home.chooseAnotherCity")}</button>
+            </div>
+          </div>
+        )}
         <nav
           className={`khg-home-rail ${styles.intents}`}
           aria-label={t("home.startExploring")}
         >
-          {nearMe && (
+          {nearMe && !detected && !geoMessage && (
             <a
               href={`/${locale}/explorer/`}
               onClick={locate}
@@ -433,7 +558,11 @@ export function HomeHero({ cities }: { cities: City[] }) {
             </a>
           )}
           {cities.map((city) => (
-            <a key={city.id} href={cityHref(city)}>
+            <a key={city.id} href={cityHref(city)} onClick={(event) => {
+              if (!input.trim() || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              selectCity(city);
+            }}>
               {pick(city.name, city.nameEn)}
             </a>
           ))}
@@ -443,9 +572,6 @@ export function HomeHero({ cities }: { cities: City[] }) {
             </a>
           ))}
         </nav>
-        <span className="sr-only" role="status">
-          {geoMessage}
-        </span>
       </div>
     </section>
   );
