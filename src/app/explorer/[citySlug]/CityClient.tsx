@@ -9,14 +9,14 @@
  */
 import * as React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { CitySelector } from "@/components/explorer/CitySelector";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { SearchBar } from "@/components/explorer/SearchBar";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { PlaceCard } from "@/components/ds/PlaceCard";
-import { FilterPanel, type ActiveFilters } from "@/components/explorer/FilterPanel";
+import { FilterPanel } from "@/components/explorer/FilterPanel";
 import { PlaceFilters } from "@/components/explorer/PlaceFilters";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { usePlaces } from "@/lib/api/hooks/use-places";
@@ -30,8 +30,11 @@ import { icon } from "@/lib/icon-catalog";
 import { ChevronRight, X } from "lucide-react";
 import { useAmenities } from "@/lib/api/hooks/use-taxonomy";
 import { priceBandLabel, type PriceLevel } from "@/lib/price-bands";
-import { useSearchTerm } from '@/lib/use-search-term';
-import { matchReason, searchTerm, SEARCH_PAGE_SIZE } from '@/lib/place-search';
+import { useBrowseAddress } from '@/lib/use-browse-address';
+import { writeBrowseAddress } from '@/lib/browse-address';
+import { useBrowseRestore } from '@/lib/use-browse-session';
+import { useStickyBrowse } from '@/lib/use-sticky-browse';
+import { hasLocalSearchFilters, matchReason, searchTerm, SEARCH_PAGE_SIZE } from '@/lib/place-search';
 
 /** Grid-friendly page size: divides evenly by 2, 3 and 4 columns. */
 import { CITY_PAGE_SIZE as PAGE_SIZE, cityPageHref } from '@/lib/city-pagination';
@@ -61,36 +64,32 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
   const params = useParams();
   const citySlug = initialCitySlug ?? params.citySlug as string;
   const router = useRouter();
+  const { sentinelRef, blockRef, contentRef } = useStickyBrowse();
+  useBrowseRestore(`/${locale}/explorer/${citySlug}/`, address.toString());
 
-  const { search, setSearch, debouncedSearch, isDebouncing } = useSearchTerm();
+  const browse = useBrowseAddress(initialPage);
+  const { setSearch, debouncedSearch, isDebouncing } = browse;
+  const search = browse.state.q;
   const searching = Boolean(searchTerm(search));
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [selectedRegion, setActiveRegion] = useState<string | null | undefined>(undefined);
+  const activeCategory = browse.state.category;
+  const setActiveCategory = browse.setCategory;
+  const setActiveRegion = browse.setArea;
   const { data: cities, isLoading: loadingCities } = useCities();
   const { data: categories } = useCategories();
   const { data: amenities } = useAmenities();
   const currentCity = cities?.find((c) => c.slug === citySlug);
-  const requestedRegion = address.get('region');
-  const activeRegion = selectedRegion !== undefined
-    ? selectedRegion
-    : requestedRegion && currentCity?.areaKeys?.includes(requestedRegion) ? requestedRegion : null;
+  const requestedRegion = browse.state.area;
+  const activeRegion = requestedRegion && currentCity?.areaKeys?.includes(requestedRegion) ? requestedRegion : null;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // The list used to send no limit or skip at all, so the backend's default of 20 applied and
-  // "All" showed a city's first twenty places as though they were the whole set — Cairo has
-  // 147. Paged properly now, with the page reported from the server's total.
-  const [pageState, setPageState] = useState({ scope: JSON.stringify([citySlug, '', null, null, {}, locale]), page: initialPage - 1 });
-  const [filters, setFilters] = useState<ActiveFilters>({});
-  const scope = JSON.stringify([citySlug, debouncedSearch, activeCategory, activeRegion, filters, locale]);
-  const page = pageState.scope === scope ? pageState.page : 0;
+  const filters = browse.state.filters;
+  const setFilters = browse.setFilters;
+  const page = browse.state.page - 1;
+  const pageSearch = writeBrowseAddress(`?${address.toString()}`, browse.state).split('?')[1] ?? '';
   const setPage = (next: number | ((previous: number) => number)) => {
     const selected = typeof next === 'function' ? next(page) : next;
-    if (!searching && !activeCategory && !activeRegion && Object.keys(filters).length === 0) {
-      router.push(`/${locale}/explorer/${citySlug}/${cityPageHref(selected + 1, address.toString())}`, { scroll: false });
-      return;
-    }
-    setPageState({ scope, page: selected });
+    browse.setPage(selected + 1, !searching && !activeCategory && !activeRegion && !hasLocalSearchFilters(filters));
+    if (selected > 0 && selected !== page) window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
   // cities are loaded but this slug isn't among them → the city doesn't exist
   const cityNotFound = !loadingCities && !!cities && !currentCity;
 
@@ -136,11 +135,6 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
   const totalPages = Math.ceil((totalMatching ?? 0) / (searching ? SEARCH_PAGE_SIZE : PAGE_SIZE));
   const pageNumbers = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
 
-  // Moving between pages should start you at the top of the new one, not halfway down it.
-  useEffect(() => {
-    if (page > 0 && (!searching || totalMatching !== undefined)) window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [page, searching, totalMatching]);
-
   const matchingCount = placesData?.total ?? placesData?.items.length ?? 0;
   const cityIntro = currentCity
     ? (locale === 'ar' ? currentCity.descriptionAr : currentCity.descriptionEn) || (locale === 'ar'
@@ -157,8 +151,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
     [categories, locale],
   );
   const clearFilters = () => {
-    setActiveCategory(null);
-    setFilters({});
+    browse.clearFilters();
   };
   // Western digits in both languages, as everywhere else on the site (cards, titles).
   const number = (n: number) => n.toLocaleString('en-US');
@@ -222,52 +215,60 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
             )}
           </div>
           {currentCity && <p className="khg-browse-intro">{cityIntro}</p>}
-
-          <div className="khg-browse-controls">
-            <div className="khg-browse-where">
-              <CitySelector cities={cities || []} currentCitySlug={citySlug} onChange={handleCityChange} />
-              <RegionSelector regions={regionOptions} city={cityName} value={activeRegion} onChange={setActiveRegion} />
-            </div>
-            <div className="khg-browse-what">
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <SearchBar value={search} onChange={setSearch} placeholder={t("common.searchPlaces")} />
-              </div>
-              <FilterPanel
-                isOpen={filtersOpen}
-                onOpenChange={setFiltersOpen}
-                activeCount={activeChips.length}
-                onClear={clearFilters}
-                resultCount={searchBusy || (!searching && isLoading) ? undefined : totalMatching}
-              >
-                <PlaceFilters
-                  value={filters}
-                  onChange={setFilters}
-                  categories={categoryOptions}
-                  categoryId={activeCategory}
-                  onCategoryChange={setActiveCategory}
-                />
-              </FilterPanel>
-            </div>
-          </div>
-
-          {activeChips.length > 0 && (
-            <ul className="khg-browse-active no-scrollbar" aria-label={t("explorer.activeFilters")}>
-              {activeChips.map((chip) => (
-                <li key={chip.key}>
-                  <button type="button" className="khg-active-chip" onClick={chip.remove} aria-label={t("explorer.removeFilter", { name: chip.label })}>
-                    <span>{chip.label}</span>
-                    <X size={14} aria-hidden />
-                  </button>
-                </li>
-              ))}
-              {activeChips.length > 1 && (
-                <li>
-                  <button type="button" className="khg-active-clear" onClick={clearFilters}>{t("explorer.clearAll")}</button>
-                </li>
-              )}
-            </ul>
-          )}
         </header>
+        <div ref={sentinelRef} className="khg-browse-sentinel" aria-hidden="true" />
+        <div ref={blockRef} className="khg-browse-sticky" data-stuck="false">
+          <div ref={contentRef} className="khg-browse-surface">
+            <div className="khg-browse-controls">
+              <div className="khg-browse-where" data-area={activeRegion ? "chosen" : "all"}>
+                <div className="khg-browse-city">
+                  <CitySelector cities={cities || []} currentCitySlug={citySlug} onChange={handleCityChange} />
+                </div>
+                <div className="khg-browse-area">
+                  <RegionSelector regions={regionOptions} city={cityName} value={activeRegion} onChange={setActiveRegion} />
+                </div>
+              </div>
+              <div className="khg-browse-what">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <SearchBar value={search} onChange={setSearch} placeholder={t("common.searchPlaces")} />
+                </div>
+                <FilterPanel
+                  isOpen={filtersOpen}
+                  onOpenChange={setFiltersOpen}
+                  activeCount={activeChips.length}
+                  onClear={clearFilters}
+                  resultCount={searchBusy || (!searching && isLoading) ? undefined : totalMatching}
+                >
+                  <PlaceFilters
+                    value={filters}
+                    onChange={setFilters}
+                    categories={categoryOptions}
+                    categoryId={activeCategory}
+                    onCategoryChange={setActiveCategory}
+                  />
+                </FilterPanel>
+              </div>
+            </div>
+
+            {activeChips.length > 0 && (
+              <ul className="khg-browse-active no-scrollbar" aria-label={t("explorer.activeFilters")}>
+                {activeChips.map((chip) => (
+                  <li key={chip.key}>
+                    <button type="button" className="khg-active-chip" onClick={chip.remove} aria-label={t("explorer.removeFilter", { name: chip.label })}>
+                      <span>{chip.label}</span>
+                      <X size={14} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+                {activeChips.length > 1 && (
+                  <li>
+                    <button type="button" className="khg-active-clear" onClick={clearFilters}>{t("explorer.clearAll")}</button>
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+        </div>
 
         {cityNotFound ? (
           <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
@@ -314,7 +315,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
             {totalPages > 1 && (
               <nav className="khg-pager" aria-label={t("explorer.pagination")}>
                 <a
-                  href={page > 0 ? cityPageHref(page, address.toString()) : undefined}
+                  href={page > 0 ? cityPageHref(page, pageSearch) : undefined}
                   rel="prev"
                   className="khg-page-btn"
                   aria-disabled={page === 0 || searchBusy}
@@ -330,7 +331,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
                   ) : (
                     <a
                       key={n}
-                      href={cityPageHref(n + 1, address.toString())}
+                      href={cityPageHref(n + 1, pageSearch)}
                       className="khg-page-btn"
                       data-current={n === page ? "true" : undefined}
                       aria-current={n === page ? "page" : undefined}
@@ -343,7 +344,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
                 )}
 
                 <a
-                  href={page < totalPages - 1 ? cityPageHref(page + 2, address.toString()) : undefined}
+                  href={page < totalPages - 1 ? cityPageHref(page + 2, pageSearch) : undefined}
                   rel="next"
                   className="khg-page-btn"
                   aria-disabled={page >= totalPages - 1 || searchBusy}

@@ -88,7 +88,7 @@ test('successful adoption really refetches an active cached saved-plan query', a
     process: { env: { NEXT_PUBLIC_API_MODE: 'same-origin' } },
     window: { localStorage: storage() },
     fetch: async url => envelope(url.endsWith('/guest/handover') ? { token: 'token' } : url.endsWith('/guest/adopt') ? { adopted: true } : []),
-    react: { useState: initial => [initial()], useEffect: effect => { cleanup = effect(); } },
+    react: { useState: initial => [initial()], useLayoutEffect() {}, useEffect: effect => { cleanup = effect(); } },
     '@tanstack/react-query': { QueryClient: class { constructor() { return queryClient; } }, QueryClientProvider: () => null },
   };
   try {
@@ -118,9 +118,9 @@ test('real client, analytics/ads and directions beacon share the gate and same-o
       if (url.endsWith('/guest/adopt')) return envelope({ adopted: true, merged: 1 });
       return envelope([]);
     },
-    react: { useState: initial => [initial()], useEffect: effect => { cleanup = effect(); } },
+    react: { useState: initial => [initial()], useLayoutEffect() {}, useEffect: effect => { cleanup = effect(); } },
     '@tanstack/react-query': {
-      QueryClient: class { invalidateQueries(options) { invalidations.push(options); return Promise.resolve(); } },
+      QueryClient: class { setQueryDefaults() {} invalidateQueries(options) { invalidations.push(options); return Promise.resolve(); } },
       QueryClientProvider: () => null,
     },
   };

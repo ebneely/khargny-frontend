@@ -261,7 +261,32 @@ body::-webkit-scrollbar {
 /* ── Browse header (city page) ────────────────────────────────────────────────
    Title and count, then WHERE (city, area pills) and WHAT (search, Filters), then the
    filters in use. One row of controls on a wide screen, two on a phone. */
-.khg-browse { margin-bottom: var(--space-6); }
+:root { --site-header-height: 69px; --header-offset: var(--site-header-height); }
+@media (min-width: 640px) { :root { --site-header-height: 73px; } }
+html[data-header="hidden"] { --header-offset: 0px; }
+.khg-siteheader { transform: translateY(0); transition: transform 200ms ease-out; }
+html[data-browse-restoring] .khg-siteheader,
+html[data-browse-restoring] .khg-browse-sticky { transition: none; }
+html[data-header="hidden"] .khg-siteheader { transform: translateY(-100%); }
+html .khg-siteheader:focus-within { transform: translateY(0); }
+.khg-browse { margin-bottom: 0; }
+.khg-browse-sentinel { height: 1px; margin-top: calc(var(--space-5) - 1px); pointer-events: none; }
+.khg-browse-sticky {
+  position: sticky; top: var(--header-offset); z-index: 10;
+  min-height: var(--browse-reserved-height, auto); margin-bottom: var(--space-6);
+  pointer-events: none; transition: top 200ms ease-out;
+}
+.khg-browse-surface { pointer-events: auto; display: flow-root; }
+/* Stuck, the bar runs the full width of the screen with a hairline under it. The colour is painted
+   past the container with a spread shadow (which never adds scroll width) and clipped to the bar's
+   own height; a second, 1px-lower shadow is the hairline. A soft drop shadow here drew a dark
+   curved line under a bar that stopped short of the screen's edges. */
+.khg-browse-sticky[data-stuck="true"] .khg-browse-surface {
+  background: var(--surface-app);
+  padding-block: 8px;
+  box-shadow: 0 0 0 100vmax var(--surface-app), 0 1px 0 100vmax var(--gray-200);
+  clip-path: inset(0 -100vmax -1px);
+}
 .khg-browse-heading { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-3); row-gap: 2px; }
 .khg-browse-title {
   margin: 0; font-family: var(--font-display); font-weight: 600; line-height: 1.2;
@@ -273,11 +298,12 @@ body::-webkit-scrollbar {
   margin: var(--space-2) 0 0; max-width: 68ch;
   font-size: var(--text-sm); line-height: 1.6; color: var(--text-secondary);
 }
-.khg-browse-controls { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+.khg-browse-controls { display: flex; flex-direction: column; gap: var(--space-3); }
 .khg-browse-where { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
 .khg-browse-where > * { min-width: 0; }
 .khg-browse-where .khg-pill { width: 100%; }
 .khg-browse-what { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.khg-browse-what input { min-width: 0; }
 @media (min-width: 768px) {
   .khg-browse-controls { flex-direction: row; align-items: center; }
   .khg-browse-where { display: flex; flex: none; }
@@ -290,6 +316,32 @@ body::-webkit-scrollbar {
   overflow-x: auto; scroll-padding-inline: 16px;
 }
 .khg-browse-active > li { flex: none; }
+@media (max-width: 639px) {
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-controls { flex-direction: row; align-items: center; gap: var(--space-2); }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-what { order: -1; flex: 1; gap: var(--space-2); }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-where {
+    display: flex; flex: 0 1 38%; gap: 0; min-width: 88px;
+    border: 1px solid var(--border-default); border-radius: var(--radius-full); background: var(--white);
+  }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-city,
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-area { flex: 1; min-width: 0; }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-where .khg-pill {
+    min-width: 44px; padding-inline: 8px; gap: 4px; border: 0; background: transparent; color: var(--text-primary);
+  }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-where .khg-pill-icon,
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-where[data-area="chosen"] .khg-pill-chev,
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-city .khg-pill-chev { display: none; }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-area .khg-pill::before { content: "\00b7"; }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-where[data-area="all"] .khg-browse-area { flex: none; width: 44px; }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-where[data-area="all"] .khg-browse-area .khg-pill-text,
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-where[data-area="all"] .khg-browse-area .khg-pill::before { display: none; }
+  .khg-browse-sticky[data-stuck="true"] .khg-filter-btn { min-width: 44px; padding-inline: 10px; gap: 4px; }
+  .khg-browse-sticky[data-stuck="true"] .khg-filter-btn-label { display: none; }
+  .khg-browse-sticky[data-stuck="true"] .khg-browse-active { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .khg-siteheader, .khg-browse-sticky { transition: none; }
+}
 .khg-active-chip {
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 36px; padding: 0 10px 0 12px; padding-inline: 12px 10px;

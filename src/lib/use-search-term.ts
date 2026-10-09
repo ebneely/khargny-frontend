@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { searchAddress, searchTerm } from '@/lib/place-search';
 
-function useSearchDebounce(value: string) {
+function useSearchDebounce(value: string, settledOnMount = false) {
   const term = searchTerm(value);
-  const [state, setState] = useState({ input: value, settled: '', pending: Boolean(term) });
+  const [state, setState] = useState({ input: value, settled: settledOnMount ? term : '', pending: !settledOnMount && Boolean(term) });
   if (state.input !== value) setState({ input: value, settled: state.settled, pending: Boolean(term) });
   useEffect(() => {
     const timer = setTimeout(() => setState({ input: value, settled: term, pending: false }), 250);
@@ -25,7 +25,7 @@ export function useSearchTerm() {
   const latestInput = useRef(search);
   const lastObserved = useRef(addressSearch);
   const lastWritten = useRef<string | null>(null);
-  const debounce = useSearchDebounce(search);
+  const debounce = useSearchDebounce(search, true);
 
   const writeAddress = useCallback((value: string) => {
     const { pathname, search: query, hash } = window.location;

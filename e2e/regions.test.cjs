@@ -278,7 +278,7 @@ test('All areas and a single stored key preserve the original request and enable
   const single = hooks.usePlaces(singleFilters, true);
   const result = await single.queryFn(queryContext);
   assert.equal(single.enabled, true);
-  assert.equal(single.staleTime, 5 * 60 * 1000);
+  assert.equal(single.staleTime, Infinity);
   assert.equal(calls.length, 2);
   assert.equal(calls[0].options.params, allFilters);
   assert.equal(calls[1].options.params, singleFilters);

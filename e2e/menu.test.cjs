@@ -121,13 +121,16 @@ function placePage(locale, flags) {
   return () => React.createElement(Page, { related: React.createElement('section', { 'data-similar': true }) });
 }
 
-function assertStatuses(markup, expected, locale) {
+function assertStatuses(markup, expected, locale, rows = false) {
   const names = locale === 'en' ? ['Services listed', 'Price match', 'Visited by 5argny'] : ['الخدمات معروضة', 'مطابقة الأسعار', 'زرناه'];
   const negatives = locale === 'en' ? ['No services listed yet', 'Prices not checked yet', 'Not visited yet'] : ['مفيش خدمات معروضة لسه', 'الأسعار لسه متراجعتش', 'لسه مزرناهوش'];
   const chips = [...markup.matchAll(/<span\b[^>]*data-place-status="([^"]+)"[^>]*>/g)];
   assert.equal(chips.length, 3);
-  assert.deepEqual(chips.map((chip) => chip[1]), ['hasMenu', 'priceVerified', 'visitedByUs']);
-  chips.forEach((chip, index) => {
+  const ids = ['hasMenu', 'priceVerified', 'visitedByUs'];
+  const order = rows ? [...ids.filter((id, index) => expected[index]), ...ids.filter((id, index) => !expected[index])] : ids;
+  assert.deepEqual(chips.map((chip) => chip[1]), order);
+  chips.forEach((chip) => {
+    const index = ids.indexOf(chip[1]);
     const state = expected[index] ? 'available' : 'not-yet';
     const name = expected[index] ? names[index] : negatives[index];
     assert.ok(chip[0].includes(`data-state="${state}"`));
@@ -158,24 +161,30 @@ for (const [label, flags, expected] of [
   ['mixed', { hasMenu: true, priceVerified: false, visitedByUs: true }, [true, false, true]],
   ['missing fields', {}, [false, false, false]],
 ]) {
-  test(`${label}: cards, mobile chips and actual page action block expose three localized states`, () => {
+  test(`${label}: cards keep icon order; phone and desktop use the same held-first badge list`, () => {
     for (const locale of ['ar', 'en']) {
       const card = renderToStaticMarkup(React.createElement(cardModule(locale), { title: 'Test place', area: '', ...flags }));
       assertStatuses(card, expected, locale);
       const plan = renderToStaticMarkup(React.createElement(planCardModule(locale), { saved: { place: { name: 'مكان', nameEn: 'Test place', rating: 0, ...flags } }, onOpen: () => {}, onRemove: () => {}, removing: false }));
       assertStatuses(plan, expected, locale);
       const page = renderToStaticMarkup(React.createElement(placePage(locale, flags)));
-      const rows = page.match(/<section\b[^>]*data-place-statuses="true"[^>]*>[\s\S]*?<\/section>/)?.[0];
-      assert.ok(rows);
-      assertStatuses(rows, expected, locale);
+      const lists = [...page.matchAll(/<section\b[^>]*data-place-statuses="true"[^>]*>[\s\S]*?<\/section>/g)].map(match => match[0]);
+      assert.equal(lists.length, 2);
+      const rows = lists.find(markup => !markup.includes('mobileStatuses'));
+      for (const list of lists) {
+        assertStatuses(list, expected, locale, true);
+        assert.equal((list.match(/<li>/g) ?? []).length, 3);
+        assert.equal((list.match(/href="#place-badge-legend"/g) ?? []).length, 3);
+        assert.ok(list.includes('class="statusList"'));
+      }
       assert.ok(rows.includes(locale === 'en' ? 'Place badges' : 'شارات المكان'));
       assert.ok(!rows.includes(locale === 'en' ? '>Available<' : '>متاح<'));
       assert.ok(!rows.includes(locale === 'en' ? '>Not yet<' : '>ليس بعد<'));
       const identity = page.match(/<header>[\s\S]*?<\/header>/)?.[0];
       assert.ok(identity);
-      assertStatuses(identity, expected, locale);
+      assertStatuses(identity, expected, locale, true);
       assert.ok(identity.includes('mobileStatuses'));
-      assert.ok(page.indexOf('https://example.invalid') < page.indexOf('data-place-statuses'));
+      assert.ok(page.indexOf('https://example.invalid') < page.indexOf(rows));
     }
   });
 }
@@ -190,6 +199,17 @@ test('price bands exactly match the contract in both languages, with Arabic as d
     assert.equal(priceBandLabel(level), arabic[level - 1]);
   }
   for (const invalid of [null, undefined, 0, -1, 5, 2.5, NaN, Infinity, '2']) assert.equal(priceBandLabel(invalid), null);
+});
+
+test('badge list rows have 44px targets, wrapping names, logical spacing and a shared explanation destination', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../src/components/ds/PlaceBadges.module.css'), 'utf8');
+  assert.match(css, /\.statusRow\s*\{[^}]*min-block-size: 44px;/);
+  assert.match(css, /\.statusRow > span\s*\{[^}]*min-inline-size: 0;[^}]*overflow-wrap: anywhere;/);
+  assert.match(css, /\.statusLink:focus-visible/);
+  for (const locale of ['en', 'ar']) {
+    const { PlaceBadgeLegend } = badgeModule(locale);
+    assert.match(renderToStaticMarkup(React.createElement(PlaceBadgeLegend)), /id="place-badge-legend"/);
+  }
 });
 
 test('menu prices preserve real decimals without floating-point arithmetic', () => {

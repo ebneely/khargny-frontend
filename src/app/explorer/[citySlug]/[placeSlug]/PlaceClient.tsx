@@ -36,6 +36,7 @@ import { trackPlaceAction, trackPlaceView } from "@/lib/analytics/track";
 import type { PlaceHour } from "@/lib/api/types";
 import type { HoursRow } from "@/components/explorer/HoursTable";
 import { placeRedirect } from '@/lib/place-address';
+import { backToBrowse } from '@/lib/use-browse-session';
 
 // Day labels indexed by dayOfWeek (0=Sunday … 6=Saturday — backend convention,
 // Modules/place-hours PlaceHourItemDto). Displayed Saturday-first (Egypt week).
@@ -431,7 +432,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
           </button>
           {gallery.error && <p role="alert">{t('gallery.unavailable')}</p>}
           <div className="pd-hero-controls">
-            <button type="button" aria-label={t("explorer.back")} onClick={() => router.back()} className="pd-iconbtn">
+            <button type="button" aria-label={t("explorer.back")} onClick={() => backToBrowse(router, `/${locale}/explorer/${citySlug}/`)} className="pd-iconbtn">
               <ArrowLeft size={18} color="var(--gray-900)" />
             </button>
             <div style={{ display: "flex", gap: 8 }}>

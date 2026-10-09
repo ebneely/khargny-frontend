@@ -26,6 +26,6 @@ export function useHomeSections() {
       const sections = Array.isArray(raw) ? raw : raw?.data ?? [];
       return sections.map((section) => ({ ...section, places: (section.places ?? []).map(normalizePlaceFlags) }));
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
   });
 }

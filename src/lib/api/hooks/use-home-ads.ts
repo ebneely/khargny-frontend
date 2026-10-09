@@ -6,6 +6,10 @@ import { normalizeFeaturedPlaces, normalizeTopPlaces } from "@/lib/ads/placement
 
 type RotationQuery = { state: { data?: { rotation: { nextAt: string } } | null; dataUpdatedAt: number } };
 
+function refreshOnMount(): boolean {
+  return typeof window === 'undefined' || window.document?.documentElement?.getAttribute('data-browse-back') !== 'true';
+}
+
 function rotationStaleTime(query: RotationQuery): number {
   const boundary = Date.parse(query.state.data?.rotation.nextAt ?? "");
   return Number.isFinite(boundary) ? Math.max(0, Math.min(600_000, boundary - query.state.dataUpdatedAt)) : 600_000;
@@ -39,10 +43,10 @@ export function useFeaturedPlaces() {
     queryKey: ["home", "featured"],
     queryFn: async ({ signal }) => normalizeFeaturedPlaces(await readPlacement("/v1/home/featured", signal)),
     staleTime: rotationStaleTime,
-    refetchOnMount: true,
+    refetchOnMount: refreshOnMount,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    gcTime: 30 * 60 * 1000,
+    gcTime: Infinity,
     retry: false,
     refetchInterval: nextRotationInterval,
   });
@@ -57,10 +61,10 @@ export function useTopPlaces(city?: string) {
     },
     placeholderData: keepPreviousData,
     staleTime: rotationStaleTime,
-    refetchOnMount: true,
+    refetchOnMount: refreshOnMount,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    gcTime: 30 * 60 * 1000,
+    gcTime: Infinity,
     retry: false,
     refetchInterval: nextRotationInterval,
   });

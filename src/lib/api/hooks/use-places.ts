@@ -25,7 +25,7 @@ export function usePlaces(filters?: PlaceFilters, enabled: boolean = true) {
         }),
       ),
     enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
   });
 }
 

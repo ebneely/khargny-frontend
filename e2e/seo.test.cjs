@@ -170,7 +170,7 @@ test('search city pages are noindex/follow and canonical to the plain city, filt
     const { html } = await headFor([root, explorer, city], { route: '/explorer/cairo/', search });
     assert.ok(html.includes(`rel="canonical" href="${origin}/en/explorer/cairo/"`));
     assert.ok(!html.includes('?area=') && !html.includes('?q='));
-    assert.match(html, search.includes('q=') ? /name="robots" content="noindex, follow"/ : /name="robots" content="index, follow"/);
+    assert.match(html, /name="robots" content="noindex, follow"/);
   }
 });
 

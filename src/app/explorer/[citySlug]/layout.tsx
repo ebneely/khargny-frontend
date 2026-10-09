@@ -26,6 +26,7 @@ import {
 import { getCity, getCityPage } from '@/lib/server/public-data';
 import { ApiError } from '@/lib/api/client';
 import { cityPageNumber, CITY_PAGE_SIZE } from '@/lib/city-pagination';
+import { hasBrowseFilters } from '@/lib/browse-address';
 
 type Params = { citySlug: string };
 
@@ -57,7 +58,7 @@ async function resolveCity(citySlug: string, locale: 'ar' | 'en'): Promise<City 
 /** How many places the city has, for a description that states a real number. */
 async function fetchCount(slug: string): Promise<number | null> {
   const search = (await headers()).get('x-khargny-search') ?? '';
-  return (await getCityPage(slug, cityPageNumber(new URLSearchParams(search).get('page')))).places.total ?? null;
+  return (await getCityPage(slug, cityPageNumber(new URLSearchParams(search).get('page')), new URLSearchParams(search).toString())).places.total ?? null;
 }
 
 export async function generateMetadata({
@@ -92,11 +93,11 @@ export async function generateMetadata({
       : `Discover the best places in ${name} — restaurants, cafes, beaches, hotels and landmarks${count ? `, ${count} curated spots` : ''}. Browse by area and category on Khargny.`);
 
   const search = (await headers()).get('x-khargny-search') ?? '';
-  const page = new URLSearchParams(search).has('q') ? 1 : cityPageNumber(new URLSearchParams(search).get('page'));
+  const page = hasBrowseFilters(search) ? 1 : cityPageNumber(new URLSearchParams(search).get('page'));
   const metadata = pageMetadata({
     path, locale, title, description,
     image: city?.imageUrl ? { url: city.imageUrl, alt: name } : undefined,
-    noindex: !city || new URLSearchParams(search).has('q'),
+    noindex: !city || hasBrowseFilters(search),
   });
   if (page > 1 && metadata.alternates) {
     metadata.alternates.canonical = `${urlFor(path, locale)}?page=${page}`;

@@ -55,6 +55,12 @@ function fixture({ locale = 'en', route = '/', search = '', sources, failure, se
       else if (pathname === '/v1/cities/aswan') data = city;
       else if (pathname === '/v1/cities/aswan/places') data = { data: [places[0]], meta: { total: places.length, limit: 1, skip: 0 } };
       else if (pathname === '/v1/places') { const skip = Number(url.searchParams.get('skip')); const limit = Number(url.searchParams.get('limit')); data = { data: places.slice(skip, skip + limit), meta: { total: places.length, skip, limit } }; }
+      else if (pathname === '/v1/search/places') {
+        const matching = places.filter(place => [place.name, place.nameEn].some(name => name.toLowerCase().includes((url.searchParams.get('q') ?? '').toLowerCase())));
+        const skip = Number(url.searchParams.get('skip'));
+        const limit = Number(url.searchParams.get('limit'));
+        data = { items: matching.slice(skip, skip + limit), total: matching.length };
+      }
       else if (pathname === '/v1/places/place-1') data = places[0];
       else if (pathname === '/v1/places/place-1/menu') data = menu;
       else if (pathname === '/v1/places/place-1/similar') data = places.slice(1, 5);

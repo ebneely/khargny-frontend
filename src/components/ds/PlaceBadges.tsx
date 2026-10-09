@@ -73,7 +73,7 @@ export function PlaceBadges({ hasMenu, priceVerified, visitedByUs, priceRange, p
   return (
     <>
       {variant !== "price" && (
-        <span className={`${styles.statuses}${variant === "compact" ? ` ${styles.compact}` : ""}${mobileOnly ? ` ${styles.mobileStatuses}` : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
+        mobileOnly ? <PlaceStatuses hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} mobileOnly /> : <span className={`${styles.statuses}${variant === "compact" ? ` ${styles.compact}` : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
           {statuses.map((status) => <StatusBadge key={status.id} status={status} compact={variant === "compact"} />)}
         </span>
       )}
@@ -86,14 +86,15 @@ export function PlaceBadges({ hasMenu, priceVerified, visitedByUs, priceRange, p
   );
 }
 
-export function PlaceStatuses(flags: PlaceStatusFlags) {
+export function PlaceStatuses({ mobileOnly = false, ...flags }: PlaceStatusFlags & { mobileOnly?: boolean }) {
   const { t, locale } = useI18n();
   const headingId = React.useId();
+  const statuses = getPlaceStatuses(flags, t).sort((first, second) => Number(second.available) - Number(first.available));
   return (
-    <section className={styles.statusBlock} data-place-statuses="true" aria-labelledby={headingId} dir={locale === "ar" ? "rtl" : "ltr"}>
+    <section className={`${styles.statusBlock}${mobileOnly ? ` ${styles.mobileStatuses}` : ""}`} data-place-statuses="true" aria-labelledby={headingId} dir={locale === "ar" ? "rtl" : "ltr"}>
       <h3 id={headingId} className={styles.statusHeading}>{t("place.badgesTitle")}</h3>
       <ul className={styles.statusList}>
-        {getPlaceStatuses(flags, t).map((status) => <li key={status.id}><StatusBadge status={status} row /></li>)}
+        {statuses.map((status) => <li key={status.id}><a className={styles.statusLink} href="#place-badge-legend"><StatusBadge status={status} row /></a></li>)}
       </ul>
     </section>
   );
@@ -104,7 +105,7 @@ export function PlaceBadgeLegend() {
   const headingId = React.useId();
   const statuses = getPlaceStatuses({ hasMenu: true, priceVerified: true, visitedByUs: true }, t);
   return (
-    <section className={styles.guide} data-place-badge-legend="true" aria-labelledby={headingId} dir={locale === "ar" ? "rtl" : "ltr"}>
+    <section id="place-badge-legend" className={styles.guide} data-place-badge-legend="true" aria-labelledby={headingId} dir={locale === "ar" ? "rtl" : "ltr"}>
       <h2 id={headingId} className={styles.guideHeading}>{t("place.badgesLegendTitle")}</h2>
       <p className={styles.colorKey} data-place-badge-colors="true">
         <span><span className={`${styles.swatch} ${styles.greenDot}`} data-badge-color="green" aria-hidden="true" />{t("place.badgeGreenMeaning")}</span>

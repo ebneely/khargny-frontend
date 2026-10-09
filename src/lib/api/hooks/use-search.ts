@@ -33,6 +33,6 @@ export function useSearchPlaces(query: SearchPlacesQuery, options: { enabled?: b
       hasMore: data.items.length > skip + limit,
     } : data,
     placeholderData: (previous, previousQuery) => previousQuery?.queryKey[2] === query.cityId && previousQuery?.queryKey[1] === locale ? previous : undefined,
-    staleTime: 60 * 1000,
+    staleTime: Infinity,
   });
 }

@@ -1,10 +1,17 @@
 "use client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { subscribeToGuestAdoption } from "@/lib/api/guest-handover";
+import { installBrowseSession, prepareBrowseQueries } from '@/lib/use-browse-session';
 
 export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => {
+    const client = new QueryClient();
+    prepareBrowseQueries(client);
+    return client;
+  });
+
+  useLayoutEffect(() => installBrowseSession(queryClient), [queryClient]);
 
   useEffect(() => subscribeToGuestAdoption(() => {
     void queryClient.invalidateQueries({ queryKey: ['saved-places'] });

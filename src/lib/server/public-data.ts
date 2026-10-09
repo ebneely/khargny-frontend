@@ -8,22 +8,25 @@ import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { normalizeMenu } from '@/lib/api/normalize-menu';
 import { normalizeFeaturedPlaces, normalizeTopPlaces } from '@/lib/ads/placements';
 import { CITY_PAGE_SIZE, cityPageNumber } from '@/lib/city-pagination';
-import type { Category, CityWithAreas, Place, PlaceDetail } from '@/lib/api/types';
+import type { Category, CityWithAreas, Place, PlaceDetail, PlaceFilters, SearchPlacesQuery } from '@/lib/api/types';
 import type { HomeSection } from '@/lib/api/hooks/use-home';
 import { currentLocale } from '@/lib/seo';
 import type { Locale } from '@/i18n/dictionaries';
+import { browseQueries, readBrowseAddress } from '@/lib/browse-address';
+import { hasLocalSearchFilters, loadSearchPage } from '@/lib/place-search';
 
 export function markPublicError(error: unknown, locale: Locale) {
   const failure = error && typeof error === 'object' ? error : new Error('Public page data unavailable');
   return Object.assign(failure, { digest: `khargny-public-${locale}` });
 }
 
-const read = cache(async (path: string, fresh = false): Promise<unknown> => {
+const read = cache(async (path: string, fresh = false, locale?: Locale): Promise<unknown> => {
   try {
     if (!getApiBaseUrl({ browser: false })) throw new ApiError(503, null);
     const response = await fetch(`${getApiBaseUrl({ browser: false })}${path}`, {
       ...(fresh ? { cache: 'no-store' as const } : { next: { revalidate: 300, tags: ['public-discovery', path.split('?')[0]] } }),
       signal: AbortSignal.timeout(10000),
+      ...(locale ? { headers: { 'Accept-Language': locale } } : {}),
     });
     if (!response.ok) throw new ApiError(response.status, null);
     const json = await response.json();
@@ -91,10 +94,27 @@ export const getCatalog = cache(async () => {
   return { cities, categories };
 });
 
-export const getCityPage = cache(async (slug: string, page: number) => {
+export const getCityPage = cache(async (slug: string, page: number, search = '') => {
   const [city, catalog] = await Promise.all([getCity(slug), getCatalog()]);
-  const places = await getPlaceList(city.id, page);
-  return { ...catalog, city, places };
+  const state = readBrowseAddress(search);
+  state.page = page;
+  const queries = browseQueries(city.id, state, city.areaKeys);
+  const locale = await currentLocale();
+  const searching = Boolean(queries.search.q);
+  const dataset = hasLocalSearchFilters(queries.local) ? { ...queries.search, skip: 0 } : queries.search;
+  const searchQuery = hasLocalSearchFilters(queries.local) ? { ...dataset, limit: Number.MAX_SAFE_INTEGER } : dataset;
+  const request = (path: string, params?: SearchPlacesQuery | PlaceFilters) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params ?? {})) {
+      if (value !== undefined && value !== null) query.set(key, Array.isArray(value) ? value.join(',') : String(value));
+    }
+    return read(`${path}${query.size ? `?${query}` : ''}`, false, searching ? locale : undefined);
+  };
+  const places = searching
+    ? await loadSearchPage(searchQuery, queries.local, request)
+    : placeList(await request('/v1/places', queries.places));
+  const queryKey: QueryKey = searching ? ['search', locale, city.id, dataset, queries.local] : ['places', 'list', queries.places];
+  return { ...catalog, city, places, queryKey, searching };
 });
 
 export const getPlacePage = cache(async (slug: string) => {
@@ -108,7 +128,7 @@ export async function primePublicRoute(path: string, search: string) {
   const parts = path.split('/').filter(Boolean);
   try {
     if (!parts.length || (parts[0] === 'explorer' && parts.length === 1)) await getCities();
-    else if (parts[0] === 'explorer' && parts.length === 2) await getCityPage(decodeURIComponent(parts[1]), cityPageNumber(new URLSearchParams(search).get('page')));
+    else if (parts[0] === 'explorer' && parts.length === 2) await getCityPage(decodeURIComponent(parts[1]), cityPageNumber(new URLSearchParams(search).get('page')), search);
     else if (parts[0] === 'explorer' && parts.length === 3) await getPlacePage(decodeURIComponent(parts[2]));
   } catch (error) {
     if (!(error instanceof ApiError && error.status === 404)) throw error;

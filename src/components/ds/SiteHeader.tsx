@@ -18,6 +18,8 @@ import Link from "next/link";
 import { Globe, Menu, X } from "lucide-react";
 import { animate, stagger } from "animejs";
 import { useI18n } from "@/i18n/LocaleProvider";
+import { useScrollDirection } from "@/lib/use-scroll-direction";
+import { useBrowseRestore } from '@/lib/use-browse-session';
 
 const MAXW = 1120;
 
@@ -30,9 +32,12 @@ const LINKS: { key: Active; href: string; tkey: string }[] = [
 ];
 
 export function SiteHeader({ active, extra }: { active?: Active; extra?: React.ReactNode }) {
-  const { toggleLocale, dict, t } = useI18n();
+  const { toggleLocale, dict, t, locale } = useI18n();
+  useBrowseRestore(active === 'home' ? `/${locale}/` : active === 'explore' ? `/${locale}/explorer/` : undefined);
   const [open, setOpen] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const headerRef = React.useRef<HTMLElement>(null);
+  useScrollDirection(headerRef, open);
 
   // Open animation: the panel expands from a pill (scaled-down, faded, nudged up) to full
   // size on easeOutExpo — quick to start, slow to settle, the iOS feel — and the links
@@ -80,6 +85,8 @@ export function SiteHeader({ active, extra }: { active?: Active; extra?: React.R
 
   return (
     <header
+      ref={headerRef}
+      className="khg-siteheader"
       style={{
         position: "sticky",
         top: 0,

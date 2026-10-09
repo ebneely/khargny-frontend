@@ -59,7 +59,7 @@ async function renderedCity(context, address = '/en/explorer/aswan/') {
     browser = window;
     snapshot = browser.location.search;
     const navigation = {
-      useParams: () => ({ citySlug: 'aswan' }), useRouter: () => ({ push() {} }),
+      useParams: () => ({ citySlug: 'aswan' }), useRouter: () => ({ push() {}, replace(href, options) { assert.equal(options.scroll, false); assert.equal(new URL(href, browser.location).href, browser.location.href); } }),
       useSearchParams: () => new URLSearchParams(React.useSyncExternalStore(listener => { addressListeners.add(listener); return () => addressListeners.delete(listener); }, () => snapshot)),
     };
     const empty = () => null;
@@ -130,7 +130,7 @@ test('rendered city input owns five rapid changes despite lagging URL; one settl
   } finally { await harness.close(); }
 });
 
-test('rendered shared nile search switches to browse and clears q immediately below two characters', async context => {
+test('rendered shared nile search switches to browse below two characters and retains the exact address text', async context => {
   const harness = await renderedCity(context, '/en/explorer/aswan/?q=nile&sort=name#results');
   try {
     assert.equal(harness.input().value, 'nile');
@@ -140,7 +140,7 @@ test('rendered shared nile search switches to browse and clears q immediately be
     await harness.change('a');
     assert.equal(harness.input().value, 'a');
     assert.equal(harness.cards().length, 15);
-    assert.equal(harness.browser.location.searchParams.has('q'), false);
+    assert.equal(harness.browser.location.searchParams.get('q'), 'a');
     assert.equal(harness.browser.location.searchParams.get('sort'), 'name');
     await harness.flushAddress();
     assert.equal(harness.input().value, 'a');
@@ -352,19 +352,14 @@ test('reason is one non-name/city label with reserved line only in search cards'
 
 function renderCity(locale, result, extra = {}) {
   const empty = () => null;
-  let stateIndex = 0;
   let captured;
   const dependencies = {
-    react: { ...React, useState: (initial) => {
-      const index = stateIndex++;
-      const values = { 0: extra.category ?? null, 1: extra.region ?? null, 4: extra.filters ?? {} };
-      return [index in values ? values[index] : initial, empty];
-    }, useEffect: empty },
+    react: React,
     'next/navigation': { useParams: () => ({ citySlug: 'aswan' }), useRouter: () => ({ push: empty }), useSearchParams: () => new URLSearchParams('?q=roof') },
     'next/link': { default: ({ children, prefetch, ...props }) => React.createElement('a', props, children) },
     '@/i18n/LocaleProvider': translations(locale),
-    '@/lib/use-search-term': { useSearchTerm: () => ({ search: 'roof', debouncedSearch: 'roof', isDebouncing: false, setSearch: empty }) },
-    '@/lib/api/hooks/use-cities': { useCities: () => ({ data: [{ id: 'aswan', slug: 'aswan', name: 'أسوان', nameEn: 'Aswan' }, { id: 'cairo', slug: 'cairo', name: 'القاهرة', nameEn: 'Cairo' }] }) },
+    '@/lib/use-browse-address': { useBrowseAddress: () => ({ state: { q: 'roof', category: extra.category ?? null, area: extra.region ?? null, filters: extra.filters ?? {}, page: 1 }, debouncedSearch: 'roof', isDebouncing: false, setSearch: empty, setCategory: empty, setArea: empty, setFilters: empty, clearFilters: empty, setPage: empty }) },
+    '@/lib/api/hooks/use-cities': { useCities: () => ({ data: [{ id: 'aswan', slug: 'aswan', name: 'أسوان', nameEn: 'Aswan', areaKeys: ['Island'] }, { id: 'cairo', slug: 'cairo', name: 'القاهرة', nameEn: 'Cairo' }] }) },
     '@/lib/api/hooks/use-categories': { useCategories: () => ({ data: [] }) },
     '@/lib/api/hooks/use-places': { usePlaces: () => ({ data: { items: [place('browse')], total: 1 } }) },
     '@/lib/api/hooks/use-search': { useSearchPlaces: (query, options) => { captured = { query, options }; return { data: result, isFetching: extra.loading ?? false, isError: false }; } },
