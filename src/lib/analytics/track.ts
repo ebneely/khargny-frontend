@@ -7,7 +7,7 @@ import { fetchApi } from "@/lib/api/transport";
  *
  * Privacy: the browser is identified only by the backend's own HttpOnly guest cookie (sent
  * with `credentials: "include"`), which the backend hashes on arrival. This code sends no
- * id, no search terms and no personal data. Events are batched (every 5 s, at 10 events,
+ * id or personal data. Search result clicks include the searched term. Events are batched (every 5 s, at 10 events,
  * and when the tab is hidden) and failures are dropped silently: analytics never affects
  * the page.
  */
@@ -17,6 +17,7 @@ type AnalyticsEvent =
   | { type: "place_view"; placeId: string }
   | { type: "city_view"; cityId: string }
   | { type: "search" }
+  | { type: "search_click"; term: string; placeId: string; position: number; cityId?: string; locale: 'ar' | 'en' }
   | { type: "directions" | "save" | "share"; placeId: string };
 
 type Queued = AnalyticsEvent & { occurredAt: string };
@@ -31,7 +32,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let listening = false;
 
 export function isTrackingAllowed(): boolean {
-  return typeof window !== "undefined" && navigator.doNotTrack !== "1" &&
+  return typeof window !== "undefined" && typeof navigator !== 'undefined' && navigator.doNotTrack !== "1" &&
     !(navigator as { globalPrivacyControl?: boolean }).globalPrivacyControl;
 }
 
@@ -99,6 +100,12 @@ export function trackCityView(cityId: string | undefined | null): void {
 /** A search ran; the query itself is never sent. */
 export function trackSearch(): void {
   enqueue({ type: "search" });
+}
+
+export function trackSearchClick(term: string, placeId: string, position: number, locale: 'ar' | 'en', cityId?: string): void {
+  if (!term.trim() || !UUID.test(placeId) || !Number.isInteger(position) || position < 1 || position > 1000) return;
+  enqueue({ type: 'search_click', term: term.trim().slice(0, 256), placeId, position, ...(cityId ? { cityId } : {}), locale });
+  flushAnalytics(true);
 }
 
 export function trackPlaceAction(

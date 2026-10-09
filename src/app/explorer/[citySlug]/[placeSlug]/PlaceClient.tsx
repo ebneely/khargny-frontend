@@ -1,4 +1,5 @@
 "use client";
+import { LoveButton } from '@/components/ds/LoveButton';
 /**
  * Place detail — `/explorer/{citySlug}/{placeSlug}`.
  *
@@ -14,7 +15,7 @@
  */
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Star, Share, Navigation, Heart, Phone, Globe, MapPin, Eye } from "lucide-react";
+import { ArrowLeft, Star, Share, Navigation, Bookmark, Phone, Globe, MapPin, Eye } from "lucide-react";
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { PhotoImage } from "@/components/ds/PhotoImage";
 import type { Photo } from "@/lib/place-photo";
@@ -247,10 +248,10 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
       disabled={isSavingPending}
       className={`khg-heart-tap ${variant === "icon" ? "pd-iconbtn" : `pd-btn pd-btn-${variant}`}`}
       data-saved={placeSaved || undefined}
-      aria-label={saveLabel}
+      aria-label={t(placeSaved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}
       aria-pressed={placeSaved}
     >
-      <Heart size={18} fill={placeSaved ? "currentColor" : "none"} aria-hidden="true" />
+      <Bookmark size={18} fill={placeSaved ? "currentColor" : "none"} aria-hidden="true" />
       {variant !== "icon" && saveLabel}
     </button>
   );
@@ -441,18 +442,19 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
               </button>
               <button
                 type="button"
-                aria-label={placeSaved ? `Remove ${title} from your plan` : `Add ${title} to your plan`}
+                aria-label={t(placeSaved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}
                 aria-pressed={placeSaved}
                 onClick={onToggleSaved}
                 disabled={isSavingPending}
                 className="pd-iconbtn khg-heart-tap"
               >
-                <Heart
+                <Bookmark
                   size={18}
                   color={placeSaved ? "var(--brand-600)" : "var(--gray-500)"}
                   fill={placeSaved ? "var(--brand-600)" : "none"}
                 />
               </button>
+              <LoveButton placeId={place.id} name={title} likeCount={place.likeCount} />
             </div>
           </div>
         </div>
@@ -461,7 +463,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
           {/* ── Content ── */}
           <div className="pd-main">
             <header>
-              <nav aria-label={locale === 'ar' ? 'مسار التنقل' : 'Breadcrumb'} className="pd-kind pd-crumbs">
+              <nav aria-label={t('place.breadcrumb')} className="pd-kind pd-crumbs">
                 <a href={`/${locale}/`}>{locale === 'ar' ? 'الرئيسية' : 'Home'}</a>{' · '}
                 <a href={`/${locale}/explorer/`}>{locale === 'ar' ? 'استكشف' : 'Explore'}</a>{' · '}
                 <a href={`/${locale}/explorer/${citySlug}/`}>{pick(placeCity?.name, placeCity?.nameEn)}</a>
@@ -504,7 +506,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
                 }}
               >
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <Heart size={15} aria-hidden="true" />
+                  <Bookmark size={15} aria-hidden="true" />
                   {fmtCount((place as { saveCount?: number }).saveCount)}
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -571,6 +573,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
               <div className="pd-actions">
                 {primaryButton}
                 {primaryAction !== "save" && renderSaveButton("secondary")}
+                <LoveButton placeId={place.id} name={title} likeCount={place.likeCount} />
               </div>
               {(place.phone || place.website) && (
                 <div style={{ marginTop: 16 }}>

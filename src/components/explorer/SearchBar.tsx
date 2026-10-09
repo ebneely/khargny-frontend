@@ -13,9 +13,10 @@ type SearchBarProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  onSettle?: () => void;
 };
 
-export function SearchBar({ value, onChange, placeholder = "Search places..." }: SearchBarProps) {
+export function SearchBar({ value, onChange, placeholder, onSettle }: SearchBarProps) {
   const { t } = useI18n();
   const inputRef = React.useRef<HTMLInputElement>(null);
   return (
@@ -56,8 +57,10 @@ export function SearchBar({ value, onChange, placeholder = "Search places..." }:
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        aria-label={placeholder}
+        placeholder={placeholder ?? t('common.searchPlaces')}
+        aria-label={placeholder ?? t('common.searchPlaces')}
+        onBlur={onSettle}
+        onKeyDown={(event) => { if (event.key === 'Enter') onSettle?.(); }}
         style={{
           border: "none",
           outline: "none",

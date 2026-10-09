@@ -11,6 +11,7 @@ export type AdPlace = {
   priceVerified: boolean;
   visitedByUs: boolean;
   saveCount: number;
+  likeCount?: number;
   viewCount: number;
   directionsCount: number;
 };
@@ -78,6 +79,7 @@ function normalizeItem(value: unknown): AdItem | null {
       priceVerified: raw.priceVerified === true,
       visitedByUs: raw.visitedByUs === true,
       saveCount: count(raw.saveCount),
+      likeCount: count(raw.likeCount),
       viewCount: count(raw.viewCount),
       directionsCount: count(raw.directionsCount),
     },

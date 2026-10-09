@@ -419,7 +419,7 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
 });
 
 function realPlaceCard(React, locale, t) {
-  const icons = Object.fromEntries(["Heart", "Navigation", "Eye", "Star", "BadgeCheck", "Tag"].map((name) => [name, () => null]));
+  const icons = Object.fromEntries(["Bookmark", "Navigation", "Eye", "Star", "BadgeCheck", "Tag"].map((name) => [name, () => null]));
   const common = { react: React, "react/jsx-runtime": require("react/jsx-runtime"), "lucide-react": icons, "@/i18n/LocaleProvider": { useI18n: () => ({ locale, t }) } };
   const photos = load("src/lib/place-photo.ts", { URL });
   const priceBands = load("src/lib/price-bands.ts");
@@ -427,6 +427,8 @@ function realPlaceCard(React, locale, t) {
   const badges = load("src/components/ds/PlaceBadges.tsx", {}, { ...common, "@/lib/price-bands": priceBands, "./PlaceBadges.module.css": { default: {} } });
   return load("src/components/ds/PlaceCard.tsx", {}, {
     ...common, "./PhotoImage": photo, "./PlaceBadges": badges, "@/lib/price-bands": priceBands,
+    "./LoveButton": { LoveButton: () => null },
+    "@/lib/compact-count": load("src/lib/compact-count.ts"),
     "./IconButton": load("src/components/ds/IconButton.tsx", {}, common),
     "next/link": { default: ({ prefetch, ...props }) => { assert.equal(prefetch, false); return React.createElement("a", props); } },
     "@/lib/api/hooks/use-saved-places": { useSaveToggle: () => ({ saved: false, toggle() {} }) },

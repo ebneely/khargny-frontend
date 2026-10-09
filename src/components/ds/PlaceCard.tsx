@@ -15,7 +15,9 @@
 import { PhotoImage } from "./PhotoImage";
 import * as React from "react";
 import Link from "next/link";
-import { Heart, Navigation, Eye, Star } from "lucide-react";
+import { Bookmark, Navigation, Eye, Star } from "lucide-react";
+import { LoveButton } from './LoveButton';
+import { compactCount as formatCount } from '@/lib/compact-count';
 import { IconButton } from "./IconButton";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { useI18n } from "@/i18n/LocaleProvider";
@@ -23,7 +25,7 @@ import { PlaceBadges } from "./PlaceBadges";
 import { priceBandLabel } from "@/lib/price-bands";
 
 const SaveIcon = ({ filled }: { filled: boolean }) => (
-  <Heart size={18} fill={filled ? "var(--brand-600)" : "none"} stroke={filled ? "var(--brand-600)" : "var(--gray-700)"} aria-hidden="true" />
+  <Bookmark size={18} fill={filled ? "var(--brand-600)" : "none"} stroke={filled ? "var(--brand-600)" : "var(--gray-700)"} aria-hidden="true" />
 );
 
 // Bundled, not fetched from unpkg.com at runtime: a third-party request on the render path
@@ -68,6 +70,8 @@ type PlaceCardProps = {
   badgeTone?: "white" | "sponsored";
   /** Optional — if provided, the heart icon wires to the saved-places backend. */
   placeId?: string;
+  likeCount?: number;
+  saveExternally?: boolean;
   /** External saved state — used by the homepage rails (no per-card useSavedPlaces query, no useSaveToggle). */
   favorite?: boolean;
   /** Optional: if `placeId` is provided, this becomes a no-op (useSaveToggle is used internally). */
@@ -89,18 +93,10 @@ function PlaceCardLink({ href, onTitleClick, children }: Pick<PlaceCardProps, "h
   if (!href) return <>{children}</>;
   const address = href.startsWith('/explorer/') ? `/${locale}${href.replace(/\/+$/, '')}/` : href;
   return (
-    <Link href={address} prefetch={intent ? true : false} onClick={onTitleClick} onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className="khg-place-card-link" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+    <Link href={address} prefetch={intent ? true : false} onClick={onTitleClick} onAuxClick={(event) => { if (event.button === 1) onTitleClick?.(); }} onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className="khg-place-card-link" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
       {children}
     </Link>
   );
-}
-
-/** 1234 → "1.2k", 1000000 → "1m". Keeps the stat row compact. */
-function formatCount(n: number | undefined): string {
-  const v = n ?? 0;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}m`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}k`;
-  return String(v);
 }
 
 /**
@@ -125,6 +121,8 @@ export function PlaceCard({
   badge,
   badgeTone,
   placeId,
+  likeCount,
+  saveExternally = false,
   favorite = false,
   onToggleFavorite,
   size = "md",
@@ -132,12 +130,12 @@ export function PlaceCard({
   href,
   metrics,
 }: PlaceCardProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [hover, setHover] = React.useState(false);
   // If a real placeId is provided, use the saved-places backend for the heart state.
   // Otherwise (homepage placeholder data), fall back to the external `favorite` prop
   // + `onToggleFavorite` callback.
-  const useBackend = Boolean(placeId);
+  const useBackend = Boolean(placeId) && !saveExternally;
   const backend = useSaveToggle(useBackend ? placeId! : null);
   const [localSaved, setLocalSaved] = React.useState(favorite);
   const [bump, setBump] = React.useState(0); // re-triggers the pop animation on each toggle
@@ -268,7 +266,7 @@ export function PlaceCard({
             card is given metrics, so a brand-new place honestly shows 0s rather than hiding. */}
         {metrics && (
           <span
-            aria-label={`${formatCount(metrics.saves)} saves, ${formatCount(metrics.directions)} directions, ${formatCount(metrics.views)} views`}
+            aria-label={t('place.engagementCounts', { saves: formatCount(metrics.saves), directions: formatCount(metrics.directions), views: formatCount(metrics.views) })}
             style={{
               display: "flex",
               alignItems: "center",
@@ -279,7 +277,7 @@ export function PlaceCard({
             }}
           >
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <Heart size={13} aria-hidden="true" />
+              <Bookmark size={13} aria-hidden="true" />
               {formatCount(metrics.saves)}
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -297,7 +295,7 @@ export function PlaceCard({
       {onToggleFavorite && (
         <div style={{ position: "absolute", insetBlockStart: 8, insetInlineEnd: 8, zIndex: 1 }}>
           <IconButton
-            ariaLabel={saved ? `Remove ${title} from your plan` : `Add ${title} to your plan`}
+            ariaLabel={t(saved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}
             selected={saved}
             icon={
               <span key={bump} className={bump > 0 ? "khg-pop-anim" : undefined} style={{ display: "inline-flex" }}>
@@ -314,6 +312,11 @@ export function PlaceCard({
               }
             }}
           />
+        </div>
+      )}
+      {placeId && (
+        <div style={{ position: 'absolute', insetBlockStart: badge ? 44 : 8, insetInlineStart: 8, zIndex: 1 }}>
+          <LoveButton placeId={placeId} name={title} likeCount={likeCount} />
         </div>
       )}
     </div>

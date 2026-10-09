@@ -166,6 +166,7 @@
   cursor: pointer;
 }
 .option {
+  flex: 1;
   display: flex;
   gap: 12px;
   align-items: center;
@@ -181,19 +182,29 @@
   font-family: var(--font-body);
   cursor: pointer;
 }
+.resultRow { position: relative; display: flex; }
+.resultLove { position: absolute; inset-inline-end: 0; inset-block-start: 0; z-index: 1; }
+.resultRow:has(.resultLove button) > .option { padding-inline-end: 88px; }
 .option[aria-selected="true"],
 .option:hover {
   background: var(--brand-50);
 }
 .optionName {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
 }
 .option small {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-secondary);
   font-size: var(--text-xs);
 }
+.option > span:last-child { min-inline-size: 0; }
 .option .reason {
   color: var(--text-link);
 }

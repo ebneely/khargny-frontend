@@ -42,10 +42,12 @@ function TrackedCard({ item, citySlug, area, placement, bucket, tracker, onSave,
   return (
     <div
       ref={ref}
-      onAuxClick={(event) => { if (event.button === 1 && (event.target as Element).closest("a")) tap(); }}
       style={{ minWidth: 0 }}
     >
       <PlaceCard
+        placeId={item.place.id}
+        saveExternally
+        likeCount={item.place.likeCount}
         href={`/explorer/${encodeURIComponent(citySlug)}/${encodeURIComponent(item.place.slug)}`}
         onTitleClick={tap}
         size="md"

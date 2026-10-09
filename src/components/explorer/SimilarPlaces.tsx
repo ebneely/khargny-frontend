@@ -51,6 +51,7 @@ export function SimilarPlaces({ places, citySlug, title }: SimilarPlacesProps) {
           <div key={p.id} style={{ minWidth: 0 }}>
           <PlaceCard
             placeId={p.id}
+            likeCount={p.likeCount}
             size="md"
             title={displayName(p, locale)}
             image={p.coverImage || undefined}

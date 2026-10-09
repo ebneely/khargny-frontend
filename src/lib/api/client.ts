@@ -1,7 +1,7 @@
 import { fetchApi } from './transport';
 import type { ApiErrorBody, ApiSuccess } from './types';
 
-export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /**
  * Thrown for any non-2xx REST response. Carries the backend's real error shape
@@ -12,13 +12,19 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly requestId?: string;
+  readonly retryAfter?: number;
 
-  constructor(status: number, body: ApiErrorBody | null) {
+  constructor(status: number, body: ApiErrorBody | null, retryAfter?: string | null) {
     super(body?.error?.message || `Request failed with status ${status}`);
     this.name = 'ApiError';
     this.status = status;
     this.code = body?.error?.code || 'UNKNOWN_ERROR';
     this.requestId = body?.requestId;
+    if (retryAfter) {
+      const seconds = Number(retryAfter);
+      const delay = Number.isFinite(seconds) ? seconds : (Date.parse(retryAfter) - Date.now()) / 1000;
+      if (Number.isFinite(delay)) this.retryAfter = Math.max(0, Math.ceil(delay));
+    }
   }
 }
 
@@ -27,6 +33,7 @@ interface ApiRequestOptions {
   headers?: Record<string, string>;
   params?: Record<string, string | number | boolean | string[] | undefined | null>;
   signal?: AbortSignal;
+  keepalive?: boolean;
 }
 
 function buildUrl(path: string, params?: ApiRequestOptions['params']): string {
@@ -62,6 +69,7 @@ export async function apiRequest<TData>(
     headers: { ...opts.headers, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
+    keepalive: opts.keepalive,
   });
 
   // Backend always returns a JSON envelope, success or error (§5).
@@ -73,7 +81,7 @@ export async function apiRequest<TData>(
   }
 
   if (!res.ok || !payload || payload.success !== true) {
-    throw new ApiError(res.status, payload && payload.success === false ? payload : null);
+    throw new ApiError(res.status, payload && payload.success === false ? payload : null, res.headers.get('Retry-After'));
   }
 
   return payload.data;

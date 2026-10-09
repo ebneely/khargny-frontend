@@ -90,6 +90,7 @@ test('successful adoption really refetches an active cached saved-plan query', a
     fetch: async url => envelope(url.endsWith('/guest/handover') ? { token: 'token' } : url.endsWith('/guest/adopt') ? { adopted: true } : []),
     react: { useState: initial => [initial()], useLayoutEffect() {}, useEffect: effect => { cleanup = effect(); } },
     '@tanstack/react-query': { QueryClient: class { constructor() { return queryClient; } }, QueryClientProvider: () => null },
+    '@/components/ds/LoveButton': { LoveFeedback: () => null },
   };
   try {
     load('src/components/QueryProvider.tsx', dependencies).QueryProvider({ children: null });
@@ -123,6 +124,7 @@ test('real client, analytics/ads and directions beacon share the gate and same-o
       QueryClient: class { setQueryDefaults() {} invalidateQueries(options) { invalidations.push(options); return Promise.resolve(); } },
       QueryClientProvider: () => null,
     },
+    '@/components/ds/LoveButton': { LoveFeedback: () => null },
   };
   load('src/components/QueryProvider.tsx', dependencies).QueryProvider({ children: null });
   const controller = new AbortController();

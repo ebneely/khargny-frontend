@@ -35,6 +35,8 @@ import { writeBrowseAddress } from '@/lib/browse-address';
 import { useBrowseRestore } from '@/lib/use-browse-session';
 import { useStickyBrowse } from '@/lib/use-sticky-browse';
 import { hasLocalSearchFilters, matchReason, searchTerm, SEARCH_PAGE_SIZE } from '@/lib/place-search';
+import { useSearchSignals } from '@/lib/use-search-signals';
+import { trackSearchClick } from '@/lib/analytics/track';
 
 /** Grid-friendly page size: divides evenly by 2, 3 and 4 columns. */
 import { CITY_PAGE_SIZE as PAGE_SIZE, cityPageHref } from '@/lib/city-pagination';
@@ -78,6 +80,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
   const { data: categories } = useCategories();
   const { data: amenities } = useAmenities();
   const currentCity = cities?.find((c) => c.slug === citySlug);
+  const searchSignals = useSearchSignals(search, currentCity?.id, locale, Boolean(currentCity));
   const requestedRegion = browse.state.area;
   const activeRegion = requestedRegion && currentCity?.areaKeys?.includes(requestedRegion) ? requestedRegion : null;
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -230,7 +233,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
               </div>
               <div className="khg-browse-what">
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <SearchBar value={search} onChange={setSearch} placeholder={t("common.searchPlaces")} />
+                  <SearchBar value={search} onChange={(value) => { searchSignals.change(value); setSearch(value); }} onSettle={searchSignals.settle} placeholder={t("common.searchPlaces")} />
                 </div>
                 <FilterPanel
                   isOpen={filtersOpen}
@@ -284,7 +287,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
           <ErrorState message={t("explorer.loadFailed")} onRetry={() => refetch()} />
         ) : displayedPlaces && displayedPlaces.length > 0 ? (
           <div className="khg-place-grid" aria-busy={searchBusy} style={{ opacity: searchBusy ? 0.5 : 1 }}>
-            {displayedPlaces.map((place) => (
+            {displayedPlaces.map((place, index) => (
               <div
                 key={place.id}
                 style={{ cursor: "pointer" }}
@@ -294,6 +297,11 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
                   href={`/explorer/${currentCity?.slug || citySlug}/${place.slug}`}
                   size="md"
                   placeId={place.id}
+                  likeCount={place.likeCount}
+                  onTitleClick={searching && !searchBusy && !searchQuery.isPlaceholderData && !searchQuery.isError && searchData?.items.includes(place) ? () => {
+                    searchSignals.settle();
+                    trackSearchClick(debouncedSearch, place.id, (searchData.total === undefined ? 0 : page * SEARCH_PAGE_SIZE) + index + 1, locale, currentCity?.id);
+                  } : undefined}
                   title={locale === "ar" ? place.name : place.nameEn || place.name}
                   category={categories?.find((category) => category.id === place.categoryId)?.[locale === 'ar' ? 'nameAr' : 'nameEn'] || categories?.find((category) => category.id === place.categoryId)?.nameAr}
                   searchReason={searching ? matchReason(place.matchedOn) : undefined}
@@ -422,10 +430,10 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
                   <section aria-busy={searchBusy} style={{ textAlign: 'start', marginTop: 'var(--space-6)', opacity: searchBusy ? 0.5 : 1 }}>
                     <h2>{t('explorer.otherCities')}</h2>
                     <div className="khg-place-grid">
-                      {searchData.otherCities.map((place) => {
+                      {searchData.otherCities.map((place, index) => {
                         const city = cities?.find((item) => item.id === place.cityId);
                         if (!city) return null;
-                        return <PlaceCard key={place.id} href={`/explorer/${city.slug}/${place.slug}`} size="md" placeId={place.id} title={displayName(place, locale)} area={displayName(city, locale)} searchReason={matchReason(place.matchedOn)} image={place.coverImage || undefined} priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }} onToggleFavorite={() => {}} />;
+                        return <PlaceCard key={place.id} href={`/explorer/${city.slug}/${place.slug}`} size="md" placeId={place.id} likeCount={place.likeCount} onTitleClick={!searchBusy && !searchQuery.isPlaceholderData ? () => { searchSignals.settle(); trackSearchClick(debouncedSearch, place.id, index + 1, locale, currentCity?.id); } : undefined} title={displayName(place, locale)} area={displayName(city, locale)} searchReason={matchReason(place.matchedOn)} image={place.coverImage || undefined} priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }} onToggleFavorite={() => {}} />;
                       })}
                     </div>
                   </section>

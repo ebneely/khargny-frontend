@@ -20,7 +20,7 @@ export function useSearchPlaces(query: SearchPlacesQuery, options: { enabled?: b
   return useQuery({
     queryKey: searchKeys.places(datasetQuery, locale, local),
     queryFn: ({ signal }) => loadSearchPage(filteredLocally ? { ...datasetQuery, limit: Number.MAX_SAFE_INTEGER } : datasetQuery, local, (path, params) => apiRequest<unknown>('GET', path, {
-      params: params as Record<string, string | number | string[] | undefined | null>,
+      params: { ...params, platform: 'web', locale },
       headers: { 'Accept-Language': locale },
       signal,
     })),

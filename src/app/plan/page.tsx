@@ -10,13 +10,14 @@
  * strictly non-transactional).
  */
 import * as React from "react";
+import { LoveButton } from '@/components/ds/LoveButton';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName } from "@/lib/display-name";
-import { Star, Heart } from "lucide-react";
+import { Star, Bookmark } from "lucide-react";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { SiteHeader } from "@/components/ds/SiteHeader";
@@ -39,6 +40,7 @@ type SavedPlaceWithPlace = {
     cityId: string;
     /** attachCovers() has always sent this; the row just never read it. */
     coverImage?: string | null;
+    likeCount?: number;
     hasMenu?: boolean;
     priceVerified?: boolean;
     visitedByUs?: boolean;
@@ -170,7 +172,7 @@ export default function PlanPage() {
         }}
       >
         <span
-          aria-label={`${totalCount} saved`}
+          aria-label={t('place.savedCount', { count: totalCount })}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -184,7 +186,7 @@ export default function PlanPage() {
             padding: "4px 10px",
           }}
         >
-          <Heart size={12} fill="var(--brand-600)" color="var(--brand-600)" aria-hidden="true" />
+          <Bookmark size={12} fill="var(--brand-600)" color="var(--brand-600)" aria-hidden="true" />
           {totalCount}
         </span>
       </div>
@@ -382,11 +384,12 @@ function PlanItemCard({
   onRemove: () => void;
   removing: boolean;
 }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const placeName = displayName(sp.place, locale) || sp.place.name;
   return (
     <div
       style={{
+        position: 'relative',
         display: "flex",
         alignItems: "center",
         gap: 14,
@@ -476,7 +479,7 @@ function PlanItemCard({
       </div>
       <button
         type="button"
-        aria-label={`Remove ${placeName} from your plan`}
+        aria-label={t('place.unsaveLabel', { place: placeName })}
         className="khg-heart-tap"
         disabled={removing}
         onClick={(e) => {
@@ -496,8 +499,11 @@ function PlanItemCard({
           cursor: removing ? "default" : "pointer",
         }}
       >
-        <Heart size={16} fill="var(--brand-600)" color="var(--brand-600)" aria-hidden="true" />
+        <Bookmark size={16} fill="var(--brand-600)" color="var(--brand-600)" aria-hidden="true" />
       </button>
+      <div style={{ position: 'absolute', insetBlockStart: 12, insetInlineStart: 12 }}>
+        <LoveButton placeId={sp.placeId} name={placeName} likeCount={sp.place.likeCount} />
+      </div>
     </div>
   );
 }

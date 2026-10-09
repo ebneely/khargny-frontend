@@ -42,6 +42,7 @@ export interface SavedPlaceWithPlace extends SavedPlace {
     /** The first image's small WebP variant. attachCovers() has always sent this; the
      *  type simply never declared it, so the plan drew a gradient block instead. */
     coverImage?: string | null;
+    likeCount?: number;
   };
 }
 

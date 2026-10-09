@@ -120,6 +120,7 @@ export interface Place extends PlaceFlags {
   rating: number;
   viewCount: number;
   saveCount?: number;
+  likeCount?: number;
   directionsCount?: number;
   featured: boolean;
   status: PlaceStatus;

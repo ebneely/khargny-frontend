@@ -34,6 +34,7 @@ export type RailPlace = PlaceFlags & {
   priceRange: PriceLevel | null;
   badge?: string;
   image?: string;
+  likeCount?: number;
   metrics?: { saves?: number; directions?: number; views?: number };
 };
 export type Rail = { title: string; places: RailPlace[] };
@@ -125,6 +126,7 @@ export function useHomeDiscovery() {
       priceRange: PriceLevel | null;
       featured?: boolean;
       saveCount?: number;
+      likeCount?: number;
       viewCount?: number;
       directionsCount?: number;
       coverImage?: string | null;
@@ -142,6 +144,7 @@ export function useHomeDiscovery() {
       priceVerified: place.priceVerified,
       visitedByUs: place.visitedByUs,
       image: place.coverImage ?? undefined,
+      likeCount: place.likeCount,
       metrics: {
         saves: place.saveCount,
         directions: place.directionsCount,

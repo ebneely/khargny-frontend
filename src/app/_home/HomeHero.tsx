@@ -11,6 +11,9 @@ import { useDebouncedSearch } from "@/lib/use-search-term";
 import { matchReason, searchAddress, searchTerm } from "@/lib/place-search";
 import { regionLabel } from "@/lib/egypt-regions";
 import { PhotoImage } from "@/components/ds/PhotoImage";
+import { LoveButton } from '@/components/ds/LoveButton';
+import { useSearchSignals } from '@/lib/use-search-signals';
+import { trackSearchClick } from '@/lib/analytics/track';
 import {
   detectNearbyLocation,
   detectedCityAddress,
@@ -31,6 +34,9 @@ type Option = {
   detail?: string;
   reason?: string;
   photo?: string | null;
+  placeId?: string;
+  likeCount?: number;
+  position?: number;
 };
 
 export function HomeHero({ cities }: { cities: City[] }) {
@@ -44,6 +50,7 @@ export function HomeHero({ cities }: { cities: City[] }) {
   const [geoMessage, setGeoMessage] = React.useState("");
   const [detected, setDetected] = React.useState<DetectedLocation | null>(null);
   const [selectedCity, setSelectedCity] = React.useState<City | null>(null);
+  const searchSignals = useSearchSignals(input, selectedCity?.id, locale);
   const [citySheetOpen, setCitySheetOpen] = React.useState(false);
   const [example, setExample] = React.useState(0);
   const hasTyped = React.useRef(false);
@@ -106,7 +113,7 @@ export function HomeHero({ cities }: { cities: City[] }) {
         })),
       ]
     : [
-        ...places.slice(0, 6).flatMap((place) => {
+        ...places.slice(0, 6).flatMap((place, index) => {
           const city = selectedCity ?? cities.find(
             (candidate) => candidate.id === place.cityId,
           );
@@ -117,6 +124,9 @@ export function HomeHero({ cities }: { cities: City[] }) {
           return [
             {
               key: place.id,
+              placeId: place.id,
+              likeCount: place.likeCount,
+              position: index + 1,
               label: pick(place.name, place.nameEn),
               photo: place.coverImage,
               href: `${cityHref(city)}${encodeURIComponent(place.slug)}/`,
@@ -230,7 +240,11 @@ export function HomeHero({ cities }: { cities: City[] }) {
   }, [highlight]);
 
   function remember() {
+    searchSignals.settle();
     if (term) setRecents(store.current.add(term));
+  }
+  function recordClick(option: Option) {
+    if (option.placeId && option.position && term) trackSearchClick(term, option.placeId, option.position, locale, selectedCity?.id);
   }
   function selectCity(city?: City) {
     cityChoiceRestored.current = true;
@@ -261,6 +275,7 @@ export function HomeHero({ cities }: { cities: City[] }) {
       field.current?.focus();
     } else if (option.href) {
       remember();
+      recordClick(option);
       setOpen(false);
       window.location.assign(option.href);
     }
@@ -384,8 +399,10 @@ export function HomeHero({ cities }: { cities: City[] }) {
               placeholder={t(`home.searchExample${example + 1}`)}
               autoComplete="off"
               onFocus={() => setOpen(true)}
+              onBlur={searchSignals.settle}
               onChange={(event) => {
                 hasTyped.current = true;
+                searchSignals.change(event.target.value);
                 setInput(event.target.value);
                 setOpen(true);
                 setHighlight(-1);
@@ -495,17 +512,23 @@ export function HomeHero({ cities }: { cities: City[] }) {
                     onPointerMove: () => setHighlight(index),
                   };
                   return option.href ? (
+                    <div key={option.key} className={styles.resultRow}>
                     <a
-                      key={option.key}
                       {...props}
                       href={option.href}
+                      onAuxClick={(event) => { if (event.button === 1) { remember(); recordClick(option); } }}
                       onClick={() => {
                         remember();
+                        recordClick(option);
                         setOpen(false);
                       }}
                     >
                       {contents}
                     </a>
+                    {option.placeId && <div className={styles.resultLove} onMouseDown={(event) => event.preventDefault()}>
+                      <LoveButton placeId={option.placeId} name={option.label} likeCount={option.likeCount} />
+                    </div>}
+                    </div>
                   ) : (
                     <button
                       key={option.key}

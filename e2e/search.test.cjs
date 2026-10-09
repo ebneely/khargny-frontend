@@ -224,7 +224,7 @@ test('search hook sends city, category, rating and distance with q, locale and a
   useSearchPlaces(query, { locale: 'en', enabled: true });
   const signal = new AbortController().signal;
   await options.queryFn({ signal });
-  assert.deepEqual(plain(requests[0].params), query);
+  assert.deepEqual(plain(requests[0].params), { ...query, platform: 'web', locale: 'en' });
   assert.equal(requests[0].headers['Accept-Language'], 'en');
   assert.equal(requests[0].signal, signal);
   useSearchPlaces({ q: 'r', cityId: 'aswan' }, { enabled: true, locale: 'en' });

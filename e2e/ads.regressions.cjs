@@ -707,10 +707,9 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
     assertBatch(env.requests[1], [adEvent("impression", "featured", 1000), adEvent("tap", "featured", 1000)]);
     assert.equal(env.requests[0].body.events[0].eventId, env.requests[1].body.events[0].eventId);
     card.props.onToggleFavorite(true);
-    wrapper.props.onAuxClick({ button: 1, target: { closest: () => null } });
-    wrapper.props.onAuxClick({ button: 2, target: { closest: () => ({}) } });
+    assert.equal(wrapper.props.onAuxClick, undefined);
     assert.equal(env.requests.length, 2);
-    wrapper.props.onAuxClick({ button: 1, target: { closest: () => ({}) } });
+    card.props.onTitleClick();
     assert.equal(env.requests.length, 3);
     assert.equal(env.requests[2].body.events[1].type, "tap");
   });

@@ -55,7 +55,7 @@ function fixture() {
 
 function translations(locale) {
   const dictionaries = loadModule('src/i18n/dictionaries.ts');
-  return { useI18n: () => ({ locale, t: (key) => key.split('.').reduce((value, part) => value?.[part], dictionaries.dictionaries[locale]) }) };
+  return { useI18n: () => ({ locale, t: (key, vars = {}) => Object.entries(vars).reduce((text, [name, value]) => text.replaceAll('{' + name + '}', String(value)), key.split('.').reduce((value, part) => value?.[part], dictionaries.dictionaries[locale]) ?? key) }) };
 }
 
 function frameworkLink({ children, prefetch, ...props }) {
@@ -562,21 +562,21 @@ test('a not-held text or icon chip never names the positive badge; the legend st
   }
 });
 
-test('the existing save action renders an outline or brand-filled heart, retaining labels and sibling links', () => {
+test('Save remains an outline or brand-filled bookmark, distinct from Love, retaining labels and sibling links', () => {
   const PlaceCard = cardModule('en');
   for (const saved of [false, true]) {
     const markup = renderToStaticMarkup(React.createElement(PlaceCard, { title: 'Test place', favorite: saved, href: '/test', onToggleFavorite: () => {} }));
     const button = markup.match(/<button\b[\s\S]*?<\/button>/)?.[0];
-    assert.ok(button.includes('class="Heart"'));
+    assert.ok(button.includes('class="Bookmark"'));
     assert.ok(button.includes(`fill="${saved ? 'var(--brand-600)' : 'none'}"`));
     assert.ok(button.includes(`aria-label="${saved ? 'Remove Test place from your plan' : 'Add Test place to your plan'}"`));
-    assert.ok(!button.includes('Bookmark'));
+    assert.ok(!button.includes('class="Heart"'));
     assert.ok(markup.indexOf('</a>') < markup.indexOf('<button'));
   }
   const PlanItemCard = planCardModule('en');
   const plan = renderToStaticMarkup(React.createElement(PlanItemCard, { saved: { place: { name: 'Test place', slug: 'test', cityId: 'city' } }, onOpen: () => {}, onRemove: () => {} }));
-  assert.ok(plan.includes('class="Heart"'));
-  assert.ok(!plan.includes('Bookmark'));
+  assert.ok(plan.includes('class="Bookmark"'));
+  assert.ok(!plan.includes('class="Heart"'));
 });
 
 test('existing green and grey tokens meet text and icon contrast without opacity', () => {

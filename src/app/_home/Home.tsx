@@ -62,6 +62,9 @@ export function HomeRails({ d }: { d: HomeDiscovery }) {
                     {/* No `rating` prop: there is no review system yet, so places.rating is
                         always 0 and rendering it published a score nobody gave. */}
                     <PlaceCard
+                      placeId={p.id}
+                      saveExternally
+                      likeCount={p.likeCount}
                       href={p.citySlug && p.slug ? `/explorer/${p.citySlug}/${p.slug}` : undefined}
                       size="md"
                       image={p.image}

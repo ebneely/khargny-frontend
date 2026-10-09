@@ -14,7 +14,7 @@ function load(relativePath, dependencies = {}) {
   }).outputText;
   const exports = {};
   modules.set(filename, exports);
-  vm.runInNewContext(output, { exports, URL, URLSearchParams, Headers, Request, Response, AbortSignal, AbortController, setTimeout, clearTimeout,
+  vm.runInNewContext(output, { exports, URL, URLSearchParams, Headers, Request, Response, AbortSignal, AbortController, setTimeout, clearTimeout, Date,
     window: dependencies.window, navigator: dependencies.navigator, fetch: dependencies.fetch, process: dependencies.process ?? { env: { NODE_ENV: 'test', CI: '1' } },
     require(name) {
       if (name in dependencies) return dependencies[name];
