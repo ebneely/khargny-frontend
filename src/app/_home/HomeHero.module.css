@@ -31,7 +31,9 @@
   max-inline-size: 560px;
   margin: clamp(20px, 4vw, 32px) auto 0;
   text-align: start;
-  z-index: 20;
+  /* Below the site header (z-index 20): the search and its panel sit over the page, never over
+     the top bar or its menu when the page is scrolled. */
+  z-index: 5;
 }
 .field {
   display: flex;
