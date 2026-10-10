@@ -1,0 +1,25 @@
+.count {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+.roll {
+  display: inline-block;
+  animation: count-roll 220ms ease-out;
+}
+@keyframes count-roll {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roll {
+    animation: none;
+  }
+}

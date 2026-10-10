@@ -91,6 +91,7 @@ test('successful adoption really refetches an active cached saved-plan query', a
     react: { useState: initial => [initial()], useLayoutEffect() {}, useEffect: effect => { cleanup = effect(); } },
     '@tanstack/react-query': { QueryClient: class { constructor() { return queryClient; } }, QueryClientProvider: () => null },
     '@/components/ds/LikeButton': { LikeFeedback: () => null },
+    '@/components/ds/SaveFeedback': { SaveFeedback: () => null },
   };
   try {
     load('src/components/QueryProvider.tsx', dependencies).QueryProvider({ children: null });
@@ -125,6 +126,7 @@ test('real client, analytics/ads and directions beacon share the gate and same-o
       QueryClientProvider: () => null,
     },
     '@/components/ds/LikeButton': { LikeFeedback: () => null },
+    '@/components/ds/SaveFeedback': { SaveFeedback: () => null },
   };
   load('src/components/QueryProvider.tsx', dependencies).QueryProvider({ children: null });
   const controller = new AbortController();

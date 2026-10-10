@@ -30,6 +30,7 @@ import { usePlace } from "@/lib/api/hooks/use-places";
 import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
+import { RollingCount } from "@/components/ds/RollingCount";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { cardArea, regionLocation } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
@@ -121,8 +122,8 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
 
   // Heart is wired to the saved-places backend. No login — guest cookie auth
   // (khargny_guest_id); POST /v1/saved-places is idempotent, so re-tapping is safe.
-  const { saved: placeSaved, toggle: toggleSaved, isPending: isSavingPending } =
-    useSaveToggle(place?.id ?? null);
+  const { saved: placeSaved, count: saves, toggle: toggleSaved, isPending: isSavingPending } =
+    useSaveToggle(place?.id ?? null, place?.saveCount);
 
   // Audience analytics: one place view per opened place (the backend dedupes repeats).
   const viewedPlaceId = place?.id;
@@ -254,15 +255,17 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
   const renderSaveButton = (variant: "primary" | "secondary" | "icon") => (
     <button
       type="button"
+      data-save-button
       onClick={onToggleSaved}
-      disabled={isSavingPending}
+      aria-busy={isSavingPending}
       className={`khg-heart-tap ${variant === "icon" ? "pd-iconbtn" : `pd-btn pd-btn-${variant}`}`}
       data-saved={placeSaved || undefined}
-      aria-label={t(placeSaved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}
+      aria-label={`${t(placeSaved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}: ${t('place.savesCount', { count: saves })}`}
       aria-pressed={placeSaved}
     >
       <Bookmark size={24} fill={placeSaved ? "currentColor" : "none"} aria-hidden="true" />
       {variant !== "icon" && saveLabel}
+      <RollingCount count={saves} className="pd-save-count" />
     </button>
   );
 
@@ -370,6 +373,10 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
         .pd-iconbtn:disabled { opacity:.6; cursor:default; }
         .pd-iconbtn[data-saved] { color:var(--brand-600); border-color:var(--brand-600); }
         .pd-iconbtn:focus-visible { outline:2px solid var(--brand-600); outline-offset:2px; }
+        .pd-save-count { color:var(--text-primary); }
+        .pd-btn .pd-save-count { margin-inline-start:auto; }
+        .pd-iconbtn[data-save-button] { width:auto; min-inline-size:44px; padding-inline:var(--space-2); gap:6px; border-radius:var(--radius-lg); }
+        [data-save-button] > svg { flex-shrink:0; }
 
         /* ── Action rail (desktop) ───────────────────────────────────────────── */
         .pd-card { border:1px solid var(--border-default); border-radius:var(--radius-xl);
@@ -477,9 +484,9 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
                   color: "var(--text-tertiary)",
                 }}
               >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <span role="img" aria-label={t("place.savesCount", { count: saves })} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                   <Bookmark size={15} aria-hidden="true" />
-                  {fmtCount((place as { saveCount?: number }).saveCount)}
+                  <RollingCount count={saves} />
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                   <Navigation size={15} aria-hidden="true" />

@@ -1,7 +1,8 @@
-.card { width: 100%; min-width: 0; font-family: var(--font-body); container-type: inline-size; }
+.card { width: 100%; min-width: 0; block-size: 100%; display: flex; flex-direction: column; font-family: var(--font-body); container-type: inline-size; overflow: hidden; --card-inset: var(--space-3); }
 .card { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-card); }
+.card[data-compact] { --card-inset: 10px; }
 .card ::selection { background: var(--brand-100); color: var(--text-primary); }
-.photo { position: relative; width: 100%; aspect-ratio: 1; border-radius: var(--radius-xl); overflow: hidden; background: var(--gradient-sunset); }
+.photo { position: relative; width: 100%; aspect-ratio: 1; flex-shrink: 0; border-radius: 0; overflow: hidden; background: var(--gradient-sunset); }
 .photo[data-compact] { aspect-ratio: 1; }
 .viewport { display: flex; width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; touch-action: pan-x pan-y pinch-zoom; scrollbar-width: none; overscroll-behavior-x: contain; }
 .viewport::-webkit-scrollbar { display: none; }
@@ -13,26 +14,30 @@
 .chevrons button:last-child { inset-inline-end: var(--space-2); }
 [dir='rtl'] .chevrons svg { transform: rotate(180deg); }
 .chevrons button:disabled { opacity: .4; cursor: default; }
-.dots { display: flex; justify-content: center; align-items: center; height: 24px; gap: 0; }
+.dots { display: flex; justify-content: center; align-items: center; block-size: 24px; flex-shrink: 0; gap: 0; margin-block-start: var(--space-2); padding-inline: var(--card-inset, var(--space-3)); }
 .dots button { display: grid; place-items: center; width: 28px; height: 24px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .dots button::before { content: ''; width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--text-secondary); }
 .dots button[data-small]::before { width: 4px; height: 4px; }
 .dots button[aria-current]::before { width: 7px; height: 7px; background: var(--brand-600); }
-.actions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 16px; min-block-size: 44px; padding-block: var(--space-1); color: var(--text-primary); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.stat, .save { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 20px; min-block-size: 44px; flex-shrink: 0; margin-block-start: var(--space-2); padding-inline: var(--card-inset, var(--space-3)); color: var(--text-primary); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dots + .actions { margin-block-start: var(--space-1); }
+.stat, .save { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .stat { color: var(--text-secondary); }
-.stat > span, .save > span { inline-size: 4ch; }
-.save { margin-inline-start: auto; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--text-primary); font: inherit; cursor: pointer; }
+.actions [dir='ltr'] { inline-size: auto; text-transform: uppercase; }
+.actions [data-like-button] { min-inline-size: 0; gap: 6px; padding-inline: 10px; margin-inline: -10px; font-size: inherit; }
+.actions [data-like-button] > span:first-child > svg { position: relative; inset-inline-start: -.65px; }
+.save { margin-inline-start: auto; margin-inline-end: -10px; min-inline-size: 44px; min-block-size: 44px; padding-block: 0; padding-inline: 0 10px; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--text-primary); font: inherit; cursor: pointer; }
 .save[aria-pressed='true'] > svg { color: var(--brand-700); }
 .save:hover { background: var(--surface-sunken); }
 .save:active { background: var(--brand-50); }
 .save:disabled { opacity: .65; cursor: not-allowed; }
-.words { display: flex; flex-direction: column; gap: 4px; color: inherit; text-decoration: none; padding-block: var(--space-1) var(--space-3); }
-.words { padding-inline: var(--space-2); }
+.save[aria-busy='true'] [dir='ltr'] { text-decoration: underline dotted; text-underline-offset: 4px; }
+.words { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); color: inherit; text-decoration: none; padding-block: var(--space-1) var(--space-3); padding-inline: var(--card-inset, var(--space-3)); }
+.badges { margin-block-start: var(--space-1); }
 .title { font-size: var(--text-base); font-weight: 600; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: var(--text-sm); color: var(--text-secondary); }
 .meta [data-badge-tone='sponsored'] { color: var(--sponsored); font-weight: 600; }
-.reason { display: block; height: 1.35em; font-size: var(--text-sm); color: var(--text-secondary); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.reason { display: block; line-height: 1.35; font-size: var(--text-sm); color: var(--text-secondary); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .card :is(button, a, [tabindex]):focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; }
 @media (min-width: 1024px) { .photo { aspect-ratio: 4 / 3; } }
 @media (hover: hover) and (pointer: fine) { .photo:hover .chevrons, .photo:focus-within .chevrons { display: block; } }

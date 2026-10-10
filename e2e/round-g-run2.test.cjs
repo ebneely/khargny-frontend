@@ -28,6 +28,26 @@ test('posts are square below desktop; only a priority first slide is eager', () 
   assert.ok(source.includes('priority={priority && index === 0}'));
 });
 
+test('Round H post layout uses one inset, natural 15px totals, optical targets and one clipped photo curve', () => {
+  const css = fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8');
+  assert.match(css, /\.card\s*\{[^}]*overflow:\s*hidden[^}]*--card-inset:\s*var\(--space-3\)/);
+  assert.match(css, /\.photo\s*\{[^}]*border-radius:\s*0/);
+  assert.match(css, /\.actions\s*\{[^}]*flex-wrap:\s*nowrap[^}]*gap:\s*20px[^}]*font-size:\s*15px[^}]*font-weight:\s*600/);
+  assert.match(css, /\.stat,\s*\.save\s*\{[^}]*gap:\s*6px/);
+  assert.doesNotMatch(css, /4ch|padding-inline:\s*var\(--space-2\)/);
+  assert.match(css, /\[data-like-button\]\s*\{[^}]*padding-inline:\s*10px[^}]*margin-inline:\s*-10px/);
+  assert.match(css, /\.save\s*\{[^}]*margin-inline-start:\s*auto[^}]*margin-inline-end:\s*-10px/);
+  assert.match(css, /\.words\s*\{[^}]*padding-block:\s*var\(--space-1\)\s*var\(--space-3\)[^}]*padding-inline:\s*var\(--card-inset/);
+  const source = fs.readFileSync('src/components/ds/PlaceCard.tsx', 'utf8');
+  assert.match(source, /searchReason &&/); assert.doesNotMatch(source, /searchReason \|\| '\\u00a0'/);
+  const script = fs.readFileSync('.brief/verify/round-g.mjs', 'utf8');
+  assert.match(script, /async function roundHGeometry/);
+  assert.ok(script.includes("element.style.inlineSize = '320px'"));
+  assert.ok(script.includes("for (const direction of ['ltr', 'rtl'])"));
+  assert.ok(script.includes('heart?.getBBox()')); assert.ok(script.includes('heart?.getScreenCTM()'));
+  assert.ok(script.includes("['0px', '0px']")); assert.ok(script.includes('four 1.2K groups overflow'));
+});
+
 test('scenario reporting preserves duplicate planned checks and reports every abort remainder', () => {
   const { createCheckLedger, roundGChecks } = require('./round-g-checks.cjs');
   const ledger = createCheckLedger(['ready', 'signal', 'signal', 'safety']);

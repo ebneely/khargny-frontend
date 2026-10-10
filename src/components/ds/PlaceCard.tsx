@@ -25,13 +25,13 @@ export function PlaceCard({ image, imageSizes, title, category, searchReason, ar
   if (saveState.favorite !== favorite) setSaveState({ favorite, saved: favorite });
   const saved = saveState.favorite === favorite ? saveState.saved : favorite;
   const address = href?.startsWith('/explorer/') ? `/${locale}${href.replace(/\/+$/, '')}/` : href;
-  const words = <><span className={styles.title} title={title}>{title}</span>
+  const words = <><span className={styles.title} data-place-title title={title}>{title}</span>
     <span className={styles.meta} title={area || undefined}>{[category, area].filter(Boolean).join(' · ')}{badge && <span data-badge-tone={badgeTone}>{' · '}{badge}</span>}</span>
-    {searchReason !== undefined && <span data-search-reason className={styles.reason} title={searchReason || undefined}>{searchReason || '\u00a0'}</span>}
+    {searchReason && <span data-search-reason className={styles.reason} title={searchReason}>{searchReason}</span>}
     {(rating || priceBandLabel(priceRange, locale)) && <span className={styles.meta}>{rating && <span><Star size={14} aria-hidden="true" /> {rating}</span>}<PlaceBadges priceRange={priceRange} variant="price" /></span>}
-    <PlaceBadges hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} variant="compact" />
+    <span className={styles.badges}><PlaceBadges hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} variant="compact" /></span>
   </>;
-  return <article className={styles.card} data-place-card data-place-id={placeId}>
+  return <article className={styles.card} data-place-card data-place-id={placeId} data-compact={compact || undefined}>
     <PostPhoto image={image} gallery={gallery} compact={compact} priority={priority} title={title} placeId={placeId} href={address} sizes={imageSizes} onOpen={onTitleClick} />
     <PlaceActions placeId={placeId} name={title} likeCount={likeCount} metrics={metrics} saved={saveExternally || !placeId ? saved : undefined}
       onSave={(saveExternally || !placeId) && onToggleFavorite ? () => { setSaveState({ favorite, saved: !saved }); onToggleFavorite(!saved); } : undefined} />

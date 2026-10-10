@@ -87,7 +87,7 @@ function planCardModule(locale) {
     'next/navigation': { useRouter: empty },
     '@/lib/api/hooks/use-saved-places': { useSavedPlaces: empty, useUnsavePlace: empty },
     '@/components/ds/usePhotoLike': { usePhotoLike: () => ({ click: () => false }) },
-    '@/components/ds/PlaceActions': { PlaceActions: props => React.createElement('button', { 'aria-label': 'Save', onClick: props.onSave }, React.createElement('svg', { className: 'Bookmark' })) },
+    '@/components/ds/PlaceActions': { PlaceActions: props => React.createElement('button', { 'aria-label': 'Save', 'data-save-place-id': props.placeId }, React.createElement('svg', { className: 'Bookmark' })) },
     '@/lib/api/hooks/use-cities': { useCities: empty },
     '@/components/explorer/LoadingSkeleton': { LoadingSkeleton: empty },
     '@/components/explorer/ErrorState': { ErrorState: empty },
@@ -398,6 +398,7 @@ test('all places-list envelopes and detail/similar/home/plan queries normalize l
   loadModule('src/lib/api/hooks/use-home.ts', deps).useHomeSections();
   assert.equal((await query.queryFn())[0].places[0].priceVerified, false);
   response = [{ id: 'save', place: legacy }];
+  deps['@/lib/saves'] = { saveStore: { read: async () => response } };
   loadModule('src/lib/api/hooks/use-saved-places.ts', deps).useSavedPlaces();
   assert.equal((await query.queryFn())[0].place.hasMenu, false);
 });
@@ -572,7 +573,7 @@ test('Save remains an outline or brand-filled bookmark, distinct from Love, reta
     const button = markup.match(/<button\b[\s\S]*?<\/button>/)?.[0];
     assert.ok(button.includes('class="Bookmark"'));
     assert.ok(button.includes(`fill="${saved ? 'currentColor' : 'none'}"`));
-    assert.ok(button.includes(`aria-label="${saved ? 'Remove Test place from your plan' : 'Add Test place to your plan'}: 0 saves"`));
+    assert.ok(button.includes(`aria-label="${saved ? 'Remove Test place from your plan' : 'Add Test place to your plan'}: ${saved ? 1 : 0} saves"`));
     assert.ok(!button.includes('class="Heart"'));
     assert.ok(markup.indexOf('</a>') < markup.indexOf('<button'));
   }
@@ -616,12 +617,11 @@ test('existing green and grey tokens meet text and icon contrast without opacity
 
 test('plan status taps and keyboard navigation preserve opening while remove remains a sibling', () => {
   let opened = 0;
-  let removed = 0;
-  const tree = planCardModule('en')({ saved: { place: { name: 'Test place', rating: 0 } },
-    onOpen: () => { opened += 1; }, onRemove: () => { removed += 1; }, removing: false });
+  const tree = planCardModule('en')({ saved: { placeId: 'plan-place', place: { name: 'Test place', rating: 0 } },
+    onOpen: () => { opened += 1; } });
   const children = React.Children.toArray(tree.props.children);
   const link = children.find((child) => child.props.role === 'link');
-  const button = children.find((child) => child.props.onSave);
+  const button = children.find((child) => child.props.placeId === 'plan-place');
   assert.ok(link && button);
   assert.equal(link.props.tabIndex, 0);
   function assertPassive(node) {
@@ -635,8 +635,8 @@ test('plan status taps and keyboard navigation preserve opening while remove rem
   for (const key of ['Enter', ' ']) link.props.onKeyDown({ key, preventDefault: () => {} });
   link.props.onKeyDown({ key: 'Tab', preventDefault: () => assert.fail('Tab must not be prevented') });
   assert.equal(opened, 3);
-  button.props.onSave();
-  assert.equal(removed, 1);
+  assert.equal(button.props.saved, undefined);
+  assert.equal(button.props.saveDisabled, undefined);
   assert.equal(opened, 3);
 });
 

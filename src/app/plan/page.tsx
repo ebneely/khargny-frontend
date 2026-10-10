@@ -15,7 +15,7 @@ import { LikedPlaces } from '@/components/ds/LikedPlaces';
 import { usePhotoLike } from '@/components/ds/usePhotoLike';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places";
+import { useSavedPlaces } from "@/lib/api/hooks/use-saved-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName } from "@/lib/display-name";
@@ -326,7 +326,6 @@ function PlanDayGroup({
   onOpenPlace: (place: SavedPlaceWithPlace["place"]) => void;
 }) {
   const { t } = useI18n();
-  const unsave = useUnsavePlace();
   const isUnscheduled = group.key === "unscheduled";
 
   return (
@@ -369,8 +368,6 @@ function PlanDayGroup({
             saved={sp}
             priority={index === 0}
             onOpen={() => onOpenPlace(sp.place)}
-            onRemove={() => unsave.mutate(sp.placeId)}
-            removing={unsave.isPending}
           />
         ))}
       </div>
@@ -381,7 +378,7 @@ function PlanDayGroup({
 /**
  * A saved place with a compact linked header and a separate action row.
  */
-function PlanItemCard({ saved: savedPlace, onOpen, onRemove, removing, priority = false }: { saved: SavedPlaceWithPlace; onOpen: () => void; onRemove: () => void; removing: boolean; priority?: boolean }) {
+function PlanItemCard({ saved: savedPlace, onOpen, priority = false }: { saved: SavedPlaceWithPlace; onOpen: () => void; priority?: boolean }) {
   const { locale } = useI18n();
   const name = displayName(savedPlace.place, locale) || savedPlace.place.name;
   const photoLike = usePhotoLike(savedPlace.placeId);
@@ -397,6 +394,6 @@ function PlanItemCard({ saved: savedPlace, onOpen, onRemove, removing, priority 
         <PlaceBadges hasMenu={savedPlace.place.hasMenu} priceVerified={savedPlace.place.priceVerified} visitedByUs={savedPlace.place.visitedByUs} variant="compact" />
       </div>
     </div>
-    <PlaceActions placeId={savedPlace.placeId} name={name} likeCount={savedPlace.place.likeCount} saved onSave={onRemove} saveDisabled={removing} metrics={{ saves: savedPlace.place.saveCount, directions: savedPlace.place.directionsCount, views: savedPlace.place.viewCount }} />
+    <PlaceActions placeId={savedPlace.placeId} name={name} likeCount={savedPlace.place.likeCount} metrics={{ saves: savedPlace.place.saveCount, directions: savedPlace.place.directionsCount, views: savedPlace.place.viewCount }} />
   </article>;
 }

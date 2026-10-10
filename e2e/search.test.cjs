@@ -331,7 +331,7 @@ test('locally filtered pagination reuses one dataset key and selects pages witho
   assert.equal(options.select(dataset).total, 25);
 });
 
-test('reason is one non-name/city label with reserved line only in search cards', () => {
+test('reason is one non-name/city label; empty reasons leave no reserved line', () => {
   const { matchReason } = load('src/lib/place-search.ts');
   assert.equal(matchReason(['name', 'amenity:Rooftop Seating']), '');
   assert.equal(matchReason(['city:Aswan']), '');
@@ -346,9 +346,9 @@ test('reason is one non-name/city label with reserved line only in search cards'
   const markup = renderToStaticMarkup(React.createElement(PlaceCard, { ...props, searchReason: 'Rooftop Seating' }));
   assert.match(markup, /data-search-reason/);
   assert.match(markup, /Rooftop Seating/);
-  assert.match(fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8'), /height: 1.35em/);
+  assert.match(fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8'), /line-height: 1.35/);
   assert.doesNotMatch(renderToStaticMarkup(React.createElement(PlaceCard, props)), /data-search-reason/);
-  assert.match(renderToStaticMarkup(React.createElement(PlaceCard, { ...props, searchReason: '' })), /data-search-reason/);
+  assert.doesNotMatch(renderToStaticMarkup(React.createElement(PlaceCard, { ...props, searchReason: '' })), /data-search-reason/);
 });
 
 function renderCity(locale, result, extra = {}) {
@@ -404,7 +404,7 @@ test('actual empty search renders other-city links/names or an honest global-emp
     assert.ok(markup.includes(locale === 'ar' ? 'في مدن تانية' : 'In other cities'));
     assert.ok(markup.includes(locale === 'ar' ? 'القاهرة' : 'Cairo'));
     assert.ok(markup.includes(`href="/${locale}/explorer/cairo/cairo-place/"`));
-    assert.match(markup, /data-search-reason/);
+    assert.doesNotMatch(markup, /data-search-reason/);
     const waiting = renderCity(locale, result, { loading: true }).markup;
     assert.match(waiting, /cairo-place/);
     assert.match(waiting, /opacity:0.5/);

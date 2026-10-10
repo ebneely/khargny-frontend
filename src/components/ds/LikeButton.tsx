@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { likeStore } from '@/lib/likes';
-import { compactCount } from '@/lib/compact-count';
 import { reducedLikeMotion, setVisitorLike } from '@/lib/like-effects';
 import { likeMotion, socialProofKey } from '@/lib/like-interaction';
 import { LikeIcon } from './LikeIcon';
 import { Toast } from './Toast';
+import { RollingCount } from './RollingCount';
 import styles from './LikeButton.module.css';
 
 const serverSnapshot = () => 0;
@@ -43,7 +43,7 @@ export function LikeButton({ placeId, name, likeCount = 0, detail = false, rail 
         {motion.kind === 'celebrate' && <><span className={styles.ring} />{Array.from({ length: 6 }, (_, index) => <span key={index} className={styles.particle} style={{ '--angle': `${index * 60}deg` } as React.CSSProperties} />)}</>}
       </span>
       {rail && <span className={styles.word} aria-hidden="true">{t(liked ? 'place.liked' : 'place.like')}</span>}
-      <span className={styles.count} aria-hidden="true" dir="ltr"><span key={count} className={styles.roll}>{compactCount(count)}</span></span>
+      <RollingCount count={count} className={styles.count} />
     </button>
   );
 }

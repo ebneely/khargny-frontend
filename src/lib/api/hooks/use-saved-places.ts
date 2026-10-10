@@ -15,8 +15,8 @@
  * / price / currency anywhere in this file.
  */
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/api/client";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { saveStore } from "@/lib/saves";
 import { normalizePlaceFlags, type PlaceFlags } from "@/lib/api/normalize-place";
 
 /** Mirrors `Modules/saved-places/contract.ts` SavedPlaceWithPlace. */
@@ -43,6 +43,7 @@ export interface SavedPlaceWithPlace extends SavedPlace {
      *  type simply never declared it, so the plan drew a gradient block instead. */
     coverImage?: string | null;
     likeCount?: number;
+    saveCount?: number;
   };
 }
 
@@ -55,7 +56,7 @@ export const savedPlacesKeys = {
 export function useSavedPlaces(enabled: boolean = true) {
   return useQuery({
     queryKey: savedPlacesKeys.all,
-    queryFn: async () => (await apiRequest<SavedPlaceWithPlace[]>("GET", "/v1/saved-places")).map((savedPlace) => ({
+    queryFn: async () => (await saveStore.read() as SavedPlaceWithPlace[]).map((savedPlace) => ({
       ...savedPlace,
       place: normalizePlaceFlags(savedPlace.place),
     })),
@@ -76,49 +77,46 @@ export function useIsPlaceSaved(placeId: string | null | undefined): boolean {
 
 /** POST /v1/saved-places — add (or upsert) a save. */
 export function useSavePlace() {
-  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (placeId: string) =>
-      apiRequest<SavedPlace>("POST", "/v1/saved-places", { body: { placeId } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: savedPlacesKeys.all });
+    mutationFn: async (placeId: string) => {
+      await saveStore.set(placeId, true);
+      const failure = saveStore.failure(placeId);
+      if (failure) throw failure;
     },
   });
 }
 
 /** DELETE /v1/saved-places/:placeId — remove a save. */
 export function useUnsavePlace() {
-  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (placeId: string) =>
-      apiRequest<SavedPlace>("DELETE", `/v1/saved-places/${placeId}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: savedPlacesKeys.all });
+    mutationFn: async (placeId: string) => {
+      await saveStore.set(placeId, false);
+      const failure = saveStore.failure(placeId);
+      if (failure) throw failure;
     },
   });
 }
 
 /**
- * Composite hook for a single PlaceCard / place-detail heart icon.
+ * Composite hook for a single PlaceCard / place-detail bookmark.
  * Returns `saved` (the current state) and a `toggle` function that
  * saves if currently un-saved, unsaves if currently saved.
  *
  * No booking/payment copy is surfaced in any callback or UI rendered here.
  * The place-card and the place-detail both use this hook the same way.
  */
-export function useSaveToggle(placeId: string | null | undefined) {
-  const saved = useIsPlaceSaved(placeId);
-  const save = useSavePlace();
-  const unsave = useUnsavePlace();
-
+export function useSaveToggle(placeId: string | null | undefined, saveCount?: number) {
+  useSavedPlaces(Boolean(placeId));
+  const version = React.useSyncExternalStore(saveStore.subscribe, saveStore.snapshot, () => 0);
+  React.useEffect(() => { if (placeId) saveStore.seed(placeId, saveCount); }, [placeId, saveCount]);
   const toggle = React.useCallback(() => {
     if (!placeId) return;
-    if (saved) {
-      unsave.mutate(placeId);
-    } else {
-      save.mutate(placeId);
-    }
-  }, [placeId, saved, save, unsave]);
-
-  return { saved, toggle, isPending: save.isPending || unsave.isPending };
+    void saveStore.set(placeId, !saveStore.saved(placeId));
+  }, [placeId]);
+  return {
+    saved: Boolean(placeId && version && saveStore.saved(placeId)),
+    count: placeId && version ? saveStore.count(placeId, saveCount) : saveCount ?? 0,
+    toggle,
+    isPending: Boolean(placeId && version && !saveStore.settled(placeId)),
+  };
 }

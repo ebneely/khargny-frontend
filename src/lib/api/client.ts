@@ -1,4 +1,5 @@
 import { fetchApi } from './transport';
+import { publishSaveRead, saveReadTicket } from '../save-data';
 import type { ApiErrorBody, ApiSuccess } from './types';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -62,6 +63,7 @@ export async function apiRequest<TData>(
   opts: ApiRequestOptions = {},
 ): Promise<TData> {
   const { body, params, signal } = opts;
+  const saveTicket = method === 'GET' ? saveReadTicket() : 0;
 
   const res = await fetchApi(buildUrl(path, params), {
     method,
@@ -84,5 +86,6 @@ export async function apiRequest<TData>(
     throw new ApiError(res.status, payload && payload.success === false ? payload : null, res.headers.get('Retry-After'));
   }
 
+  if (saveTicket) publishSaveRead(path, payload.data, saveTicket);
   return payload.data;
 }

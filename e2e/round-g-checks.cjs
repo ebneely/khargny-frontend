@@ -29,6 +29,7 @@ function roundGChecks(mode, phone) {
     'first visitor tap succeeds; five rapid taps collapse to one PUT and even burst to none',
     'opening an ordinary rail place sends no search_click',
     'explorer post actions: Like, directions, views, Save; no wrap or cover controls',
+    'Round H: aligned ink, shared inset, natural counts, square photo corners; 320px LTR and RTL',
     'post photo responsive sources, square phone ratio and first-card bytes',
     'post gallery: six pictures, final see-all 14 tile, five dots; only current and next loaded',
     'chevrons are invisible at rest, before hover or focus',

@@ -29,7 +29,6 @@
 .button:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 .icon { display: inline-flex; position: relative; flex-shrink: 0; }
 .count { inline-size: 4ch; overflow: hidden; font-variant-numeric: tabular-nums; }
-.roll { display: inline-block; animation: like-roll 220ms ease-out; }
 .celebrate > svg { animation: like-celebrate 450ms ease-out; }
 .empty > svg { animation: like-empty 160ms ease-out; }
 .ring, .particle { position: absolute; pointer-events: none; color: var(--like-red); }
@@ -42,5 +41,4 @@
 @keyframes like-empty { 50% { transform: scale(.9); } }
 @keyframes like-ring { 0% { transform: scale(.5); opacity: .8; } 100% { transform: scale(1.6); opacity: 0; } }
 @keyframes like-particle { 0% { transform: rotate(var(--angle)) translateX(4px); opacity: 1; } 100% { transform: rotate(var(--angle)) translateX(24px); opacity: 0; } }
-@keyframes like-roll { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .button *, .button *::before { animation: none !important; transition: none !important; } .ring, .particle { display: none; } }

@@ -164,7 +164,7 @@ test('compact public numbers occupy at most four figures, including zero and uni
   for (const count of [0, 7, 999, 1200, 12000, 999499, 999999, 987654321, Number.MAX_SAFE_INTEGER]) assert.ok(compactCount(count).length <= 4);
 });
 
-for (const locale of ['ar', 'en']) test(`post action row (${locale}) order, visible zeroes and palette contrast; fixed widths/no-wrap at 320px`, async () => {
+for (const locale of ['ar', 'en']) test(`post action row (${locale}) order, visible zeroes and palette contrast; natural widths/no-wrap at 320px`, async () => {
   const dictionary = load('src/i18n/dictionaries.ts').dictionaries[locale];
   const store = storeWith(async (method, path) => path.endsWith('/mine') ? mine : { [id]: { liked: false, likeCount: 0 } });
   await store.start(id);
@@ -183,7 +183,7 @@ for (const locale of ['ar', 'en']) test(`post action row (${locale}) order, visi
     assert.equal(controls[1].getAttribute('aria-label'), dictionary.place.directionsCount.replace('{count}', '0'));
     assert.equal(controls[2].getAttribute('aria-label'), dictionary.place.viewsCount.replace('{count}', '0'));
     assert.deepEqual(controls.map(control => control.textContent), ['0', '0', '0', '0']);
-    const css = fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8'); assert.match(css, /flex-wrap: nowrap/); assert.match(css, /gap: 16px/); assert.match(css, /inline-size: 4ch/);
+    const css = fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8'); assert.match(css, /flex-wrap: nowrap/); assert.match(css, /gap: 20px/); assert.doesNotMatch(css, /inline-size: 4ch/);
     const tokens = fs.readFileSync('src/app/globals.css', 'utf8');
     const resolveColor = name => { const value = tokens.match(new RegExp(`--${name}:\\s*([^;]+);`))[1]; const alias = value.match(/var\(--([^)]*)\)/); return alias ? resolveColor(alias[1]) : value; };
     const luminance = color => color.slice(1).match(/../g).map(channel => { const value = parseInt(channel, 16) / 255; return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4; }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
