@@ -21,16 +21,12 @@ test('post gallery falls back without extra detail reads and limits initial phot
 });
 
 test('visitor animations only; reduced motion and social proof thresholds', () => {
-  const { likeMotion, socialProofKey } = load('src/lib/like-interaction.ts');
-  assert.equal(likeMotion(false, false, true, true), 'celebrate');
-  assert.equal(likeMotion(false, true, false, true), 'empty');
-  assert.equal(likeMotion(false, false, true, false), '');
-  assert.equal(likeMotion(true, false, true, true), '');
+  const { socialProofKey } = load('src/lib/like-interaction.ts');
   assert.equal(socialProofKey(0), 'place.firstLike');
   assert.equal(socialProofKey(1), null); assert.equal(socialProofKey(2), null);
   assert.equal(socialProofKey(3), 'place.likeProof');
-  const { burstLike } = load('src/lib/like-effects.ts', { window: { matchMedia: () => ({ matches: true }) }, '@/lib/likes': {}, '@/components/ds/LikeIcon': {} });
-  burstLike({ getBoundingClientRect() { throw new Error('Reduced motion must not create a burst'); } }, { x: 1, y: 1 });
+  const { dropPhotoLike } = load('src/lib/like-effects.ts', { window: { matchMedia: () => ({ matches: true }) }, '@/lib/likes': { likeStore: { liked: () => true } } });
+  dropPhotoLike({ getBoundingClientRect() { throw new Error('Reduced motion must not measure a photo'); } }, { x: 1, y: 1 }, id);
 });
 
 test('liked card pages preserve server order, continue an empty raw page and support removal', async () => {
@@ -204,22 +200,22 @@ for (const reduced of [false, true]) test(`mounted heart: own animation only, re
   try {
     const button = harness.nodes(node => node.tagName === 'BUTTON')[0];
     count = 38; await React.act(async () => store.refresh([id]));
-    assert.equal(button.textContent, '38'); assert.equal(button.getAttribute('data-like-motion'), null);
+    assert.equal(button.textContent, '38'); assert.equal(button.getAttribute('data-like-gesture'), reduced ? 'none' : 'live');
     await React.act(async () => store.set(id, true));
-    assert.equal(button.getAttribute('aria-pressed'), 'true'); assert.equal(button.textContent, '39');
-    assert.equal(button.getAttribute('data-like-motion'), reduced ? null : 'celebrate');
-    assert.equal(harness.nodes(node => node.getAttribute?.('class') === 'particle').length, reduced ? 0 : 6);
-    await React.act(async () => store.set(id, false)); assert.equal(button.getAttribute('data-like-motion'), reduced ? null : 'empty');
+    assert.equal(button.getAttribute('aria-pressed'), 'true'); assert.equal(button.textContent, '38');
+    assert.equal(button.getAttribute('data-like-phase'), reduced ? 'rest' : 'lift');
+    assert.equal(harness.nodes(node => node.getAttribute?.('class') === 'ground').length, reduced ? 0 : 1);
+    await React.act(async () => store.set(id, false)); assert.equal(button.getAttribute('data-like-gesture'), reduced ? 'none' : 'drain');
   } finally { await harness.close(); }
 });
 
 test('mounted photo gesture rejects horizontal movement; double taps only like and keep the link closed', async context => {
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
-  let gestures; let liked = false; let writes = 0; let opened = 0; let bursts = 0;
+  let gestures; let liked = false; let writes = 0; let opened = 0; let drops = 0;
   const harness = await mount(() => {
     const { usePhotoLike } = load('src/components/ds/usePhotoLike.ts', {
       '@/lib/likes': { likeStore: { enabled: () => true } },
-      '@/lib/like-effects': { setVisitorLike: (place, state) => { assert.equal(state, true); if (!liked) { liked = true; writes++; } }, burstLike: () => { bursts++; } },
+      '@/lib/like-effects': { dropPhotoLike: () => { if (!liked) { liked = true; writes++; } drops++; return () => {}; } },
     });
     function Photo() { gestures = usePhotoLike(id); return React.createElement('a', { href: '/place' }); }
     return React.createElement(Photo);
@@ -229,7 +225,7 @@ test('mounted photo gesture rejects horizontal movement; double taps only like a
     gestures.onPointerDown({ clientX: 10, clientY: 10, pointerId: 1 }); gestures.onPointerMove({ clientX: 100, clientY: 12 }); gestures.onPointerUp();
     assert.equal(gestures.click(event, () => opened++), true); context.mock.timers.tick(500); assert.equal(writes + opened, 0);
     for (let tap = 0; tap < 4; tap++) { gestures.onPointerDown({ clientX: 10, clientY: 10, pointerId: 1 }); gestures.onPointerUp(); gestures.click(event, () => opened++); context.mock.timers.tick(80); }
-    context.mock.timers.tick(500); assert.equal(writes, 1); assert.equal(opened, 0); assert.equal(bursts, 2); assert.equal(liked, true);
+    context.mock.timers.tick(500); assert.equal(writes, 1); assert.equal(opened, 0); assert.equal(drops, 2); assert.equal(liked, true);
   } finally { await harness.close(); }
 });
 

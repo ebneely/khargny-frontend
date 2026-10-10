@@ -419,7 +419,7 @@ test("home placement markup is bilingual, linked, numbered and accessible withou
 });
 
 function realPlaceCard(React, locale, t) {
-  const icons = Object.fromEntries(["Bookmark", "Navigation", "Eye", "Star", "BadgeCheck", "Tag"].map((name) => [name, () => null]));
+  const icons = Object.fromEntries(["Bookmark", "Navigation", "Eye", "Star", "BadgeCheck", "Tag", "Share2"].map((name) => [name, () => null]));
   const common = { react: React, "react/jsx-runtime": require("react/jsx-runtime"), "lucide-react": icons, "@/i18n/LocaleProvider": { useI18n: () => ({ locale, t }) } };
   const photos = load("src/lib/place-photo.ts", { URL });
   const priceBands = load("src/lib/price-bands.ts");

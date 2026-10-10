@@ -33,6 +33,8 @@ const en = {
     loading: "Loading…",
     seeAll: "See all",
     switchLang: "العربية",
+    linkCopied: "Link copied",
+    shareFailed: "Couldn't share the link. Try again.",
   },
   gallery: {
     photo: "View photo {index} of {total}",
@@ -164,6 +166,7 @@ const en = {
     send: "Send message",
   },
   place: {
+    shareLabel: "Share {name}",
     about: "About",
     hours: "Opening hours",
     amenities: "Amenities",
@@ -283,6 +286,8 @@ const ar: typeof en = {
     loading: "ثانية واحدة…",
     seeAll: "شوف الكل",
     switchLang: "English",
+    linkCopied: "تم نسخ الرابط",
+    shareFailed: "مقدرناش نشارك الرابط. جرّب تاني.",
   },
   gallery: {
     photo: "افتح الصورة {index} من {total}",
@@ -414,6 +419,7 @@ const ar: typeof en = {
     send: "ابعت",
   },
   place: {
+    shareLabel: "شارك {name}",
     about: "نبذة",
     hours: "مواعيد الشغل",
     amenities: "المرافق",

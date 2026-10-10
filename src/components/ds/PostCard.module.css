@@ -9,11 +9,12 @@
 .slide { position: relative; flex: 0 0 100%; min-width: 0; scroll-snap-align: start; height: 100%; overflow: hidden; }
 .photoLink { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: var(--text-primary); font-weight: 600; background: var(--surface-sunken); text-decoration: none; touch-action: manipulation; }
 .chevrons { display: none; }
-.chevrons button { position: absolute; top: calc(50% - 22px); width: 44px; height: 44px; border: 0; border-radius: var(--radius-full); background: var(--surface-card); color: var(--text-primary); cursor: pointer; }
-.chevrons button:first-child { inset-inline-start: var(--space-2); }
-.chevrons button:last-child { inset-inline-end: var(--space-2); }
+.chevrons button { position: absolute; top: calc(50% - 16px); width: 32px; height: 32px; display: grid; place-items: center; padding: 0; line-height: 0; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: color-mix(in srgb, var(--surface-card) 92%, transparent); color: var(--text-primary); cursor: pointer; }
+.chevrons [data-post-arrow='previous'] { inset-inline-start: var(--space-2); }
+.chevrons [data-post-arrow='next'] { inset-inline-end: var(--space-2); }
+.chevrons button:hover { background: var(--surface-card); }
+.chevrons button:active { transform: scale(.94); }
 [dir='rtl'] .chevrons svg { transform: rotate(180deg); }
-.chevrons button:disabled { opacity: .4; cursor: default; }
 .dots { display: flex; justify-content: center; align-items: center; block-size: 24px; flex-shrink: 0; gap: 0; margin-block-start: var(--space-2); padding-inline: var(--card-inset, var(--space-3)); }
 .dots button { display: grid; place-items: center; width: 28px; height: 24px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .dots button::before { content: ''; width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--text-secondary); }
@@ -28,12 +29,14 @@
 .actions [data-like-button] > span:first-child > svg { position: relative; inset-inline-start: -.65px; }
 .save { margin-inline-start: auto; margin-inline-end: -10px; min-inline-size: 44px; min-block-size: 44px; padding-block: 0; padding-inline: 0 10px; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--text-primary); font: inherit; cursor: pointer; }
 .save[aria-pressed='true'] > svg { color: var(--brand-700); }
-.save:hover { background: var(--surface-sunken); }
-.save:active { background: var(--brand-50); }
+@media (hover: hover) and (pointer: fine) { .save:hover { background: var(--surface-sunken); } }
+.save[data-pressed='true'] { background: var(--brand-50); }
 .save:disabled { opacity: .65; cursor: not-allowed; }
 .save[aria-busy='true'] [dir='ltr'] { text-decoration: underline dotted; text-underline-offset: 4px; }
-.words { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); color: inherit; text-decoration: none; padding-block: var(--space-1) var(--space-3); padding-inline: var(--card-inset, var(--space-3)); }
-.badges { margin-block-start: var(--space-1); }
+.words { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); color: inherit; text-decoration: none; padding-block: var(--space-1) 0; padding-inline: var(--card-inset, var(--space-3)); }
+.badges { display: flex; align-items: center; gap: var(--space-2); min-block-size: 26px; margin-block: var(--space-2) var(--space-3); padding-inline: var(--card-inset, var(--space-3)); }
+.badgesContent { min-inline-size: 0; flex: 1; }
+.badgesContent > span { flex-wrap: wrap; }
 .title { font-size: var(--text-base); font-weight: 600; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: var(--text-sm); color: var(--text-secondary); }
 .meta [data-badge-tone='sponsored'] { color: var(--sponsored); font-weight: 600; }

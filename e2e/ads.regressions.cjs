@@ -740,7 +740,8 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
       assert.equal(anchors.length, 4);
       for (const anchor of anchors) {
         if (anchor.includes('khg-place-card-link')) {
-          for (const key of ["home.sponsored", "place.menu", "place.priceVerified", "place.visitedByUs"]) assert.ok(anchor.includes(t(key)), key);
+          assert.ok(anchor.includes(t('home.sponsored')));
+          for (const key of ["place.menu", "place.priceVerified", "place.visitedByUs"]) assert.ok(html.includes(t(key)), key);
           assert.ok(anchor.includes(priceBands.priceBandLabel(2, locale)));
         } else {
           assert.ok(anchor.includes('data-photo-frame="card"') && anchor.includes('data-photo-fit="cover"'));
@@ -749,8 +750,8 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
         }
         assert.ok(!anchor.includes("<button"));
       }
-      // Two save hearts and the Top 10 city picker's pill.
-      assert.equal((html.match(/<button\b/g) ?? []).length, 3);
+      // Each card has Save and Share; the Top 10 city picker is a separate pill.
+      assert.equal((html.match(/<button\b/g) ?? []).length, 5);
       assert.equal((html.match(/class="khg-home-rail no-scrollbar"/g) ?? []).length, 2);
     }
     const missing = normalizers.normalizeFeaturedPlaces({ ...featured, items: [item] }).items[0].place;

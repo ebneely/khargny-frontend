@@ -19,7 +19,7 @@ function loadModule(relativePath, dependencies = {}, sourceOverride) {
     process: { env: { NODE_ENV: 'test', CI: '1' } },
     require: (name) => {
       if (name in dependencies) return dependencies[name];
-      if (name === 'lucide-react') return Object.fromEntries(['Tag', 'Receipt', 'Utensils', 'BadgeCheck', 'Footprints', 'ImageOff', 'Heart', 'Navigation', 'Eye', 'Star', 'ArrowLeft', 'Share', 'Phone', 'Globe', 'MapPin', 'Bookmark']
+      if (name === 'lucide-react') return Object.fromEntries(['Tag', 'Receipt', 'Utensils', 'BadgeCheck', 'Footprints', 'ImageOff', 'Heart', 'Navigation', 'Eye', 'Star', 'ArrowLeft', 'Share2', 'Phone', 'Globe', 'MapPin', 'Bookmark']
         .map((iconName) => [iconName, (props) => React.createElement('svg', { ...props, className: iconName === 'ImageOff' ? 'image-off' : iconName })]));
       if (name.endsWith('.module.css')) return { default: new Proxy({}, { get: (_, key) => String(key) }) };
       if (name.startsWith('@/') || name.startsWith('.')) {
@@ -147,7 +147,8 @@ test('rendered cards retain legacy text and put the name before three passive st
     const PlaceCard = cardModule(locale);
     const props = { title: 'Test place', area: 'Test area', priceRange: 4 };
     const legacy = renderToStaticMarkup(React.createElement(PlaceCard, props));
-    assert.ok(!legacy.includes('<button'));
+    assert.equal((legacy.match(/<button\b/g) ?? []).length, 1);
+    assert.ok(legacy.includes('data-share-button="true"') && legacy.includes('disabled=""'));
     assertStatuses(legacy, [false, false, false], locale);
     assert.ok(legacy.includes('Test area'));
     const modern = renderToStaticMarkup(React.createElement(PlaceCard, { ...props, hasMenu: true, priceVerified: true, visitedByUs: true }));
@@ -449,7 +450,7 @@ test('each actual place page ends with a neutral badge guide and readable explan
   }
 });
 
-test('both card components keep passive chips inside keyboard-native links and save controls outside', () => {
+test('both card components keep keyboard-native name/photo links and badges, Save and Share outside', () => {
   for (const locale of ['ar', 'en']) {
     const flags = { hasMenu: true, priceVerified: false, visitedByUs: true };
     const ExplorerCard = loadModule('src/components/explorer/PlaceCard.tsx', {
@@ -467,8 +468,8 @@ test('both card components keep passive chips inside keyboard-native links and s
       const href = `/${locale}/explorer/test-city/test-place/`;
       const anchor = [...markup.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)].find((match) => match[0].includes('khg-place-card-link') && match[0].includes(`href="${href}"`))?.[0];
       assert.ok(anchor);
-      assertStatuses(anchor, [true, false, true], locale);
-      assert.equal((markup.match(/<button\b/g) ?? []).length, 1);
+      assertStatuses(markup, [true, false, true], locale);
+      assert.equal((markup.match(/<button\b/g) ?? []).length, 2);
       assert.ok(!/<(?:button|input|select|textarea)\b|tabindex=|role="(?:button|link)"/i.test(anchor));
       assert.equal((anchor.match(/<a\b/g) ?? []).length, 1);
       assert.ok(!anchor.includes('<button'));
@@ -497,13 +498,13 @@ test('shared card invokes the framework Link with prefetch disabled, and renders
     const anchor = markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/)?.[0];
     assert.ok(anchor && anchor.includes('data-next-link="true"'));
     assert.ok(!anchor.includes('<button'));
-    assert.equal((markup.match(/<button\b/g) ?? []).length, 1);
+    assert.equal((markup.match(/<button\b/g) ?? []).length, 2);
     for (const href of [undefined, '']) {
       const noLink = renderToStaticMarkup(React.createElement(Card, { ...props, href }));
       assert.ok(!/<a\b|role="link"/.test(noLink));
       assert.equal(calls.length, 2);
       assertStatuses(noLink, [false, false, false], locale);
-      assert.equal((noLink.match(/<button\b/g) ?? []).length, 1);
+      assert.equal((noLink.match(/<button\b/g) ?? []).length, 2);
     }
   }
 });
@@ -566,15 +567,16 @@ test('a not-held text or icon chip never names the positive badge; the legend st
   }
 });
 
-test('Save remains an outline or brand-filled bookmark, distinct from Love, retaining labels and sibling links', () => {
+test('Save retains a clipped brand-fill bookmark, distinct from Like, with labels and sibling links', () => {
   const PlaceCard = cardModule('en');
   for (const saved of [false, true]) {
     const markup = renderToStaticMarkup(React.createElement(PlaceCard, { title: 'Test place', favorite: saved, href: '/test', onToggleFavorite: () => {} }));
     const button = markup.match(/<button\b[\s\S]*?<\/button>/)?.[0];
-    assert.ok(button.includes('class="Bookmark"'));
-    assert.ok(button.includes(`fill="${saved ? 'currentColor' : 'none'}"`));
+    assert.ok(button.includes('data-save-phase="rest"'));
+    assert.ok(button.includes('clipPath'));
+    assert.ok(button.includes(`stroke="${saved ? 'var(--brand-700)' : 'currentColor'}"`));
     assert.ok(button.includes(`aria-label="${saved ? 'Remove Test place from your plan' : 'Add Test place to your plan'}: ${saved ? 1 : 0} saves"`));
-    assert.ok(!button.includes('class="Heart"'));
+    assert.ok(!button.includes('data-like-button'));
     assert.ok(markup.indexOf('</a>') < markup.indexOf('<button'));
   }
   const PlanItemCard = planCardModule('en');

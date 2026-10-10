@@ -5,7 +5,7 @@ import { apiRequest } from '@/lib/api/client';
 type LikeState = { liked: boolean; likeCount: number; degraded?: boolean };
 type Mine = { data: string[]; meta: { skip: number; limit: number; has_more: boolean }; degraded?: boolean };
 type Feedback = { kind: 'rate' | 'busy' | 'unavailable'; seconds: number };
-type Entry = { liked: boolean; count: number; intended: boolean; revision: number; writing: boolean; timer?: ReturnType<typeof setTimeout>; retryAt: number };
+type Entry = { liked: boolean; count: number; intended: boolean; revision: number; writing: boolean; timer?: ReturnType<typeof setTimeout>; retryAt: number; immediate?: boolean };
 type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
 const OFF_KEY = 'khg-loves-off';
 
@@ -25,7 +25,9 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
   const watches = new Set<{ id: string; interval: number; visible: () => boolean }>();
   const updated = new Map<string, number>();
   const publicCounts = new Set<string>();
-  const actions = new Map<string, { sequence: number; liked: boolean }>();
+  const actions = new Map<string, { sequence: number; liked: boolean; source: 'button' | 'photo'; count?: number }>();
+  const refreshSignals = new Map<string, { sequence: number; before: number; count: number }>();
+  let refreshSequence = 0;
   const readRetryDelay = (error: unknown) => {
     const seconds = (error as { retryAfter?: number }).retryAfter;
     return Math.max(seconds ?? 0, Math.min(120, Math.max(1, seconds ?? 20) * 2 ** (refreshFailures - 1))) * 1000;
@@ -59,6 +61,7 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
   const schedule = (placeId: string, current: Entry) => {
     if (current.timer) clearTimeout(current.timer);
     if (current.writing || current.intended === current.liked || status !== 'on') return;
+    if (current.immediate) { current.timer = undefined; void write(placeId, current); return; }
     current.timer = setTimeout(() => { current.timer = undefined; void write(placeId, current); }, Math.max(150, current.retryAt - Date.now()));
   };
   const write = async (placeId: string, current: Entry) => {
@@ -80,6 +83,8 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
       if (status !== 'on') return;
       current.liked = answer.liked;
       current.count = Math.max(0, answer.likeCount);
+      const action = actions.get(placeId);
+      if (action && action.liked === answer.liked && current.intended === answer.liked) actions.set(placeId, { ...action, count: current.count });
       publicCounts.add(placeId);
       updated.set(placeId, Date.now());
       if (answer.liked) likedIds.add(placeId); else likedIds.delete(placeId);
@@ -125,7 +130,9 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
           const current = entry(identifier, state.likeCount);
           updated.set(identifier, Date.now());
           if (state.degraded || current.writing || current.timer || current.revision !== revisions.get(identifier)) continue;
+          const before = current.count;
           current.count = Math.max(0, state.likeCount);
+          refreshSignals.set(identifier, { sequence: ++refreshSequence, before, count: current.count });
           publicCounts.add(identifier);
           current.liked = current.intended = state.liked;
           if (state.liked) likedIds.add(identifier); else likedIds.delete(identifier);
@@ -185,6 +192,7 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
     },
     feedback: () => message,
     action: (placeId: string) => actions.get(placeId),
+    refreshSignal: (placeId: string) => refreshSignals.get(placeId),
     dismiss() { message = null; emit(); },
     seed(placeId: string, count = 0) { entry(placeId, count); },
     start(placeId: string): Promise<void> {
@@ -221,14 +229,15 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
       })();
       return startup;
     },
-    set(placeId: string, intended: boolean) {
+    set(placeId: string, intended: boolean, options: { source?: 'button' | 'photo'; immediate?: boolean } = {}) {
       if (status !== 'on') return;
       const current = entry(placeId);
       if (!available() || Date.now() < current.retryAt) { emit(); return; }
       if (current.intended === intended) return;
       current.intended = intended;
+      current.immediate = options.immediate;
       current.revision++;
-      actions.set(placeId, { sequence: current.revision, liked: intended });
+      actions.set(placeId, { sequence: current.revision, liked: intended, source: options.source ?? 'button' });
       emit();
       schedule(placeId, current);
     },

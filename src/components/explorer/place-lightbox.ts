@@ -8,7 +8,7 @@ import {
 } from "@/lib/place-gallery";
 import { galleryHistory } from "@/lib/gallery-history";
 import { createPhotoTap } from '@/lib/like-interaction';
-import { burstLike, setVisitorLike } from '@/lib/like-effects';
+import { dropPhotoLike } from '@/lib/like-effects';
 import { likeStore } from '@/lib/likes';
 
 let library: Promise<typeof import("photoswipe")> | undefined;
@@ -125,6 +125,7 @@ export async function openGallery({
   });
   if (rtl) source.reverse();
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let photoFlight: (() => void) | undefined;
   const gallery: PhotoSwipe = new Gallery({
     dataSource: source,
     index: rtl ? items.length - 1 - index : index,
@@ -151,8 +152,7 @@ export async function openGallery({
     thumbSelector: "picture img, img:not([aria-hidden])",
     doubleTapAction(point) {
       if (placeId && likeStore.enabled()) {
-        setVisitorLike(placeId, true);
-        if (gallery.element) burstLike(gallery.element, point);
+        if (gallery.element) photoFlight = dropPhotoLike(gallery.element, point, placeId);
       } else gallery.currSlide?.toggleZoom(point);
     },
     imageClickAction(point) {
@@ -169,8 +169,7 @@ export async function openGallery({
   });
   const mouseTaps = createPhotoTap(() => gallery.element?.classList.toggle('pswp--ui-visible'), point => {
     if (!placeId) return;
-    setVisitorLike(placeId, true);
-    if (gallery.element) burstLike(gallery.element, point);
+    if (gallery.element) photoFlight = dropPhotoLike(gallery.element, point, placeId);
   });
   gallery.on('openingAnimationEnd', () => gallery.element?.setAttribute('data-gallery-ready', 'true'));
   const navigation = galleryHistory(window, () => gallery.close());
@@ -246,6 +245,7 @@ export async function openGallery({
   gallery.on("contentRemove", ({ content }) => pause(content));
   gallery.on("close", () => {
     mouseTaps.cancel();
+    photoFlight?.();
     gallery.element
       ?.querySelectorAll("video")
       .forEach((video) => video.pause());
@@ -258,6 +258,7 @@ export async function openGallery({
     gallery.element?.focus();
   });
   gallery.on("destroy", () => {
+    photoFlight?.();
     navigation.dispose();
     releaseScroll();
     if (trigger.isConnected) trigger.focus({ preventScroll: true });

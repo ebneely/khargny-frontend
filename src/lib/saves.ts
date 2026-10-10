@@ -186,6 +186,7 @@ export function createSaveStore(request: RequestSave = apiRequest) {
       emit();
     },
     saved: (placeId: string) => entryFor(placeId).desired,
+    action: (placeId: string) => entries.get(placeId)?.intent ?? 0,
     count: (placeId: string, fallback = 0) => {
       const entry = entryFor(placeId);
       const baseline =

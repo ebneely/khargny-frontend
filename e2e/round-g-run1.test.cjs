@@ -21,7 +21,7 @@ test('pointer-backed detail-zero clicks prevent Next Link navigation; keyboard a
   const harness = await mount(() => {
     const { usePhotoLike } = load('src/components/ds/usePhotoLike.ts', {
       '@/lib/likes': { likeStore: { enabled: () => true } },
-      '@/lib/like-effects': { setVisitorLike: () => { if (!liked) writes++; liked = true; }, burstLike: () => {} },
+      '@/lib/like-effects': { dropPhotoLike: () => { if (!liked) writes++; liked = true; return () => {}; } },
     });
     function Photo() { gestures = usePhotoLike(id); return React.createElement('a', { href: '/place' }); }
     return React.createElement(Photo);

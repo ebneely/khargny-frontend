@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { MouseEvent, PointerEvent } from 'react';
 import { createPhotoTap } from '@/lib/like-interaction';
-import { burstLike, setVisitorLike } from '@/lib/like-effects';
+import { dropPhotoLike } from '@/lib/like-effects';
 import { likeStore } from '@/lib/likes';
 
 export function usePhotoLike(placeId?: string) {
@@ -15,17 +15,17 @@ export function usePhotoLike(placeId?: string) {
   const pointerClick = useRef(false);
   const replaying = useRef(false);
   const taps = useRef<ReturnType<typeof createPhotoTap> | null>(null);
-  useEffect(() => { identifier.current = placeId; taps.current?.cancel(); }, [placeId]);
+  const flight = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => { identifier.current = placeId; taps.current?.cancel(); flight.current?.(); }, [placeId]);
   useEffect(() => {
     taps.current = createPhotoTap(() => {
       replaying.current = true;
       try { single.current(); } finally { replaying.current = false; }
     }, point => {
       if (!identifier.current || !likeStore.enabled()) { single.current(); return; }
-      setVisitorLike(identifier.current, true);
-      if (host.current) burstLike(host.current, point);
+      if (host.current) flight.current = dropPhotoLike(host.current, point, identifier.current);
     });
-    return () => taps.current?.cancel();
+    return () => { taps.current?.cancel(); flight.current?.(); };
   }, []);
   return {
     onPointerDown(event: PointerEvent<HTMLElement>) {

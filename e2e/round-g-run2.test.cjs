@@ -37,7 +37,8 @@ test('Round H post layout uses one inset, natural 15px totals, optical targets a
   assert.doesNotMatch(css, /4ch|padding-inline:\s*var\(--space-2\)/);
   assert.match(css, /\[data-like-button\]\s*\{[^}]*padding-inline:\s*10px[^}]*margin-inline:\s*-10px/);
   assert.match(css, /\.save\s*\{[^}]*margin-inline-start:\s*auto[^}]*margin-inline-end:\s*-10px/);
-  assert.match(css, /\.words\s*\{[^}]*padding-block:\s*var\(--space-1\)\s*var\(--space-3\)[^}]*padding-inline:\s*var\(--card-inset/);
+  assert.match(css, /\.words\s*\{[^}]*padding-block:\s*var\(--space-1\)\s*0[^}]*padding-inline:\s*var\(--card-inset/);
+  assert.match(css, /\.badges\s*\{[^}]*margin-block:\s*var\(--space-2\)\s*var\(--space-3\)[^}]*padding-inline:\s*var\(--card-inset/);
   const source = fs.readFileSync('src/components/ds/PlaceCard.tsx', 'utf8');
   assert.match(source, /searchReason &&/); assert.doesNotMatch(source, /searchReason \|\| '\\u00a0'/);
   const script = fs.readFileSync('.brief/verify/round-g.mjs', 'utf8');
@@ -46,6 +47,8 @@ test('Round H post layout uses one inset, natural 15px totals, optical targets a
   assert.ok(script.includes("for (const direction of ['ltr', 'rtl'])"));
   assert.ok(script.includes('heart?.getBBox()')); assert.ok(script.includes('heart?.getScreenCTM()'));
   assert.ok(script.includes("['0px', '0px']")); assert.ok(script.includes('four 1.2K groups overflow'));
+  assert.ok(script.includes('Share ink/Save number end alignment'));
+  assert.ok(script.includes('chevron horizontal centering'));
 });
 
 test('scenario reporting preserves duplicate planned checks and reports every abort remainder', () => {

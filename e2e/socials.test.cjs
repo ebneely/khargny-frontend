@@ -19,6 +19,7 @@ function load(filename, dependencies = {}, globals = {}) {
     if (name === './transport') return { fetchApi: (route, options) => globals.fetch(`https://api.example.invalid${route}`, options) };
     if (name === '@/lib/place-photo') return load('src/lib/place-photo.ts', dependencies, globals);
     if (name === '@/lib/seo-environment') return load('src/lib/seo-environment.ts', dependencies, globals);
+    if (name === './site-url') return load('src/lib/site-url.ts', dependencies, globals);
     return require(name);
   } });
   return exported;

@@ -115,6 +115,7 @@ export function useSaveToggle(placeId: string | null | undefined, saveCount?: nu
   }, [placeId]);
   return {
     saved: Boolean(placeId && version && saveStore.saved(placeId)),
+    sequence: placeId && version ? saveStore.action(placeId) : 0,
     count: placeId && version ? saveStore.count(placeId, saveCount) : saveCount ?? 0,
     toggle,
     isPending: Boolean(placeId && version && !saveStore.settled(placeId)),

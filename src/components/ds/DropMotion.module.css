@@ -1,0 +1,141 @@
+.water {
+  transform-box: view-box;
+}
+.crest {
+  transform: translateX(24px);
+}
+.heart {
+  overflow: visible;
+  transform-origin: center;
+}
+.like {
+  animation:
+    drop-lift var(--motion-lift) var(--motion-ease-lift) both,
+    drop-fall calc(var(--motion-landing-at) - var(--motion-lift))
+      var(--motion-ease-drop) var(--motion-lift) forwards,
+    drop-land var(--motion-land) var(--motion-ease-settle)
+      var(--motion-landing-at) forwards;
+}
+.landing,
+.squash {
+  animation: drop-land var(--motion-land) var(--motion-ease-settle) both;
+}
+.live {
+  animation: live-dip var(--motion-live) var(--motion-ease-settle) both;
+}
+.ground {
+  position: absolute;
+  inline-size: 28px;
+  block-size: 8px;
+  inset-inline-start: calc(50% - 14px);
+  inset-block-end: -4px;
+  border-radius: 50%;
+  background: var(--like-red);
+  opacity: 0;
+  pointer-events: none;
+  animation: ground-ripple var(--motion-ripple) var(--motion-ease-settle)
+    forwards;
+}
+.rays {
+  position: absolute;
+  inline-size: 36px;
+  block-size: 20px;
+  inset-inline-start: calc(50% - 18px);
+  inset-block-end: -4px;
+  color: var(--like-red);
+  opacity: 0;
+  pointer-events: none;
+  overflow: visible;
+  animation: horizon-rays var(--motion-ripple) var(--motion-ease-settle)
+    forwards;
+}
+.save {
+  animation: save-tuck var(--motion-save) var(--motion-ease-settle) both;
+  overflow: visible;
+}
+.unsave {
+  animation: save-lift var(--motion-drain) var(--motion-ease-settle) both;
+  overflow: visible;
+}
+@keyframes drop-lift {
+  from {
+    transform: translateY(0) rotate(0);
+  }
+  to {
+    transform: translateY(-6px) rotate(var(--drop-turn));
+  }
+}
+@keyframes drop-fall {
+  from {
+    transform: translateY(-6px) rotate(var(--drop-turn));
+  }
+  to {
+    transform: translateY(1px) scaleX(1.12) scaleY(0.86) rotate(0);
+  }
+}
+@keyframes drop-land {
+  0% {
+    transform: translateY(1px) scaleX(1.12) scaleY(0.86);
+  }
+  55% {
+    transform: translateY(-0.5px) scaleX(0.99) scaleY(1.02);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes ground-ripple {
+  from {
+    transform: scaleX(0.6);
+    opacity: 0.22;
+  }
+  to {
+    transform: scaleX(1.6);
+    opacity: 0;
+  }
+}
+@keyframes horizon-rays {
+  from {
+    transform: translateY(2px) scale(0.85);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(-2px) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes live-dip {
+  50% {
+    transform: translateY(1px);
+  }
+}
+@keyframes save-tuck {
+  0% {
+    transform: translateY(-5px);
+  }
+  75% {
+    transform: translateY(0.7px);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes save-lift {
+  50% {
+    transform: translateY(-3px);
+  }
+  100% {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heart,
+  .save,
+  .unsave {
+    animation: none !important;
+  }
+  .ground,
+  .rays {
+    display: none;
+  }
+}

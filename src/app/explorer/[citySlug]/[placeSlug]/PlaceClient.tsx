@@ -16,7 +16,8 @@ import { usePhotoLike } from '@/components/ds/usePhotoLike';
  */
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Star, Share, Navigation, Bookmark, Phone, Globe, MapPin, Eye } from "lucide-react";
+import { ArrowLeft, Star, Navigation, Bookmark, Phone, Globe, MapPin, Eye } from "lucide-react";
+import { ShareButton } from '@/components/ds/ShareButton';
 import { SiteHeader } from "@/components/ds/SiteHeader";
 import { PhotoImage } from "@/components/ds/PhotoImage";
 import type { Photo } from "@/lib/place-photo";
@@ -31,6 +32,8 @@ import { useCategories } from "@/lib/api/hooks/use-categories";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useSaveToggle } from "@/lib/api/hooks/use-saved-places";
 import { RollingCount } from "@/components/ds/RollingCount";
+import { SaveIcon } from "@/components/ds/SaveIcon";
+import { usePressFeedback } from "@/lib/use-press-feedback";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { cardArea, regionLocation } from "@/lib/region-location";
 import { icon } from "@/lib/icon-catalog";
@@ -38,7 +41,7 @@ import { sendApiBeacon } from "@/lib/api/transport";
 import { trackPlaceAction, trackPlaceView } from "@/lib/analytics/track";
 import type { PlaceHour } from "@/lib/api/types";
 import type { HoursRow } from "@/components/explorer/HoursTable";
-import { placeRedirect } from '@/lib/place-address';
+import { placePath, placeRedirect } from '@/lib/place-address';
 import { backToBrowse } from '@/lib/use-browse-session';
 
 // Day labels indexed by dayOfWeek (0=Sunday … 6=Saturday — backend convention,
@@ -122,8 +125,9 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
 
   // Heart is wired to the saved-places backend. No login — guest cookie auth
   // (khargny_guest_id); POST /v1/saved-places is idempotent, so re-tapping is safe.
-  const { saved: placeSaved, count: saves, toggle: toggleSaved, isPending: isSavingPending } =
+  const { saved: placeSaved, count: saves, sequence: saveSequence, toggle: toggleSaved, isPending: isSavingPending } =
     useSaveToggle(place?.id ?? null, place?.saveCount);
+  const savePress = usePressFeedback();
 
   // Audience analytics: one place view per opened place (the backend dedupes repeats).
   const viewedPlaceId = place?.id;
@@ -131,6 +135,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
     trackPlaceView(viewedPlaceId);
   }, [viewedPlaceId]);
   const onToggleSaved = () => {
+    savePress.onClick();
     if (!placeSaved) trackPlaceAction("save", place?.id);
     toggleSaved();
   };
@@ -240,20 +245,12 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
     sendApiBeacon(`/v1/places/${place.id}/directions`);
   };
 
-  const onShare = async () => {
-    const url = `${window.location.origin}/${locale}/explorer/${placeCity?.slug || citySlug}/${place.slug}/`;
-    trackPlaceAction("share", place?.id);
-    try {
-      if (navigator.share) await navigator.share({ title, text: title, url });
-      else await navigator.clipboard.writeText(url);
-    } catch {
-      /* dismissed */
-    }
-  };
+  const shareProps = { name: title, category: pick(categories?.find(category => category.id === place.categoryId)?.nameAr, categories?.find(category => category.id === place.categoryId)?.nameEn), area: cardArea(place.region, locale, placeCity?.nameEn || placeCity?.name || citySlug), href: placePath(placeCity?.slug || citySlug, place.slug), placeId: place.id };
 
   const saveLabel = placeSaved ? t("place.saved") : t("place.save");
   const renderSaveButton = (variant: "primary" | "secondary" | "icon") => (
     <button
+      {...savePress}
       type="button"
       data-save-button
       onClick={onToggleSaved}
@@ -263,7 +260,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
       aria-label={`${t(placeSaved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}: ${t('place.savesCount', { count: saves })}`}
       aria-pressed={placeSaved}
     >
-      <Bookmark size={24} fill={placeSaved ? "currentColor" : "none"} aria-hidden="true" />
+      <SaveIcon filled={placeSaved} sequence={saveSequence} />
       {variant !== "icon" && saveLabel}
       <RollingCount count={saves} className="pd-save-count" />
     </button>
@@ -362,14 +359,15 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
                              border-color:var(--brand-600); }
         .pd-btn-secondary { background:var(--white); color:var(--text-primary);
                             border-color:var(--border-default); }
-        .pd-btn-secondary:hover { border-color:var(--gray-400); }
+        @media (hover:hover) and (pointer:fine) { .pd-btn-secondary:hover { border-color:var(--gray-400); } }
 
         .pd-iconbtn { width:44px; height:44px; flex-shrink:0; border-radius:50%; background:var(--white);
                       color:var(--gray-900);
                       border:1px solid var(--border-default); display:inline-flex;
                       align-items:center; justify-content:center; cursor:pointer;
                       transition:background-color 180ms ease, box-shadow 180ms ease; }
-        .pd-iconbtn:hover { box-shadow:var(--shadow-sm); }
+        @media (hover:hover) and (pointer:fine) { .pd-iconbtn:hover { box-shadow:var(--shadow-sm); } }
+        [data-save-button][data-pressed='true'] { background:var(--brand-50); }
         .pd-iconbtn:disabled { opacity:.6; cursor:default; }
         .pd-iconbtn[data-saved] { color:var(--brand-600); border-color:var(--brand-600); }
         .pd-iconbtn:focus-visible { outline:2px solid var(--brand-600); outline-offset:2px; }
@@ -403,6 +401,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
         .pd-bar .pd-btn { flex:1; width:auto; min-inline-size:0; padding-inline:12px; }
         .pd-bar .pd-btn svg { flex-shrink:0; }
         .pd-title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-3); }
+        @media (min-width:1024px) { .pd-title-row [data-share-button] { display:none; } }
         .pd-bar-inner { gap:8px; }
         .pd-bar-inner > [data-like-button] { flex-shrink:0; }
         .pd-engagement { scroll-margin-block-end:calc(104px + env(safe-area-inset-bottom)); }
@@ -445,7 +444,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
                 <a href={`/${locale}/explorer/`}>{locale === 'ar' ? 'استكشف' : 'Explore'}</a>{' · '}
                 <a href={`/${locale}/explorer/${citySlug}/`}>{pick(placeCity?.name, placeCity?.nameEn)}</a>
               </nav>
-              <div className="pd-title-row"><h1 className="pd-title">{title}</h1><button type="button" aria-label={t('explorer.share')} onClick={onShare} className="pd-iconbtn"><Share size={24} aria-hidden="true" /></button></div>
+              <div className="pd-title-row"><h1 className="pd-title">{title}</h1><ShareButton {...shareProps} className="pd-iconbtn" /></div>
               <LikeSocialProof placeId={place.id} />
               {/* What it is and where, in one quiet line: category, area, city. The street address
                   has its own line below; repeating it here doubled it and mixed two languages. */}
@@ -553,6 +552,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
                 {goButton}
                 <LikeButton placeId={place.id} name={title} likeCount={place.likeCount} detail rail />
                 {renderSaveButton("secondary")}
+                <ShareButton {...shareProps} rail className="pd-btn pd-btn-secondary" />
               </div>
               {(place.phone || place.website) && (
                 <div style={{ marginTop: 16 }}>

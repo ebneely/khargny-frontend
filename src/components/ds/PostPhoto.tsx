@@ -61,8 +61,8 @@ function PostPhotoContent({ image, gallery, compact = false, title, placeId, hre
         })}
       </div>
       {length > 1 && <div className={styles.chevrons}>
-        <button type="button" aria-label={t('gallery.previous')} disabled={active === 0} onClick={() => move(active - 1)}><ChevronLeft size={20} aria-hidden="true" /></button>
-        <button type="button" aria-label={t('gallery.next')} disabled={active === length - 1} onClick={() => move(active + 1)}><ChevronRight size={20} aria-hidden="true" /></button>
+        {active > 0 && <button type="button" data-post-arrow="previous" aria-label={t('gallery.previous')} onClick={() => move(active - 1)}><ChevronLeft size={18} aria-hidden="true" /></button>}
+        {active < length - 1 && <button type="button" data-post-arrow="next" aria-label={t('gallery.next')} onClick={() => move(active + 1)}><ChevronRight size={18} aria-hidden="true" /></button>}
       </div>}
     </div>
     {length > 1 && <div className={styles.dots} data-post-dots>

@@ -37,6 +37,8 @@ test('like HTML is visitor-independent; hydrated buttons share state, count, tra
       assert.ok(buttons.every(node => node.attributes['aria-pressed'] === 'true'));
       await React.act(async () => context.mock.timers.tick(150));
       assert.deepEqual(writes, ['PUT']);
+      assert.ok(buttons.every(node => node.textContent === '0'), 'The early server answer waits for button landing');
+      await React.act(async () => context.mock.timers.tick(load('src/lib/motion.ts').MOTION.landingAt - 150));
       assert.ok(buttons.every(node => node.textContent === '1.2k'));
       assert.ok(buttons.every(node => node.attributes['aria-label'].includes('Nile') && node.attributes['aria-label'].includes('1200')));
       assert.equal(renderToStaticMarkup(button()), '');

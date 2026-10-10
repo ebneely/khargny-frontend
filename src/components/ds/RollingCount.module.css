@@ -6,11 +6,11 @@
 }
 .roll {
   display: inline-block;
-  animation: count-roll 220ms ease-out;
+  animation: count-roll var(--motion-roll) var(--motion-ease-settle);
 }
 @keyframes count-roll {
   from {
-    transform: translateY(100%);
+    transform: translateY(var(--count-roll-from, 100%));
     opacity: 0;
   }
   to {

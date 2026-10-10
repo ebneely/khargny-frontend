@@ -9,6 +9,7 @@ import type { CardGallery } from '@/lib/post-gallery';
 import { PlaceBadges } from './PlaceBadges';
 import { PostPhoto } from './PostPhoto';
 import { PlaceActions } from './PlaceActions';
+import { ShareButton } from './ShareButton';
 import styles from './PostCard.module.css';
 
 type PlaceCardProps = {
@@ -29,12 +30,12 @@ export function PlaceCard({ image, imageSizes, title, category, searchReason, ar
     <span className={styles.meta} title={area || undefined}>{[category, area].filter(Boolean).join(' · ')}{badge && <span data-badge-tone={badgeTone}>{' · '}{badge}</span>}</span>
     {searchReason && <span data-search-reason className={styles.reason} title={searchReason}>{searchReason}</span>}
     {(rating || priceBandLabel(priceRange, locale)) && <span className={styles.meta}>{rating && <span><Star size={14} aria-hidden="true" /> {rating}</span>}<PlaceBadges priceRange={priceRange} variant="price" /></span>}
-    <span className={styles.badges}><PlaceBadges hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} variant="compact" /></span>
   </>;
   return <article className={styles.card} data-place-card data-place-id={placeId} data-compact={compact || undefined}>
     <PostPhoto image={image} gallery={gallery} compact={compact} priority={priority} title={title} placeId={placeId} href={address} sizes={imageSizes} onOpen={onTitleClick} />
     <PlaceActions placeId={placeId} name={title} likeCount={likeCount} metrics={metrics} saved={saveExternally || !placeId ? saved : undefined}
       onSave={(saveExternally || !placeId) && onToggleFavorite ? () => { setSaveState({ favorite, saved: !saved }); onToggleFavorite(!saved); } : undefined} />
     {address ? <Link href={address} prefetch={false} className={`khg-place-card-link ${styles.words}`} onClick={onTitleClick} onAuxClick={event => { if (event.button === 1) onTitleClick?.(); }}>{words}</Link> : <div className={styles.words} onClick={onTitleClick}>{words}</div>}
+    <div className={styles.badges} data-place-badges-line><span className={styles.badgesContent}><PlaceBadges hasMenu={hasMenu} priceVerified={priceVerified} visitedByUs={visitedByUs} variant="compact" /></span><ShareButton card name={title} category={category} area={area} href={address} placeId={placeId} /></div>
   </article>;
 }

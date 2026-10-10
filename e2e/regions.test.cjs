@@ -341,6 +341,7 @@ test('rendered place cards omit the area element when its safe label is empty', 
   const card = loadModule('src/components/ds/PlaceCard.tsx', {
     './PostPhoto': { PostPhoto: () => null },
     './PlaceActions': { PlaceActions: () => null },
+    './ShareButton': { ShareButton: () => null },
     './PostCard.module.css': { default: {} },
     react: React,
     'react/jsx-runtime': require('react/jsx-runtime'),

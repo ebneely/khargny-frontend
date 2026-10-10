@@ -16,12 +16,14 @@
 import { headers, cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { SITE_URL } from './config';
+import { urlFor } from './site-url';
 import { normalizeSiteSettings, siteSocialUrls } from '@/lib/site-socials';
 import { LOCALES, DEFAULT_LOCALE, type Locale } from '@/i18n/dictionaries';
 import { normalizePhoto, type Photo } from '@/lib/place-photo';
 import { isPreviewDeployment } from '@/lib/seo-environment';
 
 export { isPreviewDeployment } from '@/lib/seo-environment';
+export { urlFor } from './site-url';
 
 /** The locale this request is being served in. Mirrors what the root layout decides. */
 export async function currentLocale(): Promise<Locale> {
@@ -37,13 +39,6 @@ export async function currentLocale(): Promise<Locale> {
  */
 export async function currentPath(): Promise<string> {
   return (await headers()).get('x-khargny-path') ?? '';
-}
-
-/** `/explorer/cairo` -> `https://www.5argny.com/en/explorer/cairo/` */
-export function urlFor(path: string, locale: Locale): string {
-  const pathname = path.split(/[?#]/, 1)[0].replace(/^\/+|\/+$/g, '');
-  const clean = pathname ? `/${pathname}` : '';
-  return `${SITE_URL}/${locale}${clean}/`;
 }
 
 /**
