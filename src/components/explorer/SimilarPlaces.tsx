@@ -1,7 +1,7 @@
 "use client";
 /**
  * SimilarPlaces — restyled against the Khargny Design System (TASK-0008).
- * A horizontal rail of `PlaceCard` (sm size) for similar places on the place detail page.
+ * A post-card grid for similar places on the place detail page.
  */
 import * as React from "react";
 import { PlaceCard } from "@/components/ds/PlaceCard";
@@ -9,6 +9,7 @@ import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName } from "@/lib/display-name";
 import { regionLabel } from "@/lib/egypt-regions";
 import { useCities } from "@/lib/api/hooks/use-cities";
+import { useCategories } from "@/lib/api/hooks/use-categories";
 import type { Place } from "@/lib/api/types";
 
 type SimilarPlacesProps = {
@@ -22,6 +23,7 @@ type SimilarPlacesProps = {
 export function SimilarPlaces({ places, citySlug, title }: SimilarPlacesProps) {
   const { locale, t } = useI18n();
   const { data: cities } = useCities();
+  const { data: categories } = useCategories();
   const cityNameById = new Map((cities ?? []).map((city) => [city.id, city.nameEn || city.name || city.slug]));
   if (places.length === 0) return null;
   return (
@@ -43,29 +45,26 @@ export function SimilarPlaces({ places, citySlug, title }: SimilarPlacesProps) {
       >
         {title ?? t("explorer.similarTitle")}
       </h2>
-      {/* The home page's rail: swiped sideways on a phone, a grid on a wide screen, each card
-          at its full size (each in a plain wrapper, which is what the rail sizes). The cards used to share one row and shrink to fit it, which left
-          77px tiles with the save button over the photo and the badges running into each other. */}
-      <div className="khg-home-rail no-scrollbar">
-        {places.map((p) => (
+      <div className="khg-place-grid">
+        {places.map((p, index) => (
           <div key={p.id} style={{ minWidth: 0 }}>
           <PlaceCard
             placeId={p.id}
             likeCount={p.likeCount}
+            gallery={p.gallery}
+            priority={index === 0}
+            metrics={{ saves: p.saveCount, directions: p.directionsCount, views: p.viewCount }}
             size="md"
             title={displayName(p, locale)}
             image={p.coverImage || undefined}
             area={regionLabel(p.region, locale, cityNameById.get(p.cityId) || p.cityId)}
+            category={categories?.find(category => category.id === p.categoryId)?.[locale === 'ar' ? 'nameAr' : 'nameEn'] || categories?.find(category => category.id === p.categoryId)?.nameAr}
             rating={p.rating > 0 ? p.rating.toString() : undefined}
             priceRange={p.priceVerified ? p.priceRange : undefined}
             hasMenu={p.hasMenu}
             priceVerified={p.priceVerified}
             visitedByUs={p.visitedByUs}
             href={`/explorer/${cities?.find((city) => city.id === p.cityId)?.slug || citySlug}/${p.slug}`}
-            onToggleFavorite={() => {
-              // no-op — `placeId` above wires the heart to the saved-places backend
-              // (TASK-0009) automatically. The callback is unused in this path.
-            }}
           />
           </div>
         ))}

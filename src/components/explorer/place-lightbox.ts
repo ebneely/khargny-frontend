@@ -7,6 +7,9 @@ import {
   type MediaDimensions,
 } from "@/lib/place-gallery";
 import { galleryHistory } from "@/lib/gallery-history";
+import { createPhotoTap } from '@/lib/like-interaction';
+import { burstLike, setVisitorLike } from '@/lib/like-effects';
+import { likeStore } from '@/lib/likes';
 
 let library: Promise<typeof import("photoswipe")> | undefined;
 export function warmGallery() {
@@ -64,6 +67,7 @@ type OpenGallery = {
   rtl: boolean;
   t: (key: string) => string;
   cancelled: () => boolean;
+  placeId?: string;
 };
 
 export async function openGallery({
@@ -75,6 +79,7 @@ export async function openGallery({
   rtl,
   t,
   cancelled,
+  placeId,
 }: OpenGallery) {
   const { default: Gallery } = await warmGallery();
   const measured: Record<number, MediaDimensions> = {};
@@ -144,8 +149,16 @@ export async function openGallery({
     returnFocus: false,
     counter: false,
     thumbSelector: "picture img, img:not([aria-hidden])",
-    doubleTapAction: "zoom",
-    imageClickAction: "zoom-or-close",
+    doubleTapAction(point) {
+      if (placeId && likeStore.enabled()) {
+        setVisitorLike(placeId, true);
+        if (gallery.element) burstLike(gallery.element, point);
+      } else gallery.currSlide?.toggleZoom(point);
+    },
+    imageClickAction(point) {
+      if (placeId && likeStore.enabled()) mouseTaps.tap(point);
+      else gallery.currSlide?.toggleZoom(point);
+    },
     tapAction: "toggle-controls",
     closeTitle: t("common.close"),
     zoomTitle: t("gallery.zoom"),
@@ -154,6 +167,12 @@ export async function openGallery({
     errorMsg: t("gallery.unavailable"),
     padding: { top: 64, bottom: 96, left: 16, right: 16 },
   });
+  const mouseTaps = createPhotoTap(() => gallery.element?.classList.toggle('pswp--ui-visible'), point => {
+    if (!placeId) return;
+    setVisitorLike(placeId, true);
+    if (gallery.element) burstLike(gallery.element, point);
+  });
+  gallery.on('openingAnimationEnd', () => gallery.element?.setAttribute('data-gallery-ready', 'true'));
   const navigation = galleryHistory(window, () => gallery.close());
   const releaseScroll = lockPageScroll();
   trigger.focus({ preventScroll: true });
@@ -226,6 +245,7 @@ export async function openGallery({
   });
   gallery.on("contentRemove", ({ content }) => pause(content));
   gallery.on("close", () => {
+    mouseTaps.cancel();
     gallery.element
       ?.querySelectorAll("video")
       .forEach((video) => video.pause());

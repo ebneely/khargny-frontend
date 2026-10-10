@@ -298,6 +298,8 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
                   size="md"
                   placeId={place.id}
                   likeCount={place.likeCount}
+                  gallery={place.gallery}
+                  priority={index === 0}
                   onTitleClick={searching && !searchBusy && !searchQuery.isPlaceholderData && !searchQuery.isError && searchData?.items.includes(place) ? () => {
                     searchSignals.settle();
                     trackSearchClick(debouncedSearch, place.id, (searchData.total === undefined ? 0 : page * SEARCH_PAGE_SIZE) + index + 1, locale, currentCity?.id);
@@ -433,7 +435,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
                       {searchData.otherCities.map((place, index) => {
                         const city = cities?.find((item) => item.id === place.cityId);
                         if (!city) return null;
-                        return <PlaceCard key={place.id} href={`/explorer/${city.slug}/${place.slug}`} size="md" placeId={place.id} likeCount={place.likeCount} onTitleClick={!searchBusy && !searchQuery.isPlaceholderData ? () => { searchSignals.settle(); trackSearchClick(debouncedSearch, place.id, index + 1, locale, currentCity?.id); } : undefined} title={displayName(place, locale)} area={displayName(city, locale)} searchReason={matchReason(place.matchedOn)} image={place.coverImage || undefined} priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }} onToggleFavorite={() => {}} />;
+                        return <PlaceCard key={place.id} href={`/explorer/${city.slug}/${place.slug}`} size="md" placeId={place.id} likeCount={place.likeCount} gallery={place.gallery} priority={index === 0} onTitleClick={!searchBusy && !searchQuery.isPlaceholderData ? () => { searchSignals.settle(); trackSearchClick(debouncedSearch, place.id, index + 1, locale, currentCity?.id); } : undefined} title={displayName(place, locale)} category={categories?.find(category => category.id === place.categoryId)?.[locale === 'ar' ? 'nameAr' : 'nameEn'] || categories?.find(category => category.id === place.categoryId)?.nameAr} area={displayName(city, locale)} searchReason={matchReason(place.matchedOn)} image={place.coverImage || undefined} priceRange={place.priceRange} hasMenu={place.hasMenu} priceVerified={place.priceVerified} visitedByUs={place.visitedByUs} metrics={{ saves: place.saveCount, directions: place.directionsCount, views: place.viewCount }} onToggleFavorite={() => {}} />;
                       })}
                     </div>
                   </section>

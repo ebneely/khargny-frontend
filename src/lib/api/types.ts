@@ -126,6 +126,7 @@ export interface Place extends PlaceFlags {
   status: PlaceStatus;
   /** Card cover — small WebP variant of the first image, from the public list. */
   coverImage?: string | null;
+  gallery?: { total: number; images: { url: string; width: number | null; height: number | null }[] };
   coverImageDimensions?: { width: number; height: number } | null;
   createdAt: string;
   updatedAt: string;

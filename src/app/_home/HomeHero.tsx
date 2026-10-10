@@ -11,7 +11,8 @@ import { useDebouncedSearch } from "@/lib/use-search-term";
 import { matchReason, searchAddress, searchTerm } from "@/lib/place-search";
 import { regionLabel } from "@/lib/egypt-regions";
 import { PhotoImage } from "@/components/ds/PhotoImage";
-import { LoveButton } from '@/components/ds/LoveButton';
+import { usePhotoLike } from '@/components/ds/usePhotoLike';
+import { PlaceActions } from '@/components/ds/PlaceActions';
 import { useSearchSignals } from '@/lib/use-search-signals';
 import { trackSearchClick } from '@/lib/analytics/track';
 import {
@@ -36,6 +37,7 @@ type Option = {
   photo?: string | null;
   placeId?: string;
   likeCount?: number;
+  metrics?: { saves?: number; directions?: number; views?: number };
   position?: number;
 };
 
@@ -126,6 +128,7 @@ export function HomeHero({ cities }: { cities: City[] }) {
               key: place.id,
               placeId: place.id,
               likeCount: place.likeCount,
+              metrics: { saves: place.saveCount, directions: place.directionsCount, views: place.viewCount },
               position: index + 1,
               label: pick(place.name, place.nameEn),
               photo: place.coverImage,
@@ -478,14 +481,7 @@ export function HomeHero({ cities }: { cities: City[] }) {
                   const contents = (
                     <>
                       {option.photo && (
-                        <span className={styles.photo}>
-                          <PhotoImage
-                            photo={option.photo}
-                            alt=""
-                            frame="card"
-                            sizes="48px"
-                          />
-                        </span>
+                        <SuggestionPhoto photo={option.photo} placeId={option.placeId} />
                       )}
                       <span>
                         <span className={styles.optionName}>
@@ -516,6 +512,7 @@ export function HomeHero({ cities }: { cities: City[] }) {
                     <a
                       {...props}
                       href={option.href}
+                      data-search-result={option.placeId}
                       onAuxClick={(event) => { if (event.button === 1) { remember(); recordClick(option); } }}
                       onClick={() => {
                         remember();
@@ -525,8 +522,8 @@ export function HomeHero({ cities }: { cities: City[] }) {
                     >
                       {contents}
                     </a>
-                    {option.placeId && <div className={styles.resultLove} onMouseDown={(event) => event.preventDefault()}>
-                      <LoveButton placeId={option.placeId} name={option.label} likeCount={option.likeCount} />
+                    {option.placeId && <div className={styles.resultActions} onMouseDown={(event) => event.preventDefault()}>
+                      <PlaceActions placeId={option.placeId} name={option.label} likeCount={option.likeCount} metrics={option.metrics} />
                     </div>}
                     </div>
                   ) : (
@@ -598,4 +595,12 @@ export function HomeHero({ cities }: { cities: City[] }) {
       </div>
     </section>
   );
+}
+
+function SuggestionPhoto({ photo, placeId }: { photo: string; placeId?: string }) {
+  const interaction = usePhotoLike(placeId);
+  return <span className={styles.photo} onPointerDown={interaction.onPointerDown} onPointerMove={interaction.onPointerMove} onPointerUp={interaction.onPointerUp} onPointerCancel={interaction.onPointerCancel}
+    onClick={event => { const anchor = event.currentTarget.closest('a'); if (anchor) interaction.click(event, () => anchor.click()); }}>
+    <PhotoImage photo={photo} alt="" frame="card" sizes="48px" />
+  </span>;
 }

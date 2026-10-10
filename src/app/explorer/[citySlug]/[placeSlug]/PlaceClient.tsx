@@ -1,5 +1,6 @@
 "use client";
-import { LoveButton } from '@/components/ds/LoveButton';
+import { LikeButton, LikeSocialProof } from '@/components/ds/LikeButton';
+import { usePhotoLike } from '@/components/ds/usePhotoLike';
 /**
  * Place detail — `/explorer/{citySlug}/{placeSlug}`.
  *
@@ -101,6 +102,15 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
   const { data: cities } = useCities();
 
   const gallery = usePlaceGallery();
+  const photoLike = usePhotoLike(place?.id);
+  const galleryRequested = React.useRef(false);
+  React.useEffect(() => {
+    if (!place || galleryRequested.current || new URLSearchParams(window.location.search).get('gallery') !== '1') return;
+    const trigger = window.document.querySelector<HTMLElement>('.pd-hero-photo');
+    if (!trigger) return;
+    galleryRequested.current = true;
+    trigger.click();
+  }, [place]);
   const currentCity = cities?.find((c) => c.slug === citySlug);
   const canonicalCity = cities?.find((city) => city.id === place?.cityId);
   React.useEffect(() => {
@@ -251,44 +261,15 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
       aria-label={t(placeSaved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}
       aria-pressed={placeSaved}
     >
-      <Bookmark size={18} fill={placeSaved ? "currentColor" : "none"} aria-hidden="true" />
+      <Bookmark size={24} fill={placeSaved ? "currentColor" : "none"} aria-hidden="true" />
       {variant !== "icon" && saveLabel}
     </button>
   );
 
-  const primaryAction = directionsUrl ? "directions" : place.phone ? "call" : place.website ? "website" : "save";
-  const primaryButton = primaryAction === "directions" ? (
-    <a
-      href={directionsUrl!}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="pd-btn pd-btn-primary"
-      aria-label={t("place.goDirections", { place: title })}
-      onClick={onDirections}
-    >
-      <Navigation size={18} aria-hidden="true" />
-      {t("place.go")}
-    </a>
-  ) : primaryAction === "call" ? (
-    <a href={`tel:${place.phone}`} className="pd-btn pd-btn-primary" aria-label={t("place.call")}>
-      <Phone size={18} aria-hidden="true" />
-      {t("place.call")}
-    </a>
-  ) : primaryAction === "website" ? (
-    <a
-      href={place.website!}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="pd-btn pd-btn-primary"
-      aria-label={t("place.website")}
-    >
-      <Globe size={18} aria-hidden="true" />
-      {t("place.website")}
-    </a>
-  ) : renderSaveButton("primary");
+  const goButton = directionsUrl ? <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="pd-btn pd-btn-primary" aria-label={t('place.goDirections', { place: title })} onClick={onDirections}><Navigation size={20} aria-hidden="true" />{t('place.go')}</a> : <button type="button" className="pd-btn pd-btn-primary" disabled><Navigation size={20} aria-hidden="true" />{t('place.go')}</button>;
 
   return (
-    <div data-place-gallery="true" style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
+    <div data-place-gallery="true" data-like-place={place.id} style={{ minHeight: "100vh", background: "var(--surface-app)" }}>
       <SiteHeader active="explore" />
 
       <style>{`
@@ -414,6 +395,11 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
         @media (min-width:1024px){ .pd-bar { display:none; } }
         .pd-bar .pd-btn { flex:1; width:auto; min-inline-size:0; padding-inline:12px; }
         .pd-bar .pd-btn svg { flex-shrink:0; }
+        .pd-title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-3); }
+        .pd-bar-inner { gap:8px; }
+        .pd-bar-inner > [data-like-button] { flex-shrink:0; }
+        .pd-engagement { scroll-margin-block-end:calc(104px + env(safe-area-inset-bottom)); }
+        @media (max-width:1023px){ .pd-shell { padding-bottom:calc(104px + env(safe-area-inset-bottom)); } }
 
         @media (prefers-reduced-motion: reduce){
           .pd-btn, .pd-iconbtn { transition:none; }
@@ -422,13 +408,17 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
 
       <main className="pd-shell">
         {/* Hero */}
-        <div className="pd-hero">
+        <div className="pd-hero" onPointerDown={photoLike.onPointerDown} onPointerMove={photoLike.onPointerMove} onPointerUp={photoLike.onPointerUp} onPointerCancel={photoLike.onPointerCancel}>
           {/* The page's primary image, as a real <img> with the place's name as alt. As a
               CSS background it could not be indexed by image search and announced nothing
               to a screen reader — on a place page, that is the main content. */}
           <button type="button" className="pd-hero-photo" data-gallery-index={0} aria-label={t('gallery.photo', { index: 1, total: completeGallery.length })}
             onPointerEnter={gallery.warm} onTouchStart={gallery.warm} onFocus={gallery.warm}
-            onClick={(event) => { void gallery.open(completeGallery, 0, event.currentTarget, title); }}>
+            style={{ touchAction: 'manipulation' }} onClick={(event) => {
+              const trigger = event.currentTarget;
+              const open = () => { void gallery.open(completeGallery, 0, trigger, title); };
+              if (!photoLike.click(event, open, trigger.parentElement ?? trigger)) open();
+            }}>
             <PhotoImage photo={cover} fallbackPhotos={allImages.slice(1)} alt={`${title} — 1`} frame="hero" priority />
           </button>
           {gallery.error && <p role="alert">{t('gallery.unavailable')}</p>}
@@ -436,26 +426,6 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
             <button type="button" aria-label={t("explorer.back")} onClick={() => backToBrowse(router, `/${locale}/explorer/${citySlug}/`)} className="pd-iconbtn">
               <ArrowLeft size={18} color="var(--gray-900)" />
             </button>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" aria-label={t("explorer.share")} onClick={onShare} className="pd-iconbtn">
-                <Share size={16} color="var(--gray-900)" />
-              </button>
-              <button
-                type="button"
-                aria-label={t(placeSaved ? 'place.unsaveLabel' : 'place.saveLabel', { place: title })}
-                aria-pressed={placeSaved}
-                onClick={onToggleSaved}
-                disabled={isSavingPending}
-                className="pd-iconbtn khg-heart-tap"
-              >
-                <Bookmark
-                  size={18}
-                  color={placeSaved ? "var(--brand-600)" : "var(--gray-500)"}
-                  fill={placeSaved ? "var(--brand-600)" : "none"}
-                />
-              </button>
-              <LoveButton placeId={place.id} name={title} likeCount={place.likeCount} />
-            </div>
           </div>
         </div>
 
@@ -468,7 +438,8 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
                 <a href={`/${locale}/explorer/`}>{locale === 'ar' ? 'استكشف' : 'Explore'}</a>{' · '}
                 <a href={`/${locale}/explorer/${citySlug}/`}>{pick(placeCity?.name, placeCity?.nameEn)}</a>
               </nav>
-              <h1 className="pd-title">{title}</h1>
+              <div className="pd-title-row"><h1 className="pd-title">{title}</h1><button type="button" aria-label={t('explorer.share')} onClick={onShare} className="pd-iconbtn"><Share size={24} aria-hidden="true" /></button></div>
+              <LikeSocialProof placeId={place.id} />
               {/* What it is and where, in one quiet line: category, area, city. The street address
                   has its own line below; repeating it here doubled it and mixed two languages. */}
               <p className="pd-kind">
@@ -496,6 +467,7 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
 
               {/* Public engagement: saves · directions · views — the same three the cards show. */}
               <div
+                className="pd-engagement"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -571,9 +543,9 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
           <aside className="pd-rail">
             <div className="pd-card">
               <div className="pd-actions">
-                {primaryButton}
-                {primaryAction !== "save" && renderSaveButton("secondary")}
-                <LoveButton placeId={place.id} name={title} likeCount={place.likeCount} />
+                {goButton}
+                <LikeButton placeId={place.id} name={title} likeCount={place.likeCount} detail rail />
+                {renderSaveButton("secondary")}
               </div>
               {(place.phone || place.website) && (
                 <div style={{ marginTop: 16 }}>
@@ -599,28 +571,9 @@ export default function PlaceDetailPage({ citySlug: initialCitySlug, placeSlug: 
       {/* Mobile action bar — hidden ≥1024 where the rail takes over */}
       <div className="pd-bar">
         <div className="pd-bar-inner">
-          {primaryAction !== "save" && renderSaveButton("icon")}
-          {place.website && primaryAction !== "website" && (
-            <a
-              href={place.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t("place.website")}
-              className="pd-iconbtn"
-            >
-              <Globe size={18} aria-hidden="true" />
-            </a>
-          )}
-          {place.phone && primaryAction !== "call" && (
-            <a
-              href={`tel:${place.phone}`}
-              aria-label={t("place.call")}
-              className="pd-iconbtn"
-            >
-              <Phone size={18} aria-hidden="true" />
-            </a>
-          )}
-          {primaryButton}
+          <LikeButton placeId={place.id} name={title} likeCount={place.likeCount} detail />
+          {goButton}
+          {renderSaveButton("icon")}
         </div>
       </div>
     </div>

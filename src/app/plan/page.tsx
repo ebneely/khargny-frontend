@@ -10,14 +10,16 @@
  * strictly non-transactional).
  */
 import * as React from "react";
-import { LoveButton } from '@/components/ds/LoveButton';
+import { PlaceActions } from '@/components/ds/PlaceActions';
+import { LikedPlaces } from '@/components/ds/LikedPlaces';
+import { usePhotoLike } from '@/components/ds/usePhotoLike';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSavedPlaces, useUnsavePlace } from "@/lib/api/hooks/use-saved-places";
 import { useCities } from "@/lib/api/hooks/use-cities";
 import { useI18n } from "@/i18n/LocaleProvider";
 import { displayName } from "@/lib/display-name";
-import { Star, Bookmark } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { LoadingSkeleton } from "@/components/explorer/LoadingSkeleton";
 import { ErrorState } from "@/components/explorer/ErrorState";
 import { SiteHeader } from "@/components/ds/SiteHeader";
@@ -41,6 +43,9 @@ type SavedPlaceWithPlace = {
     /** attachCovers() has always sent this; the row just never read it. */
     coverImage?: string | null;
     likeCount?: number;
+    saveCount?: number;
+    directionsCount?: number;
+    viewCount?: number;
     hasMenu?: boolean;
     priceVerified?: boolean;
     visitedByUs?: boolean;
@@ -126,6 +131,7 @@ export default function PlanPage() {
   const { data: cities } = useCities();
   const groups = React.useMemo(() => (data ? groupAndSort(data, locale) : []), [data, locale]);
   const totalCount = data?.length ?? 0;
+  const [view, setView] = React.useState<'plan' | 'liked'>('plan');
 
   // cityId → slug, so a saved place deep-links to the real explorer URL
   // (/explorer/{citySlug}/{placeSlug}) instead of a raw UUID segment.
@@ -224,14 +230,18 @@ export default function PlanPage() {
       </header>
 
       {/* Main scrollable content */}
+      <div className="khg-plan-container" role="tablist" aria-label={t('plan.title')} style={{ display: 'flex', gap: 'var(--space-3)', paddingBlock: 'var(--space-3)' }}>
+        {(['plan', 'liked'] as const).map(tab => <button key={tab} type="button" role="tab" aria-selected={view === tab} aria-controls={`plan-${tab}`} id={`tab-${tab}`} onClick={() => setView(tab)} onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const next = tab === 'plan' ? 'liked' : 'plan'; setView(next); window.document.getElementById(`tab-${next}`)?.focus(); } }} tabIndex={view === tab ? 0 : -1} style={{ minHeight: 44, paddingInline: 'var(--space-4)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-full)', background: view === tab ? 'var(--brand-50)' : 'var(--surface-card)', color: 'var(--text-primary)', fontWeight: 600 }}>{t(`plan.${tab}`)}</button>)}
+      </div>
       <main
+        role="tabpanel" id={`plan-${view}`} aria-labelledby={`tab-${view}`}
         style={{
           flex: 1,
           overflowY: "auto",
           paddingBottom: 16,
         }}
       >
-        {isLoading ? (
+        {view === 'liked' ? <div className="khg-plan-container"><LikedPlaces /></div> : isLoading ? (
           <LoadingSkeleton count={4} />
         ) : isError ? (
           <ErrorState
@@ -289,7 +299,7 @@ export default function PlanPage() {
                 transition: "var(--motion-color), var(--motion-shadow)",
               }}
             >
-              Find places
+              {t('plan.startExploring')}
             </Link>
           </div>
         ) : (
@@ -349,14 +359,15 @@ function PlanDayGroup({
         >
           {isUnscheduled
             ? t("plan.noDayHint")
-            : `${group.items.length} place${group.items.length === 1 ? "" : "s"} planned`}
+            : t('plan.plannedCount', { count: group.items.length })}
         </p>
       </header>
       <div className="khg-plan-items">
-        {group.items.map((sp) => (
+        {group.items.map((sp, index) => (
           <PlanItemCard
             key={sp.id}
             saved={sp}
+            priority={index === 0}
             onOpen={() => onOpenPlace(sp.place)}
             onRemove={() => unsave.mutate(sp.placeId)}
             removing={unsave.isPending}
@@ -368,142 +379,24 @@ function PlanDayGroup({
 }
 
 /**
- * A saved place, as a full-width row: photo thumbnail + name/address/rating,
- * with a remove (heart) button. The whole row is the click target (no dead
- * clickable whitespace — the old fixed-width card left the rest of the grid cell
- * clickable, which silently navigated when you clicked empty space).
+ * A saved place with a compact linked header and a separate action row.
  */
-function PlanItemCard({
-  saved: sp,
-  onOpen,
-  onRemove,
-  removing,
-}: {
-  saved: SavedPlaceWithPlace;
-  onOpen: () => void;
-  onRemove: () => void;
-  removing: boolean;
-}) {
-  const { locale, t } = useI18n();
-  const placeName = displayName(sp.place, locale) || sp.place.name;
-  return (
-    <div
-      style={{
-        position: 'relative',
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: 12,
-        background: "var(--white)",
-        border: "1px solid var(--border-default)",
-        borderRadius: "var(--radius-xl)",
-        cursor: "pointer",
-        transition: "var(--motion-shadow), var(--motion-transform)",
-        boxShadow: "var(--shadow-sm)",
-      }}
-    >
-      <div
-        className="khg-place-card-link"
-        onClick={onOpen}
-        role="link"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onOpen();
-          }
-        }}
-        style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minInlineSize: 0 }}
-      >
-      <div
-        style={{
-          position: "relative",
-          width: 72,
-          height: 72,
-          flexShrink: 0,
-          borderRadius: "var(--radius-lg)",
-          overflow: "hidden",
-          background: "var(--surface-sunken)",
-        }}
-        aria-hidden={sp.place.coverImage ? undefined : true}
-      >
-        <PhotoImage photo={sp.place.coverImage} alt={sp.place.coverImage ? placeName : ""} frame="card" sizes="auto, 72px" />
+function PlanItemCard({ saved: savedPlace, onOpen, onRemove, removing, priority = false }: { saved: SavedPlaceWithPlace; onOpen: () => void; onRemove: () => void; removing: boolean; priority?: boolean }) {
+  const { locale } = useI18n();
+  const name = displayName(savedPlace.place, locale) || savedPlace.place.name;
+  const photoLike = usePhotoLike(savedPlace.placeId);
+  return <article data-plan-card data-place-id={savedPlace.placeId} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', background: 'var(--surface-card)' }}>
+    <div className="khg-place-card-link" role="link" tabIndex={0} onClick={onOpen} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(); } }} style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, cursor: 'pointer', padding: 12 }}>
+      <div data-post-photo data-compact style={{ position: 'relative', width: 72, height: 72, flexShrink: 0, overflow: 'hidden', borderRadius: 'var(--radius-lg)', touchAction: 'manipulation' }} onPointerDown={photoLike.onPointerDown} onPointerMove={photoLike.onPointerMove} onPointerUp={photoLike.onPointerUp} onPointerCancel={photoLike.onPointerCancel}
+        onClick={event => { photoLike.click(event, onOpen); }}>
+        <PhotoImage photo={savedPlace.place.coverImage} alt={name} frame="card" sizes="auto, 72px" priority={priority} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "var(--text-md)",
-            fontWeight: 600,
-            color: "var(--text-primary)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {placeName}
-        </div>
-        {sp.place.address && (
-          <div
-            style={{
-              fontSize: "var(--text-sm)",
-              color: "var(--text-tertiary)",
-              marginTop: 2,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {sp.place.address}
-          </div>
-        )}
-        {sp.place.rating > 0 && (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: "var(--text-sm)",
-              color: "var(--text-secondary)",
-              marginTop: 4,
-            }}
-          >
-            <Star size={13} fill="var(--brand-600)" color="var(--brand-600)" />
-            {sp.place.rating.toFixed(1)}
-          </div>
-        )}
-        <div style={{ marginBlockStart: 4 }}>
-          <PlaceBadges hasMenu={sp.place.hasMenu} priceVerified={sp.place.priceVerified} visitedByUs={sp.place.visitedByUs} variant="compact" />
-        </div>
-      </div>
-      </div>
-      <button
-        type="button"
-        aria-label={t('place.unsaveLabel', { place: placeName })}
-        className="khg-heart-tap"
-        disabled={removing}
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        style={{
-          flexShrink: 0,
-          width: 40,
-          height: 40,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: "var(--radius-full)",
-          background: "var(--brand-50)",
-          border: "1px solid var(--brand-100)",
-          cursor: removing ? "default" : "pointer",
-        }}
-      >
-        <Bookmark size={16} fill="var(--brand-600)" color="var(--brand-600)" aria-hidden="true" />
-      </button>
-      <div style={{ position: 'absolute', insetBlockStart: 12, insetInlineStart: 12 }}>
-        <LoveButton placeId={sp.placeId} name={placeName} likeCount={sp.place.likeCount} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+        {savedPlace.place.address && <p style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{savedPlace.place.address}</p>}
+        <PlaceBadges hasMenu={savedPlace.place.hasMenu} priceVerified={savedPlace.place.priceVerified} visitedByUs={savedPlace.place.visitedByUs} variant="compact" />
       </div>
     </div>
-  );
+    <PlaceActions placeId={savedPlace.placeId} name={name} likeCount={savedPlace.place.likeCount} saved onSave={onRemove} saveDisabled={removing} metrics={{ saves: savedPlace.place.saveCount, directions: savedPlace.place.directionsCount, views: savedPlace.place.viewCount }} />
+  </article>;
 }

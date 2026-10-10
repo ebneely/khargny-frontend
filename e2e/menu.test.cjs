@@ -86,6 +86,8 @@ function planCardModule(locale) {
     'next/link': { default: empty },
     'next/navigation': { useRouter: empty },
     '@/lib/api/hooks/use-saved-places': { useSavedPlaces: empty, useUnsavePlace: empty },
+    '@/components/ds/usePhotoLike': { usePhotoLike: () => ({ click: () => false }) },
+    '@/components/ds/PlaceActions': { PlaceActions: props => React.createElement('button', { 'aria-label': 'Save', onClick: props.onSave }, React.createElement('svg', { className: 'Bookmark' })) },
     '@/lib/api/hooks/use-cities': { useCities: empty },
     '@/components/explorer/LoadingSkeleton': { LoadingSkeleton: empty },
     '@/components/explorer/ErrorState': { ErrorState: empty },
@@ -151,7 +153,7 @@ test('rendered cards retain legacy text and put the name before three passive st
     const modern = renderToStaticMarkup(React.createElement(PlaceCard, { ...props, hasMenu: true, priceVerified: true, visitedByUs: true }));
     const menuLabel = locale === 'en' ? 'Services listed' : 'الخدمات معروضة';
     assert.ok(modern.indexOf('title="Test place"') < modern.indexOf(menuLabel));
-    assert.ok(modern.includes('flex-wrap:wrap'));
+    assert.ok(fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8').includes('flex-wrap: wrap'));
   }
 });
 
@@ -450,6 +452,7 @@ test('both card components keep passive chips inside keyboard-native links and s
   for (const locale of ['ar', 'en']) {
     const flags = { hasMenu: true, priceVerified: false, visitedByUs: true };
     const ExplorerCard = loadModule('src/components/explorer/PlaceCard.tsx', {
+      '@/components/ds/PlaceCard': { PlaceCard: cardModule(locale) },
       '@/components/ds/PlaceBadges': badgeModule(locale),
       'next/link': { default: ({ children, ...props }) => React.createElement('a', props, children) },
       'next/image': { default: () => null },
@@ -460,8 +463,8 @@ test('both card components keep passive chips inside keyboard-native links and s
     for (const Card of [cardModule(locale), ExplorerCard]) {
       const markup = renderToStaticMarkup(React.createElement(Card, { title: 'Test place', area: '', href: '/explorer/test-city/test-place',
         citySlug: 'test-city', placeSlug: 'test-place', onToggleFavorite: () => {}, ...flags }));
-      const href = Card === ExplorerCard ? '/explorer/test-city/test-place' : `/${locale}/explorer/test-city/test-place/`;
-      const anchor = [...markup.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)].find((match) => match[0].includes(`href="${href}"`))?.[0];
+      const href = `/${locale}/explorer/test-city/test-place/`;
+      const anchor = [...markup.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)].find((match) => match[0].includes('khg-place-card-link') && match[0].includes(`href="${href}"`))?.[0];
       assert.ok(anchor);
       assertStatuses(anchor, [true, false, true], locale);
       assert.equal((markup.match(/<button\b/g) ?? []).length, 1);
@@ -487,7 +490,7 @@ test('shared card invokes the framework Link with prefetch disabled, and renders
     });
     const props = { title: 'Test place', area: '', onToggleFavorite: () => {} };
     const markup = renderToStaticMarkup(React.createElement(Card, { ...props, href: '/explorer/aswan/test-place' }));
-    assert.equal(calls.length, 1, 'A bare anchor does not invoke next/link');
+    assert.equal(calls.length, 2, 'Photo and name are separate native framework links');
     assert.equal(calls[0].href, `/${locale}/explorer/aswan/test-place/`);
     assert.equal(calls[0].prefetch, false);
     const anchor = markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/)?.[0];
@@ -497,7 +500,7 @@ test('shared card invokes the framework Link with prefetch disabled, and renders
     for (const href of [undefined, '']) {
       const noLink = renderToStaticMarkup(React.createElement(Card, { ...props, href }));
       assert.ok(!/<a\b|role="link"/.test(noLink));
-      assert.equal(calls.length, 1);
+      assert.equal(calls.length, 2);
       assertStatuses(noLink, [false, false, false], locale);
       assert.equal((noLink.match(/<button\b/g) ?? []).length, 1);
     }
@@ -568,8 +571,8 @@ test('Save remains an outline or brand-filled bookmark, distinct from Love, reta
     const markup = renderToStaticMarkup(React.createElement(PlaceCard, { title: 'Test place', favorite: saved, href: '/test', onToggleFavorite: () => {} }));
     const button = markup.match(/<button\b[\s\S]*?<\/button>/)?.[0];
     assert.ok(button.includes('class="Bookmark"'));
-    assert.ok(button.includes(`fill="${saved ? 'var(--brand-600)' : 'none'}"`));
-    assert.ok(button.includes(`aria-label="${saved ? 'Remove Test place from your plan' : 'Add Test place to your plan'}"`));
+    assert.ok(button.includes(`fill="${saved ? 'currentColor' : 'none'}"`));
+    assert.ok(button.includes(`aria-label="${saved ? 'Remove Test place from your plan' : 'Add Test place to your plan'}: 0 saves"`));
     assert.ok(!button.includes('class="Heart"'));
     assert.ok(markup.indexOf('</a>') < markup.indexOf('<button'));
   }
@@ -618,7 +621,7 @@ test('plan status taps and keyboard navigation preserve opening while remove rem
     onOpen: () => { opened += 1; }, onRemove: () => { removed += 1; }, removing: false });
   const children = React.Children.toArray(tree.props.children);
   const link = children.find((child) => child.props.role === 'link');
-  const button = children.find((child) => child.type === 'button');
+  const button = children.find((child) => child.props.onSave);
   assert.ok(link && button);
   assert.equal(link.props.tabIndex, 0);
   function assertPassive(node) {
@@ -632,7 +635,7 @@ test('plan status taps and keyboard navigation preserve opening while remove rem
   for (const key of ['Enter', ' ']) link.props.onKeyDown({ key, preventDefault: () => {} });
   link.props.onKeyDown({ key: 'Tab', preventDefault: () => assert.fail('Tab must not be prevented') });
   assert.equal(opened, 3);
-  button.props.onClick({ stopPropagation: () => {} });
+  button.props.onSave();
   assert.equal(removed, 1);
   assert.equal(opened, 3);
 });
@@ -717,8 +720,9 @@ test('card name remains independent of wrapping metadata, and menus use mobile r
   const card = fs.readFileSync(path.join(__dirname, '../src/components/ds/PlaceCard.tsx'), 'utf8');
   const badges = fs.readFileSync(path.join(__dirname, '../src/components/ds/PlaceBadges.module.css'), 'utf8');
   const menu = fs.readFileSync(path.join(__dirname, '../src/components/explorer/PlaceMenuSection.module.css'), 'utf8');
-  assert.ok(card.includes('flexWrap: "wrap"'));
-  assert.ok(card.includes('minWidth: 0'));
+  const postCss = fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8');
+  assert.ok(postCss.includes('flex-wrap: wrap'));
+  assert.ok(postCss.includes('min-width: 0'));
   assert.ok(card.indexOf('{title}') < card.indexOf('<PlaceBadges'));
   assert.ok(badges.includes('max-inline-size: 100%'));
   assert.ok(badges.includes('flex-wrap: wrap'));

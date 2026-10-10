@@ -53,17 +53,18 @@ export function HomeRails({ d }: { d: HomeDiscovery }) {
         <HomeAds d={d} />
 
         {!showEmpty ? (
-          d.rails.map((rail) => (
+          d.rails.map((rail, railIndex) => (
             <section key={rail.title} className="khg-anim-in-2" style={{ margin: "clamp(24px, 5vw, 36px) 0" }}>
               <h2 className="khg-section-title">{rail.title}</h2>
               <div className="khg-home-rail no-scrollbar">
-                {rail.places.map((p) => (
+                {rail.places.map((p, index) => (
                   <div key={p.id} style={{ cursor: "pointer", width: "100%" }}>
                     {/* No `rating` prop: there is no review system yet, so places.rating is
                         always 0 and rendering it published a score nobody gave. */}
                     <PlaceCard
                       placeId={p.id}
-                      saveExternally
+                      compact
+                      priority={index === 0 && railIndex === 0 && !d.featured?.items.length && !d.topPlaces?.items.length}
                       likeCount={p.likeCount}
                       href={p.citySlug && p.slug ? `/explorer/${p.citySlug}/${p.slug}` : undefined}
                       size="md"
@@ -77,8 +78,6 @@ export function HomeRails({ d }: { d: HomeDiscovery }) {
                       priceVerified={p.priceVerified}
                       visitedByUs={p.visitedByUs}
                       metrics={p.metrics}
-                      favorite={false}
-                      onToggleFavorite={() => d.onSavePlace(p.id)}
                     />
                   </div>
                 ))}

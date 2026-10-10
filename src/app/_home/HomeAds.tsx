@@ -10,7 +10,7 @@ import { createAdTracker, observeSponsoredImpression, type AdTracker } from "@/l
 import type { AdItem, AdPlacement } from "@/lib/ads/placements";
 import type { HomeDiscovery } from "./useHomeDiscovery";
 
-function TrackedCard({ item, citySlug, area, placement, bucket, tracker, onSave, position }: {
+function TrackedCard({ item, citySlug, area, placement, bucket, tracker, onSave, priority = false }: {
   item: AdItem;
   citySlug: string;
   area: string;
@@ -19,6 +19,7 @@ function TrackedCard({ item, citySlug, area, placement, bucket, tracker, onSave,
   tracker: AdTracker;
   onSave: () => void;
   position?: number;
+  priority?: boolean;
 }) {
   const { t, locale } = useI18n();
   const ref = React.useRef<HTMLDivElement>(null);
@@ -45,8 +46,9 @@ function TrackedCard({ item, citySlug, area, placement, bucket, tracker, onSave,
       style={{ minWidth: 0 }}
     >
       <PlaceCard
+        compact
+        priority={priority}
         placeId={item.place.id}
-        saveExternally
         likeCount={item.place.likeCount}
         href={`/explorer/${encodeURIComponent(citySlug)}/${encodeURIComponent(item.place.slug)}`}
         onTitleClick={tap}
@@ -84,8 +86,8 @@ export function HomeAds({ d }: { d: HomeDiscovery }) {
         <section aria-labelledby="home-featured-title" data-ad-placement="featured" className="khg-anim-in-2" style={{ margin: "clamp(24px, 5vw, 36px) 0" }}>
           <h2 id="home-featured-title" className="khg-section-title">{locale === "ar" ? d.featured.section.titleAr : d.featured.section.titleEn}</h2>
           <div className="khg-home-rail no-scrollbar">
-            {d.featured.items.map((item) => (
-              <TrackedCard key={`${item.place.id}:${item.campaignId ?? "organic"}`} item={item} citySlug={cityById.get(item.place.cityId)!.slug} area={cityName(item.place.cityId)} placement="featured" bucket={d.featured!.rotation.bucket} tracker={tracker} onSave={() => d.onSavePlace(item.place.id)} />
+            {d.featured.items.map((item, index) => (
+              <TrackedCard key={`${item.place.id}:${item.campaignId ?? "organic"}`} item={item} citySlug={cityById.get(item.place.cityId)!.slug} area={cityName(item.place.cityId)} placement="featured" bucket={d.featured!.rotation.bucket} tracker={tracker} priority={index === 0} onSave={() => d.onSavePlace(item.place.id)} />
             ))}
           </div>
         </section>
@@ -112,8 +114,8 @@ export function HomeAds({ d }: { d: HomeDiscovery }) {
           </div>
           {d.topPlaces && <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }} aria-live="polite">{t("home.showingList")} {d.topPlacesCity ? (locale === "ar" ? d.activeCities.find((city) => city.slug === d.topPlacesCity)?.name : d.activeCities.find((city) => city.slug === d.topPlacesCity)?.nameEn || d.activeCities.find((city) => city.slug === d.topPlacesCity)?.name) : t("home.allEgypt")}</p>}
           {d.topPlaces && <div id="home-top10-list" aria-busy={d.topPlacesLoading} className="khg-home-rail no-scrollbar">
-            {d.topPlaces.items.map((item) => (
-              <TrackedCard key={`${item.position}:${item.place.id}:${item.campaignId ?? "organic"}`} item={item} citySlug={cityById.get(item.place.cityId)!.slug} area={cityName(item.place.cityId)} placement="top10" bucket={d.topPlaces!.rotation.bucket} tracker={tracker} position={item.position} onSave={() => d.onSavePlace(item.place.id)} />
+            {d.topPlaces.items.map((item, index) => (
+              <TrackedCard key={`${item.position}:${item.place.id}:${item.campaignId ?? "organic"}`} item={item} citySlug={cityById.get(item.place.cityId)!.slug} area={cityName(item.place.cityId)} placement="top10" bucket={d.topPlaces!.rotation.bucket} tracker={tracker} position={item.position} priority={index === 0 && !d.featured?.items.length} onSave={() => d.onSavePlace(item.place.id)} />
             ))}
           </div>}
         </section>

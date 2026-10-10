@@ -55,6 +55,7 @@ export function usePlaceGallery() {
         rtl: locale === "ar",
         t,
         cancelled: () => !mounted.current,
+        placeId: trigger.closest<HTMLElement>('[data-like-place]')?.dataset.likePlace,
       });
       controller.current = gallery;
       // A closed viewer keeps reporting `isOpen`, so holding on to it made the guard above

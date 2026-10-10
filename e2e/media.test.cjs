@@ -252,6 +252,6 @@ test('the lead gallery exposes a distinct lazy medium candidate and does not pre
   assert.ok(page.includes('const cover = allImages[0]'));
   assert.ok(page.includes('const galleryImages = allImages.slice(1)'));
   const plan = fs.readFileSync('src/app/plan/page.tsx', 'utf8');
-  assert.match(plan, /<PhotoImage\s+photo=\{sp\.place\.coverImage\}/);
+  assert.match(plan, /<PhotoImage\s+photo=\{savedPlace\.place\.coverImage\}/);
   assert.ok(plan.includes('sizes="auto, 72px"'));
 });

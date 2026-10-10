@@ -50,6 +50,7 @@ body::-webkit-scrollbar {
 
 /* Color tokens (tokens/colors.css) */
 :root {
+  --like-red: #C92545;
   --brand-900: #7A2C0A;
   --brand-800: #96370D;
   --brand-700: #B4410F;
@@ -374,9 +375,9 @@ html .khg-siteheader:focus-within { transform: translateY(0); }
    that the row scrolls. A basis cannot be overridden that way: every rail shows one card and
    the edge of the next. */
 .khg-home-rail > * {
-  flex: 0 0 min(72vw, 260px);
+  flex: 0 0 min(calc(100vw - 32px), 288px);
   min-width: 0;
-  max-width: min(72vw, 260px);
+  max-width: min(calc(100vw - 32px), 288px);
   scroll-snap-align: start;
 }
 /* On a phone a rail runs the full width of the screen: cards slide off the screen's edges
@@ -396,7 +397,7 @@ html .khg-siteheader:focus-within { transform: translateY(0); }
 @media (min-width: 1024px) {
   .khg-home-rail {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 20px;
     overflow-x: visible;
   }
@@ -407,12 +408,12 @@ html .khg-siteheader:focus-within { transform: translateY(0); }
    phones. This class was previously unstyled, so results stacked as plain blocks. */
 .khg-place-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 16px;
 }
 @media (min-width: 1024px) {
   .khg-place-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 20px;
   }
 }

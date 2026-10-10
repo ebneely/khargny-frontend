@@ -26,7 +26,7 @@ function PhotoImageContent({ photos, alt, frame, sizes = PHOTO_SIZES[frame], pri
   const [attempt, setAttempt] = React.useState<{ photoIndex: number; url?: string } | null>({ photoIndex: 0 });
   const [loaded, setLoaded] = React.useState<string | null>(null);
   const [naturalRatio, setNaturalRatio] = React.useState<number | null>(null);
-  const [frameRatio, setFrameRatio] = React.useState(frame === 'card' || frame === 'strip' ? 1 : frame === 'city' ? 16 / 10 : 4 / 3);
+  const [frameRatio, setFrameRatio] = React.useState(frame === 'card' || frame === 'post' || frame === 'strip' ? 1 : frame === 'city' ? 16 / 10 : 4 / 3);
   const frameRef = React.useRef<HTMLSpanElement>(null);
   const sharpRef = React.useRef<HTMLImageElement>(null);
   const photo = photos[attempt?.photoIndex ?? 0];

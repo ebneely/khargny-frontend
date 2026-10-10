@@ -1,4 +1,4 @@
-function loopbackGuard({ origin, mockPath }) {
+function loopbackGuard({ origin, mockPath, allApiReads = false }) {
   const originalFetch = window.fetch.bind(window);
   const originalBeacon = navigator.sendBeacon?.bind(navigator);
   let sequence = 0;
@@ -7,7 +7,7 @@ function loopbackGuard({ origin, mockPath }) {
     const url = new URL(address, location.href);
     const path = url.pathname.replace(/^\/api(?=\/v1\/)/, '');
     const sensitive = path.startsWith('/v1/likes/') || /^\/v1\/places\/[^/]+\/like$/.test(path) || ['/v1/analytics/events', '/v1/ads/events', '/v1/guest/handover', '/v1/guest/adopt', '/v1/saved-places'].includes(path) || (path === '/v1/search/places' && url.searchParams.get('settled') === '1');
-    if (method === 'GET' && !sensitive) return null;
+    if (method === 'GET' && !sensitive && !(allApiReads && path.startsWith('/v1/'))) return null;
     const local = new URL(mockPath, origin);
     local.searchParams.set('guard', JSON.stringify({ id: `${documentId}:${++sequence}`, url: url.href, method, source, keepalive }));
     return local.href;

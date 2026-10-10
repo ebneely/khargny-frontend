@@ -1,6 +1,9 @@
 export function compactCount(value: number = 0): string {
   const count = Math.max(0, Number.isFinite(value) ? value : 0);
-  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(count % 1_000_000 === 0 ? 0 : 1)}m`;
-  if (count >= 1_000) return `${(count / 1_000).toFixed(count % 1_000 === 0 ? 0 : 1)}k`;
+  for (const [unit, suffix] of [[1e15, 'q'], [1e12, 't'], [1e9, 'b'], [1e6, 'm'], [1e3, 'k']] as const) {
+    if (count < unit * .9995) continue;
+    const scaled = count / unit;
+    return `${scaled.toFixed(scaled < 10 && count % unit !== 0 ? 1 : 0).replace(/\.0$/, '')}${suffix}`;
+  }
   return String(count);
 }

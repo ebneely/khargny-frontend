@@ -100,6 +100,7 @@ async function clientHero(context, geolocation, reduced = true, config = {}) {
     prototype.focus = function() { browser.document.activeElement = this; };
     config.setupBrowser?.(browser);
     const dependencies = { window: browser,
+      '@/components/ds/PlaceActions': { PlaceActions: () => null },
       '@/i18n/LocaleProvider': { useI18n: () => ({ locale, t: (key, vars = {}) => Object.entries(vars).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, value), key.split('.').reduce((value, part) => value[part], dictionary)) }) },
       '@/components/ds/Sheet': { Sheet: ({ open, children, onClose }) => open ? React.createElement('div', { role: 'dialog' }, children, React.createElement('button', { onClick: onClose }, 'Close')) : null },
       '@/lib/api/client': { apiRequest: async (method, path, options) => { geoRequests.push({ method, path, options }); return config.nearby ? config.nearby(options.params) : { items: maadiPlaces }; } },

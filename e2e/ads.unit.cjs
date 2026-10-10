@@ -425,9 +425,9 @@ function realPlaceCard(React, locale, t) {
   const priceBands = load("src/lib/price-bands.ts");
   const photo = load("src/components/ds/PhotoImage.tsx", {}, { ...common, "@/lib/place-photo": photos, "./PhotoImage.module.css": { default: {} } });
   const badges = load("src/components/ds/PlaceBadges.tsx", {}, { ...common, "@/lib/price-bands": priceBands, "./PlaceBadges.module.css": { default: {} } });
-  return load("src/components/ds/PlaceCard.tsx", {}, {
+  return require('./offline-loader.cjs').load("src/components/ds/PlaceCard.tsx", {
     ...common, "./PhotoImage": photo, "./PlaceBadges": badges, "@/lib/price-bands": priceBands,
-    "./LoveButton": { LoveButton: () => null },
+    "./LikeButton": { LikeButton: () => null },
     "@/lib/compact-count": load("src/lib/compact-count.ts"),
     "./IconButton": load("src/components/ds/IconButton.tsx", {}, common),
     "next/link": { default: ({ prefetch, ...props }) => { assert.equal(prefetch, false); return React.createElement("a", props); } },

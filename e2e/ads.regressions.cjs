@@ -737,13 +737,16 @@ module.exports = ({ load, environment, campaignId, place, item, featured, top, c
       });
       const html = renderToStaticMarkup(React.createElement(HomeAds, { d: discovery({ featured: normalizedFeatured, top: normalizedTop, cities: [city], locale }) }));
       const anchors = html.match(/<a\b[^>]*>[\s\S]*?<\/a>/g);
-      assert.equal(anchors.length, 2);
+      assert.equal(anchors.length, 4);
       for (const anchor of anchors) {
-        for (const key of ["home.sponsored", "place.menu", "place.priceVerified", "place.visitedByUs"]) assert.ok(anchor.includes(t(key)), key);
-        assert.ok(anchor.includes(priceBands.priceBandLabel(2, locale)));
-        assert.ok(anchor.includes('data-photo-frame="card"') && anchor.includes('data-photo-fit="cover"'));
-        assert.ok(anchor.includes(photos.CARD_RAIL_SIZES));
-        assert.ok(!anchor.includes("_thumb.webp"));
+        if (anchor.includes('khg-place-card-link')) {
+          for (const key of ["home.sponsored", "place.menu", "place.priceVerified", "place.visitedByUs"]) assert.ok(anchor.includes(t(key)), key);
+          assert.ok(anchor.includes(priceBands.priceBandLabel(2, locale)));
+        } else {
+          assert.ok(anchor.includes('data-photo-frame="card"') && anchor.includes('data-photo-fit="cover"'));
+          assert.ok(anchor.includes(photos.CARD_RAIL_SIZES.replace(/^auto,\s*/, "")));
+          assert.ok(!anchor.includes("_thumb.webp"));
+        }
         assert.ok(!anchor.includes("<button"));
       }
       // Two save hearts and the Top 10 city picker's pill.

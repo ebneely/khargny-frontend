@@ -5,7 +5,7 @@ const id = '11111111-1111-4111-8111-111111111111';
 const plain = value => JSON.parse(JSON.stringify(value));
 const page = (data, skip, has_more, degraded = false) => ({ data, meta: { skip, limit: 100, has_more }, degraded });
 const drain = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
-const harness = (request, storage) => load('src/lib/loves.ts', { '@/lib/api/client': {} }).createLoveStore(request, storage);
+const harness = (request, storage) => load('src/lib/likes.ts', { '@/lib/api/client': {} }).createLikeStore(request, storage);
 
 test('startup probes once and loads every ids page, including empty filtered pages', async () => {
   const calls = [];
@@ -54,7 +54,7 @@ test('refusal rolls back and Retry-After prevents another immediate request', as
   assert.equal(store.liked(id), false); assert.equal(store.count(id), 4);
   assert.equal(store.feedback().kind, 'busy'); assert.equal(store.feedback().seconds, 2);
   store.set(id, true); context.mock.timers.tick(150); await drain();
-  assert.equal(writes, 1); assert.equal(store.liked(id), false);
+  assert.equal(writes, 2); assert.equal(store.liked(id), false);
 });
 
 test('off is invisible, cached for the tab, and makes no further likes requests', async () => {
@@ -67,7 +67,7 @@ test('off is invisible, cached for the tab, and makes no further likes requests'
   await harness(async () => { calls++; return {}; }, storage).start(id); assert.equal(calls, 1);
 });
 
-test('degraded mine does not erase the local loved set', async () => {
+test('degraded mine does not erase the local liked set', async () => {
   const store = harness(async (method, path) => path === '/v1/likes/state'
     ? { [id]: { liked: true, likeCount: 5 } } : page([], 0, false, true));
   await store.start(id); assert.equal(store.liked(id), true);
@@ -111,15 +111,15 @@ test('a disabled write hides every heart and cancels queued writes', async conte
 
 test('round F wording keys exist in both languages', () => {
   const { dictionaries } = load('src/i18n/dictionaries.ts');
-  for (const locale of ['ar', 'en']) for (const key of ['saveLabel', 'unsaveLabel', 'loveLabel', 'unloveLabel', 'loveRateLimit', 'loveBusy', 'loveUnavailable', 'savedCount', 'breadcrumb', 'engagementCounts']) assert.equal(typeof dictionaries[locale].place[key], 'string', `${locale}: ${key}`);
-  for (const locale of ['ar', 'en']) for (const agreement of ['zero', 'one', 'two', 'few', 'many', 'other']) assert.equal(typeof dictionaries[locale].place.loveRetryDelay[agreement], 'string', `${locale}: ${agreement}`);
+  for (const locale of ['ar', 'en']) for (const key of ['saveLabel', 'unsaveLabel', 'likeLabel', 'unlikeLabel', 'likeRateLimit', 'likeBusy', 'likeUnavailable', 'savedCount', 'breadcrumb', 'engagementCounts']) assert.equal(typeof dictionaries[locale].place[key], 'string', `${locale}: ${key}`);
+  for (const locale of ['ar', 'en']) for (const agreement of ['zero', 'one', 'two', 'few', 'many', 'other']) assert.equal(typeof dictionaries[locale].place.likeRetryDelay[agreement], 'string', `${locale}: ${agreement}`);
 });
 
-test('love refusal categories include both rate codes, busy and unavailable', async context => {
+test('like refusal categories include both rate codes, busy and unavailable', async context => {
   context.mock.timers.enable({ apis: ['setTimeout'] });
-  const { createLoveStore } = load('src/lib/loves.ts', { '@/lib/api/client': {} });
+  const { createLikeStore } = load('src/lib/likes.ts', { '@/lib/api/client': {} });
   for (const [status, code, kind] of [[429, 'LIKES_RATE_LIMIT', 'rate'], [429, 'likes_address_limit', 'rate'], [503, 'likes_unavailable', 'busy'], [404, 'PLACE_NOT_PUBLIC', 'unavailable'], [403, 'FORBIDDEN', 'unavailable']]) {
-    const store = createLoveStore(async (method, path) => {
+    const store = createLikeStore(async (method, path) => {
       if (path === '/v1/likes/state') return { [id]: { liked: false, likeCount: 4 } };
       if (path === '/v1/likes/mine') return page([], 0, false);
       throw { status, code, retryAfter: 2 };
@@ -172,20 +172,22 @@ test('browser sequence: optimistic DELETE count can equal its answer before any 
     store.set(id, true); context.mock.timers.tick(150); await drain();
     assert.equal(writes.length, before + 1); assert.equal(writes.at(-1), 'PUT');
     pending.reject(failure); await drain();
+    if (failure.status === 503) { pending.reject(failure); await drain(); }
     assert.equal(store.liked(id), false); assert.equal(store.count(id), 41);
     assert.equal(store.feedback().kind, failure.status === 429 ? 'rate' : 'busy');
-    store.set(id, true); context.mock.timers.tick(250); await drain(); assert.equal(writes.length, before + 1);
-    context.mock.timers.tick(failure.retryAfter * 1000); await drain(); assert.equal(writes.length, before + 1);
+    const refusedAttempts = before + (failure.status === 503 ? 2 : 1);
+    store.set(id, true); context.mock.timers.tick(250); await drain(); assert.equal(writes.length, refusedAttempts);
+    context.mock.timers.tick(failure.retryAfter * 1000); await drain(); assert.equal(writes.length, refusedAttempts);
   }
   store.set(id, true); context.mock.timers.tick(150); await drain();
   assert.equal(writes.at(-1), 'PUT'); pending.resolve({ liked: true, likeCount: 42 }); await drain();
   store.set(id, false); context.mock.timers.tick(150); await drain();
   assert.equal(writes.at(-1), 'DELETE'); pending.resolve({ liked: false, likeCount: 41 }); await drain();
   assert.equal(store.liked(id), false); assert.equal(store.count(id), 41);
-  assert.deepEqual(writes, ['PUT', 'DELETE', 'PUT', 'PUT', 'PUT', 'DELETE']);
+  assert.deepEqual(writes, ['PUT', 'DELETE', 'PUT', 'PUT', 'PUT', 'PUT', 'DELETE']);
 });
 
-test('love retry wording agrees with English and Arabic zero, one, two, few, many and other seconds', async () => {
+test('like retry wording agrees with English and Arabic zero, one, two, few, many and other seconds', async () => {
   const React = require('react');
   const { mount } = require('./render-harness.cjs');
   const { dictionaries } = load('src/i18n/dictionaries.ts');
@@ -195,14 +197,14 @@ test('love retry wording agrees with English and Arabic zero, one, two, few, man
   };
   for (const locale of ['en', 'ar']) for (const kind of ['rate', 'busy']) for (const [seconds, delay] of cases[locale]) {
     const dict = dictionaries[locale];
-    const { LoveFeedback } = load('src/components/ds/LoveButton.tsx', {
-      '@/lib/loves': { loveStore: { subscribe: () => () => {}, snapshot: () => 1, feedback: () => ({ kind, seconds }), dismiss() {} } },
+    const { LikeFeedback } = load('src/components/ds/LikeButton.tsx', {
+      '@/lib/likes': { likeStore: { subscribe: () => () => {}, snapshot: () => 1, feedback: () => ({ kind, seconds }), dismiss() {} } },
       '@/i18n/LocaleProvider': { useI18n: () => ({ locale, t: (key, vars = {}) => Object.entries(vars).reduce((text, [name, value]) => text.replaceAll('{' + name + '}', String(value)), key.split('.').reduce((value, part) => value?.[part], dict) ?? key) }) },
       './Toast': { Toast: ({ message }) => React.createElement('div', { role: 'status' }, message) },
     });
-    const harness = await mount(() => React.createElement(LoveFeedback));
+    const harness = await mount(() => React.createElement(LikeFeedback));
     try {
-      const prefix = locale === 'en' ? kind === 'rate' ? 'Too many changes. Try again ' : 'Loves are busy. Try again ' : kind === 'rate' ? 'تغييرات كتير. جرّب تاني ' : 'الإعجابات مشغولة. جرّب تاني ';
+      const prefix = locale === 'en' ? kind === 'rate' ? 'Too many changes. Try again ' : 'Likes are busy. Try again ' : kind === 'rate' ? 'تغييرات كتير. جرّب تاني ' : 'الإعجابات مشغولة. جرّب تاني ';
       assert.equal(harness.nodes(node => node.attributes.role === 'status')[0].textContent, prefix + delay + '.', `${locale}/${kind}/${seconds}`);
     } finally { await harness.close(); }
   }

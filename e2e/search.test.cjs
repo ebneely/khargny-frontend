@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const { test } = require('node:test');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
@@ -345,7 +346,7 @@ test('reason is one non-name/city label with reserved line only in search cards'
   const markup = renderToStaticMarkup(React.createElement(PlaceCard, { ...props, searchReason: 'Rooftop Seating' }));
   assert.match(markup, /data-search-reason/);
   assert.match(markup, /Rooftop Seating/);
-  assert.match(markup, /height:1.35em/);
+  assert.match(fs.readFileSync('src/components/ds/PostCard.module.css', 'utf8'), /height: 1.35em/);
   assert.doesNotMatch(renderToStaticMarkup(React.createElement(PlaceCard, props)), /data-search-reason/);
   assert.match(renderToStaticMarkup(React.createElement(PlaceCard, { ...props, searchReason: '' })), /data-search-reason/);
 });

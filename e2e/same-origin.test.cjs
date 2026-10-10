@@ -90,7 +90,7 @@ test('successful adoption really refetches an active cached saved-plan query', a
     fetch: async url => envelope(url.endsWith('/guest/handover') ? { token: 'token' } : url.endsWith('/guest/adopt') ? { adopted: true } : []),
     react: { useState: initial => [initial()], useLayoutEffect() {}, useEffect: effect => { cleanup = effect(); } },
     '@tanstack/react-query': { QueryClient: class { constructor() { return queryClient; } }, QueryClientProvider: () => null },
-    '@/components/ds/LoveButton': { LoveFeedback: () => null },
+    '@/components/ds/LikeButton': { LikeFeedback: () => null },
   };
   try {
     load('src/components/QueryProvider.tsx', dependencies).QueryProvider({ children: null });
@@ -124,7 +124,7 @@ test('real client, analytics/ads and directions beacon share the gate and same-o
       QueryClient: class { setQueryDefaults() {} invalidateQueries(options) { invalidations.push(options); return Promise.resolve(); } },
       QueryClientProvider: () => null,
     },
-    '@/components/ds/LoveButton': { LoveFeedback: () => null },
+    '@/components/ds/LikeButton': { LikeFeedback: () => null },
   };
   load('src/components/QueryProvider.tsx', dependencies).QueryProvider({ children: null });
   const controller = new AbortController();
@@ -143,7 +143,8 @@ test('real client, analytics/ads and directions beacon share the gate and same-o
   assert.equal(requests[2].options.cache, 'no-store');
   assert.equal(requests[3].url, '/api/v1/ads/events');
   assert.equal(requests[3].options.keepalive, true);
-  assert.deepEqual(beacons, ['/api/v1/places/example/directions']);
+  assert.deepEqual(beacons, [], 'A beacon queued before the first response uses a credentialed keepalive fetch');
+  assert.equal(requests.find(item => item.url === '/api/v1/places/example/directions').options.keepalive, true);
   assert.equal(invalidations.length, 1);
   assert.deepEqual(Array.from(invalidations[0].queryKey), ['saved-places']);
   cleanup();

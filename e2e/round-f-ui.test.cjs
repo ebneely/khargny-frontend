@@ -12,25 +12,25 @@ function translations(locale) {
   return { useI18n: () => ({ locale, t: (key, vars = {}) => Object.entries(vars).reduce((text, [name, value]) => text.replaceAll('{' + name + '}', String(value)), key.split('.').reduce((value, part) => value[part], dict)) }) };
 }
 
-test('love HTML is visitor-independent; hydrated buttons share state, count, translated labels and stop link propagation', async context => {
+test('like HTML is visitor-independent; hydrated buttons share state, count, translated labels and stop link propagation', async context => {
   context.mock.timers.enable({ apis: ['setTimeout'] });
   for (const locale of ['ar', 'en']) {
     const writes = [];
-    const { createLoveStore } = load('src/lib/loves.ts', { '@/lib/api/client': {} });
-    const store = createLoveStore(async (method, path) => {
+    const { createLikeStore } = load('src/lib/likes.ts', { '@/lib/api/client': {} });
+    const store = createLikeStore(async (method, path) => {
       if (path === '/v1/likes/state') return { [id]: { liked: false, likeCount: 0 } };
       if (path === '/v1/likes/mine') return { data: [], meta: { has_more: false, skip: 0, limit: 100 } };
       writes.push(method); return { liked: true, likeCount: 1200 };
     });
-    const dependencies = { '@/lib/loves': { loveStore: store }, '@/i18n/LocaleProvider': translations(locale) };
-    const { LoveButton } = load('src/components/ds/LoveButton.tsx', dependencies);
-    const button = () => React.createElement(LoveButton, { placeId: id, name: 'Nile' });
+    const dependencies = { '@/lib/likes': { likeStore: store }, '@/i18n/LocaleProvider': translations(locale) };
+    const { LikeButton } = load('src/components/ds/LikeButton.tsx', dependencies);
+    const button = () => React.createElement(LikeButton, { placeId: id, name: 'Nile' });
     assert.equal(renderToStaticMarkup(button()), '');
     const harness = await mount(() => React.createElement('div', null, button(), button()));
     try {
       const buttons = harness.nodes(node => node.tagName === 'BUTTON');
       assert.equal(buttons.length, 2); assert.equal(buttons[0].attributes['aria-pressed'], 'false');
-      assert.equal(buttons[0].textContent, '');
+      assert.equal(buttons[0].textContent, '0');
       let prevented = 0; let stopped = 0;
       await React.act(async () => harness.props(buttons[0]).onClick({ preventDefault() { prevented++; }, stopPropagation() { stopped++; } }));
       assert.equal(prevented, 1); assert.equal(stopped, 1);
@@ -46,9 +46,9 @@ test('love HTML is visitor-independent; hydrated buttons share state, count, tra
 
 test('off mounts no button and only one session probe across repeated surfaces', async () => {
   let calls = 0;
-  const store = load('src/lib/loves.ts', { '@/lib/api/client': {} }).createLoveStore(async () => { calls++; return {}; });
-  const { LoveButton } = load('src/components/ds/LoveButton.tsx', { '@/lib/loves': { loveStore: store }, '@/i18n/LocaleProvider': translations('ar') });
-  const harness = await mount(() => React.createElement('div', null, React.createElement(LoveButton, { placeId: id, name: 'Nile' }), React.createElement(LoveButton, { placeId: id, name: 'Nile' })));
+  const store = load('src/lib/likes.ts', { '@/lib/api/client': {} }).createLikeStore(async () => { calls++; return {}; });
+  const { LikeButton } = load('src/components/ds/LikeButton.tsx', { '@/lib/likes': { likeStore: store }, '@/i18n/LocaleProvider': translations('ar') });
+  const harness = await mount(() => React.createElement('div', null, React.createElement(LikeButton, { placeId: id, name: 'Nile' }), React.createElement(LikeButton, { placeId: id, name: 'Nile' })));
   try { assert.equal(harness.nodes(node => node.tagName === 'BUTTON').length, 0); assert.equal(calls, 1); }
   finally { await harness.close(); }
 });
@@ -63,7 +63,7 @@ test('hero result sends one settled request and one contract click, ordinary cit
       window: browser, navigator: {},
       '@/i18n/LocaleProvider': translations('en'),
       '@/components/explorer/SelectPill': { SelectPill: () => null },
-      '@/components/ds/LoveButton': { LoveButton: () => null },
+      '@/components/ds/PlaceActions': { PlaceActions: () => null },
       '@/lib/use-search-term': { useDebouncedSearch: value => value.trim() },
       '@/lib/api/hooks/use-categories': { useCategories: () => ({ data: [] }) },
       '@/lib/api/hooks/use-search': { useSearchPlaces: query => ({ data: { items: query.q ? [{ id, cityId, slug: 'nile', name: 'Nile', likeCount: 1 }] : [] } }) },

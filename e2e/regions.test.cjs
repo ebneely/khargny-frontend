@@ -339,12 +339,15 @@ test('rendered place cards omit the area element when its safe label is empty', 
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
   const card = loadModule('src/components/ds/PlaceCard.tsx', {
+    './PostPhoto': { PostPhoto: () => null },
+    './PlaceActions': { PlaceActions: () => null },
+    './PostCard.module.css': { default: {} },
     react: React,
     'react/jsx-runtime': require('react/jsx-runtime'),
     'lucide-react': icons(React),
     'next/link': { default: () => assert.fail('Area-only card fixtures must not render a link') },
     './IconButton': { IconButton: () => null },
-    './LoveButton': { LoveButton: () => null },
+    './LikeButton': { LikeButton: () => null },
     '@/lib/compact-count': loadModule('src/lib/compact-count.ts'),
     './PlaceBadges': { PlaceBadges: () => null },
     './PhotoImage': { PhotoImage: () => null },
