@@ -41,7 +41,8 @@ export function buildContentSecurityPolicy({
     "worker-src 'self' blob:",
     `connect-src 'self' ${connections}`,
     "frame-src 'none'",
-    ...(production ? ["upgrade-insecure-requests"] : []),
+    // The e2e stack uses HTTP; upgrading redirect targets would break localhost requests.
+    ...(production && process.env.NEXT_PUBLIC_ENV !== 'e2e' ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 }
 

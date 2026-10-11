@@ -221,6 +221,7 @@ test('2500ms deadline releases every waiter, aborts, and prevents late adoption/
 
 test('CSP keeps direct policy; same-origin limits connections to self, backend and Sentry', () => {
   const { buildContentSecurityPolicy } = load('next.config.ts', { '@sentry/nextjs': { withSentryConfig: value => value } });
+  assert.doesNotMatch(load('next.config.ts', { process: { env: { NEXT_PUBLIC_ENV: 'e2e' } }, '@sentry/nextjs': { withSentryConfig: value => value } }).buildContentSecurityPolicy({ production: true }), /upgrade-insecure-requests/);
   for (const production of [true, false]) {
     const direct = buildContentSecurityPolicy({ mode: 'direct', production });
     const sameOrigin = buildContentSecurityPolicy({ mode: 'same-origin', production });
