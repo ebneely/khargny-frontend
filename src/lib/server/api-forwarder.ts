@@ -53,6 +53,8 @@ export function forwardBrowserApi(request: NextRequest): NextResponse | null {
   headers.set('x-khargny-forwarder', secret);
   headers.set('x-khargny-client-ip', address);
   headers.set('cache-control', 'no-store');
-  const destination = `${getApiBaseUrl({ browser: false })}${pathname.slice('/api'.length)}${search}`;
+  // trailingSlash: true redirects /api/v1/x to /api/v1/x/ before this runs. Nest ignores the
+  // slash, but Better Auth (/v1/tourism/auth/*) answers 404 to it, so forward the path as asked.
+  const destination = `${getApiBaseUrl({ browser: false })}${pathname.slice('/api'.length).replace(/\/+$/, '')}${search}`;
   return NextResponse.rewrite(destination, { request: { headers }, headers: NO_STORE });
 }

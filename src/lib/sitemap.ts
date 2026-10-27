@@ -93,6 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // /plan is deliberately absent: it is one guest's saved list, not a page anyone should
     // reach from a search result. robots.txt disallows it too.
     ...localized("/explorer", { lastModified: staticDate, changeFrequency: "daily", priority: 0.9 }),
+    ...localized("/trips", { lastModified: staticDate, changeFrequency: "daily", priority: 0.8 }),
     ...localized("/contact", { lastModified: staticDate, changeFrequency: "monthly", priority: 0.3 }),
     ...localized("/privacy", { lastModified: staticDate, changeFrequency: "yearly", priority: 0.2 }),
   ];
@@ -119,5 +120,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  return [...new Map([...staticPages, ...cityPages, ...placePages].map((entry) => [entry.url, entry])).values()];
+  // Trips are optional: a backend without the tourism module must not take the sitemap down.
+  const tripPages: MetadataRoute.Sitemap = [];
+  try {
+    const res = await fetch(`${getApiBaseUrl({ browser: false })}/v1/tourism/trips`, { cache: 'no-store' });
+    const trips = res.ok ? (await res.json())?.data : null;
+    for (const trip of Array.isArray(trips) ? trips as { id?: string }[] : []) {
+      if (trip?.id) tripPages.push(...localized(`/trips/${encodeURIComponent(trip.id)}`, { changeFrequency: "daily", priority: 0.6 }));
+    }
+  } catch {}
+
+  return [...new Map([...staticPages, ...cityPages, ...placePages, ...tripPages].map((entry) => [entry.url, entry])).values()];
 }

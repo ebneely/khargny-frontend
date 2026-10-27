@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       // The plan is guest-personal, not indexable content. Every real URL carries a locale
       // segment, so "/plan" alone matched nothing that exists — the rule read as intent
       // while /ar/plan and /en/plan stayed fully crawlable.
-      disallow: ["/plan", "/ar/plan", "/en/plan", "/*/plan"],
+      disallow: ["/plan", "/ar/plan", "/en/plan", "/*/plan", "/*/trips/me", "/*/trips/cash", "/*/trips/qr", "/*/trips/sign-in"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

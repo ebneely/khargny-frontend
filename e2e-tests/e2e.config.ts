@@ -86,6 +86,8 @@ export default {
       },
     },
   }],
+  // Trips run against the tourism backend with their own config: e2e.trips.config.ts.
+  tests: ['tests/**/*.e2e.ts', '!tests/trips.e2e.ts'],
   reporters: ['list', 'markdown'],
   actionTimeout: 60_000,
   assertionTimeout: 15_000,

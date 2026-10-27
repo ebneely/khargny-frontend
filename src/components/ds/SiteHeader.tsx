@@ -23,11 +23,12 @@ import { useBrowseRestore } from '@/lib/use-browse-session';
 
 const MAXW = 1120;
 
-type Active = "home" | "explore" | "plan";
+type Active = "home" | "explore" | "trips" | "plan";
 
 const LINKS: { key: Active; href: string; tkey: string }[] = [
   { key: "home", href: "/", tkey: "common.home" },
   { key: "explore", href: "/explorer", tkey: "common.explore" },
+  { key: "trips", href: "/trips", tkey: "trips.nav" },
   { key: "plan", href: "/plan", tkey: "common.plan" },
 ];
 
