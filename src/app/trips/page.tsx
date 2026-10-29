@@ -9,16 +9,16 @@ export async function generateMetadata(): Promise<Metadata> {
     ? pageMetadata({
         path: '/trips',
         locale,
-        title: 'رحلات وفعاليات في مصر',
+        title: 'رحلات المكاتب السياحية',
         description:
-          'خرجني سوق مجاني للرحلات والفعاليات: دهب، سيوة، الفيوم وأكتر. احجز ببلاش والاتفاق بينك وبين المنظّم.',
+          'رحلات من مكاتب سياحية موثّقة من خرجني: دهب، سيوة، الفيوم وأكتر. احجز بدري وخد ٢٥٠ جنيه كاش من المكتب.',
       })
     : pageMetadata({
         path: '/trips',
         locale,
-        title: 'Trips and events in Egypt',
+        title: 'Trips from travel offices',
         description:
-          '5argny is a free marketplace for trips and events: Dahab, Siwa, Fayoum and more. Booking is free; the deal is between you and the organizer.',
+          'Trips from travel offices verified by 5argny: Dahab, Siwa, Fayoum and more. Book early and collect 250 EGP cash at the office.',
       });
 }
 

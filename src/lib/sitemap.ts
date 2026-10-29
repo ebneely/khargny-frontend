@@ -94,6 +94,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // reach from a search result. robots.txt disallows it too.
     ...localized("/explorer", { lastModified: staticDate, changeFrequency: "daily", priority: 0.9 }),
     ...localized("/trips", { lastModified: staticDate, changeFrequency: "daily", priority: 0.8 }),
+    ...localized("/marketplace", { lastModified: staticDate, changeFrequency: "daily", priority: 0.7 }),
     ...localized("/contact", { lastModified: staticDate, changeFrequency: "monthly", priority: 0.3 }),
     ...localized("/privacy", { lastModified: staticDate, changeFrequency: "yearly", priority: 0.2 }),
   ];

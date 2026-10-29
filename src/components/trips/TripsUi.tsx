@@ -58,19 +58,21 @@ export function useTripText() {
 
 export function TripsShell({
   active,
+  section = 'trips',
   children,
 }: {
   active?: 'browse' | 'mine' | 'cash' | 'account';
+  section?: 'trips' | 'market';
   children: ReactNode;
 }) {
   const { t } = useI18n();
   const { href } = useTripText();
   const token = useTripsToken();
   const tabs = token ? (['browse', 'mine', 'cash'] as const) : (['browse', 'account'] as const);
-  const paths = { browse: '/trips', mine: '/trips/me', cash: '/trips/cash', account: '/trips/sign-in' };
+  const paths = { browse: section === 'market' ? '/marketplace' : '/trips', mine: '/trips/me', cash: '/trips/cash', account: '/trips/sign-in' };
   return (
     <div className={s.page}>
-      <SiteHeader active="trips" />
+      <SiteHeader active={section === 'market' ? 'market' : 'trips'} />
       <main className={s.main}>
         <nav className={s.tabs} aria-label={t('trips.nav')}>
           {tabs.map((tab) => (
