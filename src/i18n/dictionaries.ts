@@ -58,7 +58,7 @@ const en = {
     allEgypt: "All Egypt",
     position: "Position",
     anywhere: "Anywhere in Egypt",
-    subtitle: "Curated outings across Egypt · not a booking site",
+    subtitle: "Curated outings across Egypt · and a free marketplace for trips",
     heroTitle: "Find your next outing in Egypt",
     heroSubtitle:
       "Places worth the trip, across Egypt.",
@@ -468,7 +468,7 @@ const ar: typeof en = {
     allEgypt: "كل مصر",
     position: "المركز",
     anywhere: "أي مكان في مصر",
-    subtitle: "أماكن مختارة في مصر · إحنا مش موقع حجز",
+    subtitle: "أماكن مختارة في مصر · وسوق مجاني للرحلات",
     heroTitle: "اكتشف خرجتك الجاية في مصر",
     heroSubtitle:
       "أماكن تستاهل الخروجة في كل مصر.",
