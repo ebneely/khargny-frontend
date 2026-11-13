@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -25,6 +26,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@5argny/core": [
+        "./src/5argny/index.ts"
+      ],
+      "@5argny/core/*": [
+        "./src/5argny/*"
       ]
     }
   },

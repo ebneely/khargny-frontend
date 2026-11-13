@@ -89,3 +89,6 @@ Desktop.ini
 *.temp
 .cache/
 .temp/
+
+# prototype vs build screenshots
+/.pixel/

@@ -1,0 +1,66 @@
+// The prototype's place shape (ui-unify/proto/data.js), built from the real API so every component reads the same fields.
+import { normalizePhoto, photoCandidates } from '@/lib/place-photo';
+import { regionLabel } from '@/lib/egypt-regions';
+import type { Category, CityWithAreas } from '@/lib/api/types';
+import type { Lang } from './rules';
+
+export type KHour = { d: number; o: string | null; c: string | null; x: boolean };
+export type KBadge = { key: string; rank?: number; scope?: { city?: { name?: string; nameEn?: string | null } } };
+export type KPlace = {
+  id: string; slug: string; citySlug: string; cityId: string; catId: string;
+  name: string; region: string | null; cat: string; catLabel: string; city: string; area: string;
+  address: string | null; phone: string | null; maps: string | null; ig: string | null; web: string | null;
+  lat: number | null; lng: number | null; band: number | null;
+  /** all-time counters the place itself carries; 30-day windows come from usePlaceStats */
+  likes: number; saves: number; views: number; dir: number;
+  badges: KBadge[]; hours: KHour[]; amen: string[]; photos: { s: string; m: string }[];
+};
+export type KCatalog = { cities: CityWithAreas[]; categories: Category[] };
+
+type Raw = Record<string, unknown> & { id: string; slug: string };
+const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v : null);
+const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0);
+
+function photosOf(raw: Raw) {
+  const gallery = (raw.gallery as { images?: unknown[] } | undefined)?.images;
+  const list = (Array.isArray(raw.images) && raw.images.length ? raw.images : gallery?.length ? gallery : raw.coverImage ? [raw.coverImage] : []) as unknown[];
+  return list.map((item) => {
+    const photo = normalizePhoto(typeof item === 'string' ? item : (item as { url?: string; urls?: object }).urls ? (item as never) : (item as { url?: string }).url ?? '');
+    const all = photoCandidates(photo).map((c) => c.url);
+    const s = photo.urls?.small || photo.urls?.thumb || photo.singleUrl || all[0] || '';
+    return { s, m: photo.urls?.medium || photo.urls?.large || s };
+  }).filter((p) => p.s);
+}
+
+export function toK(raw: Raw, catalog: KCatalog, lang: Lang): KPlace {
+  const city = catalog.cities.find((c) => c.id === raw.cityId);
+  const cat = catalog.categories.find((c) => c.id === raw.categoryId);
+  const cityEn = city?.nameEn || city?.name || '';
+  const hours = ((raw.placeHours as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }>) ?? [])
+    .map((h) => ({ d: h.dayOfWeek, o: h.openTime, c: h.closeTime, x: !!h.isClosed }));
+  const amen = ((raw.amenities as Array<{ name: string; nameEn: string | null }>) ?? []).map((a) => a.nameEn || a.name);
+  return {
+    id: raw.id, slug: raw.slug, citySlug: city?.slug || '', cityId: String(raw.cityId ?? ''), catId: String(raw.categoryId ?? ''),
+    name: (lang === 'ar' ? str(raw.name) || str(raw.nameEn) : str(raw.nameEn) || str(raw.name)) || raw.slug,
+    region: str(raw.region),
+    cat: cat?.nameEn || cat?.nameAr || '', catLabel: (lang === 'ar' ? cat?.nameAr : cat?.nameEn || cat?.nameAr) || '',
+    city: (lang === 'ar' ? city?.name : cityEn) || cityEn,
+    area: regionLabel(str(raw.region), lang, cityEn) || (lang === 'ar' ? city?.name || '' : cityEn),
+    address: str(raw.address), phone: str(raw.phone), maps: str(raw.mapsUrl), ig: str(raw.instagram), web: str(raw.website),
+    lat: raw.lat == null ? null : Number(raw.lat), lng: raw.lng == null ? null : Number(raw.lng), band: (raw.priceRange as number) ?? null,
+    likes: num(raw.likeCount), saves: num(raw.saveCount), views: num(raw.viewCount), dir: num(raw.directionsCount),
+    badges: (raw.badges as KBadge[]) ?? [], hours, amen, photos: photosOf(raw),
+  };
+}
+
+export const placeHref = (p: Pick<KPlace, 'citySlug' | 'slug'>, lang: Lang) => `/${lang}/explorer/${p.citySlug}/${p.slug}/`;
+export const isPlacePath = (path: string) => /^\/(ar|en)\/explorer\/[^/]+\/[^/]+\/?$/.test(path);
+
+/** GET /v1/places/:id/stats (contracts/api.md). Missing route or place -> null: counts stay hidden, never a fake 0. */
+export type KStats = {
+  live?: { views: number };
+  d1?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number>;
+  d7?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number>;
+  d30?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number> & { days?: number[] };
+  all?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number>;
+};

@@ -1,0 +1,224 @@
+'use client';
+/* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
+// The shell from proto/app.js shell(): one top chrome (top bar with the search, the location bar folding under it),
+// the sidebar on desktop, the page, the right rail; the tab bar lives in the layout (TabNav) so it persists across pages.
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import Link from 'next/link';
+import { animate } from 'motion';
+import { fill } from '@5argny/core/copy';
+import { useCities } from '@/lib/api/hooks/use-cities';
+import { useCategories } from '@/lib/api/hooks/use-categories';
+import { useSearchPlaces } from '@/lib/api/hooks/use-search';
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/api/client';
+import { regionLabel } from '@/lib/egypt-regions';
+import { L, Ic } from './icons';
+import { Brand, slidePill } from './bits';
+import { INTENTS, moment, openState } from './rules';
+import { intentFor } from '@5argny/core/rules';
+import { toK, placeHref, type KPlace } from './data';
+import { Meta, Stats } from './place';
+import { useK, haptic, reduce, spring, type Tab } from './KProvider';
+
+export const NAV: [Tab, string, 'home' | 'explore' | 'market' | 'saved' | 'cog'][] = [['home', '/', 'home'], ['explore', '/explorer/', 'explore'], ['market', '/marketplace/', 'market'], ['saved', '/plan/', 'saved'], ['profile', '/settings/', 'cog']];
+let lastNavTab: Tab | null = null;
+const noop = () => () => {};
+
+function NavItems({ cur }: { cur: Tab }) {
+  const { lang, c } = useK();
+  return <>{NAV.map(([key, href, icon]) => <Link key={key} className="nav-item press" href={`/${lang}${href === '/' ? '' : href}`} aria-current={cur === key ? 'page' : undefined}><Ic n={icon} /><span>{c.nav[key]}</span></Link>)}</>;
+}
+
+/** placeName(): the area, else the city, else Egypt. */
+export function usePlaceName() { const { loc, c } = useK(); return loc.area || loc.city || c.location.egypt; }
+
+export function Shell({ cur, wide, right, noLoc, withFilters, actionbar, children }: { cur: Tab; wide?: boolean; right?: ReactNode; noLoc?: boolean; withFilters?: boolean; actionbar?: ReactNode; children: ReactNode }) {
+  const { setTab } = useK();
+  useEffect(() => { setTab(cur); }, [cur, setTab]);
+  const chrome = useSyncExternalStore(noop, () => document.getElementById('chrome'), () => null);
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+  return <>
+    <div className="chrome-top"><TopBar />{['home', 'explore', 'market'].includes(cur) && !noLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={withFilters ?? cur === 'explore'} /></div></div> : null}</div>
+    <div className={`layout ${wide ? 'wide' : ''}`}>
+      <Sidebar cur={cur} />
+      <main className="page" id="view">{children}</main>
+      {wide ? null : <aside className="rail-right">{right}</aside>}
+    </div>
+    {actionbar && chrome ? createPortal(<div className="actionbar">{actionbar}</div>, chrome) : null}
+  </>;
+}
+
+function Sidebar({ cur }: { cur: Tab }) {
+  const { lang, c } = useK();
+  // the person's own collections (device id, no accounts): GET /v1/collections/mine
+  const { data: cols = [] } = useQuery({ queryKey: ['collections', 'mine'], queryFn: () => apiRequest<{ id: string; title: string; slug: string }[]>('GET', '/v1/collections/mine').catch(() => []), staleTime: 60_000 });
+  const nav = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = nav.current; if (!el) return;
+    const from = lastNavTab && lastNavTab !== cur ? el.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === lastNavTab)] : null;
+    slidePill(el, !!from, from); lastNavTab = cur;
+  }, [cur]);
+  return (
+    <aside className="sidebar"><nav data-slider="nav" ref={nav}><span className="pill" /><NavItems cur={cur} /></nav>
+      <div className="side-section"><div className="t-micro">{c.sidebar.shortcuts}</div>{INTENTS.slice(0, 5).map((x) => <Link key={x.key} className="side-link press" href={`/${lang}/explorer/?intent=${x.key}`}><L n={x.icon} />{c.intents[x.key]}</Link>)}</div>
+      {cols.length ? <div className="side-section"><div className="t-micro">{c.sidebar.collections}</div>{cols.map((col) => <Link key={col.id} className="side-link press" href={`/${lang}/c/${col.slug}/`}><L n="library" />{col.title}</Link>)}</div> : null}
+    </aside>
+  );
+}
+
+/** The tab bar: glisse's Liquid Glass TabBar on phones, the plain bar if glisse cannot load. Lives in the layout. */
+export function TabNav() {
+  const { tab, lang, c } = useK();
+  const plain = useRef<HTMLElement>(null);
+  const [Glass, setGlass] = useState<null | typeof import('glisse').TabBar>(null);
+  const [dark, setDark] = useState(false);
+  useEffect(() => { import('glisse').then((m) => { setGlass(() => m.TabBar); document.body.classList.add('has-glass'); }).catch(() => {}); }, []);
+  useEffect(() => { const read = () => setDark(document.documentElement.dataset.theme === 'dark'); read(); const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); return () => mo.disconnect(); }, []);
+  const last = useRef(tab);
+  useLayoutEffect(() => { if (plain.current) slidePill(plain.current, last.current !== tab, last.current !== tab ? plain.current.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === last.current)] : null); last.current = tab; }, [tab]);
+  const glassStyle = { '--lg-lens-grow-x': '30px', '--lg-lens-grow-y': '20px', '--lg-glass-bend': 1, '--lg-glass-dispersion': 0.4, '--lg-blur': '10px', '--lg-rim-shine': 0.13,
+    '--lg-glass': dark ? 'rgba(34,27,22,.84)' : 'rgba(251,246,238,.84)', '--lg-glass-active': dark ? 'rgba(46,37,30,.92)' : 'rgba(246,238,228,.92)', '--lg-selection': dark ? 'rgba(232,116,58,.22)' : 'rgba(217,98,42,.16)', '--lg-lens': dark ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)' } as React.CSSProperties;
+  return <>
+    <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
+    <div id="glass-tabs">{Glass ? <Glass aria-label="Main" value={tab} style={glassStyle} link={Link}
+      items={NAV.map(([key, href, icon]) => ({ value: key, href: `/${lang}${href === '/' ? '' : href}`, label: c.nav[key], icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /> : null}</div>
+  </>;
+}
+
+function TopBar() {
+  const { c, lang, go } = useK();
+  const [q, setQ] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [hint, setHint] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  const from = useRef<{ path: string; y: number } | null>(null);
+  const hintEl = useRef<HTMLSpanElement>(null);
+  // the hint rolls through real examples, like a voice inviting a tap
+  useEffect(() => {
+    const id = setInterval(() => {
+      const h = hintEl.current; if (reduce() || document.hidden || !h || q) return;
+      animate(h, { opacity: [1, 0], transform: ['translateY(0)', 'translateY(-60%)'] }, { duration: 0.22 }).finished.then(() => { setHint((n) => n + 1); animate(h, { opacity: [0, 1], transform: ['translateY(60%)', 'translateY(0)'] }, spring(0, 0.4)); });
+    }, 3200);
+    return () => clearInterval(id);
+  }, [q]);
+  const enter = () => { if (searching) return; from.current = { path: location.pathname + location.search, y: scrollY }; setSearching(true); document.querySelector('.chrome-top')?.classList.remove('compact'); };
+  const exit = () => { setSearching(false); input.current?.blur(); };
+  const cancel = () => { const back = from.current; exit(); if (back) requestAnimationFrame(() => scrollTo({ top: back.y, behavior: 'instant' })); };
+  useEffect(() => { document.querySelector('.chrome-top')?.classList.toggle('searching', searching); }, [searching]);
+  useEffect(() => { if (!searching) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); });
+  const hints = c.search.hints;
+  return <>
+    <header className="topbar"><Link className="wordmark press" href={`/${lang}`} aria-label={c.nav.homeAria}><Brand /></Link>
+      <label className={`search gsearch ${q ? 'has-text' : ''}`}><Ic n="search" /><span className="gs-hint" aria-hidden="true"><span ref={hintEl}>{hints[hint % hints.length]}</span></span>
+        <input ref={input} type="search" placeholder={c.search.placeholder} data-act="gsearch" value={q} aria-label={c.search.placeholder} autoComplete="off" enterKeyHint="search"
+          onFocus={enter} onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { putRecent(q); exit(); go(`/${lang}/explorer/${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`); } }} />
+        <button type="button" className="gs-clear press" data-act="gs-clear" aria-label={c.search.clear} onClick={(e) => { e.preventDefault(); setQ(''); haptic(); input.current?.focus(); }}><L n="x" /></button></label>
+      <button className="gs-cancel press" data-act="gs-cancel" onClick={cancel}>{c.search.cancel}</button>
+    </header>
+    {searching ? <SearchPanel q={q} onCancel={cancel} onGo={(term) => { if (term) putRecent(term); exit(); }} /> : null}
+  </>;
+}
+
+const RECENT_KEY = 'kh.recent', OPENED_KEY = 'kh.opened';
+type Opened = { slug: string; citySlug: string; name: string; s: string };
+const getL = <T,>(key: string): T[] => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } };
+const putRecent = (q: string) => { q = q.trim(); if (!q) return; localStorage.setItem(RECENT_KEY, JSON.stringify([q, ...getL<string>(RECENT_KEY).filter((x) => x !== q)].slice(0, 6))); };
+export const putOpened = (p: KPlace) => { try { localStorage.setItem(OPENED_KEY, JSON.stringify([{ slug: p.slug, citySlug: p.citySlug, name: p.name, s: p.photos[0]?.s || '' }, ...getL<Opened>(OPENED_KEY).filter((x) => x.slug !== p.slug)].slice(0, 8))); } catch {} };
+
+function SearchPanel({ q, onCancel, onGo }: { q: string; onCancel: () => void; onGo: (term: string) => void }) {
+  const { c, lang, now, go } = useK();
+  const panel = useRef<HTMLDivElement>(null);
+  // mounted only after the search field is focused, so the browser is there
+  const [top] = useState(() => document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0);
+  const [recent, setRecent] = useState(() => getL<string>(RECENT_KEY));
+  const [opened] = useState(() => getL<Opened>(OPENED_KEY).slice(0, 6));
+  useEffect(() => {
+    const p = panel.current; if (!p) return;
+    animate(p, { opacity: [0, 1], transform: ['translateY(-8px) scale(.985)', 'translateY(0) scale(1)'] }, spring(0, 0.32));
+    [...p.children].forEach((ch, n) => animate(ch, { opacity: [0, 1], transform: ['translateY(6px)', 'translateY(0)'] }, { ...spring(0, 0.35), delay: 0.02 * n }));
+  }, []);
+  const m = moment(now);
+  const chips: [string, string, string][] = [[c.moments[m.title], `/${lang}/explorer/?intent=${m.x.key}&when=now`, m.x.icon], [c.search.zero.openLate, `/${lang}/explorer/?when=tonight`, 'moon'], [c.search.zero.workFrom, `/${lang}/explorer/?intent=coffee`, 'laptop']];
+  const body = q.trim() ? <Results q={q} onGo={onGo} /> : <>
+    <div className="sg-sec"><L n="sparkles" /> {c.search.zero.rightNow}</div>
+    <div className="sg-chips">{chips.map(([l, h, i]) => <Link key={l} className="chip press" href={h} data-act="sg-go" onClick={() => onGo(l)}><L n={i} />{l}</Link>)}<button className="chip press" data-act="shuffle-search" onClick={() => { onGo(''); go(`/${lang}`); setTimeout(() => document.querySelector<HTMLElement>('[data-act="shuffle"]')?.click(), 450); }}><L n="dices" />{c.search.zero.surprise}</button></div>
+    {recent.length ? <><div className="sg-sec"><L n="history" /> {c.search.zero.recent}</div>{recent.map((r) => <div key={r} className="sg-row"><Link className="grow press" href={`/${lang}/explorer/?q=${encodeURIComponent(r)}`} data-act="sg-go" onClick={() => onGo(r)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}><L n="clock" /><b>{r}</b></Link><button className="icon-btn press" aria-label={c.search.remove} data-act="sg-forget" onClick={(e) => { const row = e.currentTarget.closest('.sg-row') as HTMLElement; localStorage.setItem(RECENT_KEY, JSON.stringify(getL<string>(RECENT_KEY).filter((x) => x !== r))); animate(row, { opacity: 0, transform: 'translateX(-12px)' }, spring(0, 0.25)).finished.then(() => setRecent((l) => l.filter((x) => x !== r))); }}><L n="x" /></button></div>)}</> : null}
+    {/* TODO: "Trending in <place>" needs real search terms from the backend (search insights); hidden until then */}
+    {opened.length ? <><div className="sg-sec"><L n="eye" /> {c.search.zero.youOpened}</div><div className="sg-opened">{opened.map((p) => <Link key={p.slug} className="press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo('')}><img src={p.s} alt="" /><b>{p.name}</b></Link>)}</div></> : null}
+  </>;
+  return createPortal(<>
+    <div id="search-scrim" style={{ top }} onPointerDown={onCancel} />
+    <div id="suggest" role="listbox" ref={panel} style={{ top: top + 6 }}>{body}</div>
+  </>, document.body);
+}
+
+// "Go": the intent a query names, in the chosen place and open now, with real counts (rows at 0 are left out)
+function useGo(q: string) {
+  const { loc } = useK();
+  const { data: cities = [] } = useCities();
+  const { data: categories = [] } = useCategories();
+  const it = intentFor(q);
+  const cats = it ? categories.filter((cat) => (it.cats as readonly string[]).includes(cat.nameEn || cat.nameAr)) : [];
+  const cityId = cities.find((x) => x.slug === loc.city)?.id;
+  const { data: open } = useQuery({ queryKey: ['places', 'counts', 'now'], queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now' } }).catch(() => null), enabled: !!it, staleTime: 60_000 });
+  const { data: total } = useQuery({
+    queryKey: ['places', 'total', cats.map((x) => x.id).join(','), cityId ?? ''], enabled: cats.length > 0, staleTime: 5 * 60_000,
+    queryFn: async () => (await Promise.all(cats.map((cat) => apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: cat.id, limit: 1, cityId } }).then((r) => r.meta?.total ?? 0).catch(() => 0)))).reduce((a, n) => a + n, 0),
+  });
+  if (!it) return null;
+  return { key: it.key, icon: INTENTS.find((x) => x.key === it.key)!.icon, total: total ?? null, open: open ? cats.reduce((a, cat) => a + (open.byCategory[cat.slug] ?? 0), 0) : null };
+}
+
+function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
+  const { c, lang, now } = useK();
+  const where = usePlaceName();
+  const go = useGo(q);
+  const comp = go ? ([[fill(c.search.results.intentIn, { intent: c.intents[go.key], place: where }), `/${lang}/explorer/?intent=${go.key}`, go.icon, go.total], [fill(c.search.results.intentOpenNow, { intent: c.intents[go.key] }), `/${lang}/explorer/?intent=${go.key}&when=now`, 'clock', go.open]] as [string, string, string, number | null][]).filter((r) => (r[3] ?? 0) > 0) : [];
+  const { data: cities = [] } = useCities();
+  const { data: categories = [] } = useCategories();
+  const { data, isFetching } = useSearchPlaces({ q, limit: 5 }, { locale: lang });
+  const places = (data?.items ?? []).slice(0, 5).map((raw) => toK(raw as never, { cities, categories }, lang));
+  const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+  const s = norm(q);
+  const areas = cities.flatMap((city) => (city.areaKeys ?? []).map((key) => ({ city, key, n: regionLabel(key, lang, city.nameEn || city.name) || key }))).filter((a) => norm(a.n).includes(s)).slice(0, 3);
+  const hl = (text: string) => { const i = norm(text).indexOf(s); return i < 0 || !s ? text : <>{text.slice(0, i)}<mark>{text.slice(i, i + q.trim().length)}</mark>{text.slice(i + q.trim().length)}</>; };
+  if (!places.length && !areas.length && isFetching) return null;
+  return <>
+    {comp.length ? <><div className="sg-sec"><L n="navigation" /> {c.search.results.go}</div>{comp.map(([l, h, i, n]) => <Link key={h} className="sg-row sg-comp press" href={h} data-act="sg-go" onClick={() => onGo(q)}><span className="sg-ic"><L n={i} /></span><b className="grow">{l}</b><em className="sg-n"><i className="live" />{n}</em></Link>)}</> : null}
+    {places.length ? <><div className="sg-sec"><L n="map-pin" /> {c.search.results.places}</div>{places.map((p) => <Link key={p.id} className="sg-row press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo(q)}><span className="tile-media sg-thumb"><img src={p.photos[0]?.s} alt="" />{openState(p, now, lang)?.open ? <i className="live sg-open" aria-label={c.search.results.openNow} /> : null}</span><span className="grow"><b>{hl(p.name)}</b><Meta p={p} /></span><Stats p={p} /></Link>)}</> : null}
+    {areas.length ? <><div className="sg-sec"><L n="map" /> {c.search.results.areas}</div>{areas.map((a) => <Link key={a.city.id + a.key} className="sg-row press" href={`/${lang}/explorer/${a.city.slug}/?area=${encodeURIComponent(a.key)}`} data-act="sg-area" onClick={() => onGo(a.n)}><span className="sg-ic"><L n="map-pin" /></span><span className="grow"><b>{hl(a.n)}</b><span className="t-small">{lang === 'ar' ? a.city.name : a.city.nameEn || a.city.name}</span></span></Link>)}</> : null}
+    {places.length || areas.length || comp.length
+      ? <Link className="sg-row sg-all press" href={`/${lang}/explorer/?q=${encodeURIComponent(q.trim())}`} data-act="sg-go" onClick={() => onGo(q)}><L n="search" /><span className="grow">{fill(c.search.results.seeEverything, { q: q.trim() })}</span><L n="arrow-right" /></Link>
+      : <div className="empty" style={{ padding: 18 }}><L n="search-x" /><p className="t-head">{fill(c.search.results.nothing, { q: q.trim() })}</p></div>}
+  </>;
+}
+
+/** ONE location bar, pinned under the top bar on Home, Explore and Marketplace; Filters joins it on Explore only. */
+function LocBar({ withFilters }: { withFilters: boolean }) {
+  const { loc, setLoc, c, lang, openSheet, closeTop, toast, go } = useK();
+  const { data: cities = [] } = useCities();
+  const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
+  const cityName = city ? (lang === 'ar' ? city.name : city.nameEn || city.name) : null;
+  const pick = (el: HTMLElement, after: () => void) => { haptic(); el.closest('.sheet')?.querySelectorAll('.option').forEach((o) => o.setAttribute('aria-checked', String(o === el))); setTimeout(() => { closeTop(); after(); }, 170); };
+  const opt = (key: string, on: boolean, icon: ReactNode, label: string, act: string, then: () => void) => <button key={key} className="option press" role="radio" aria-checked={on} data-act={act} onClick={(e) => pick(e.currentTarget, then)}>{icon}<span className="grow">{label}</span><Ic n="check" cls="check" /></button>;
+  const openCity = () => openSheet(c.location.citySheet, <>
+    {opt('all', !loc.city, <L n="map" />, c.location.allEgypt, 'pick-city', () => setLoc({ city: null, area: null }))}
+    {cities.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Ic n="pin" />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); }); })}
+  </>);
+  const openArea = () => { if (!city) return; openSheet(fill(c.location.areaSheet, { city: cityName ?? '' }), <>
+    {opt('all', !loc.area, <L n="layers" />, c.location.allAreas, 'pick-area', () => setLoc({ city: loc.city, area: null }))}
+    {(city.areaKeys ?? []).map((key) => { const n = regionLabel(key, lang, city.nameEn || city.name) || key; return opt(key, loc.area === n, <L n="map-pin" />, n, 'pick-area', () => setLoc({ city: loc.city, area: n })); })}
+  </>); };
+  const reset = (e: React.MouseEvent<HTMLButtonElement>) => { const ic = e.currentTarget.querySelector('.lucide'); if (ic) animate(ic, { transform: ['rotate(0deg)', 'rotate(-360deg)'] }, spring(0, 0.5)); haptic(); setTimeout(() => { setLoc({ city: null, area: null }); toast(c.location.cleared); }, 220); };
+  return (
+    <div className="locbar" role="group" aria-label={c.location.aria}>
+      <button className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" onClick={openCity}>{loc.city ? <L n="map-pin" /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
+      <button className={`loc-pill press ${loc.area ? 'on' : ''} ${loc.city ? '' : 'off'}`} data-act={loc.city ? 'area' : 'city'} aria-disabled={loc.city ? undefined : true} onClick={loc.city ? openArea : openCity}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
+      {/* TODO(T023): Filters opens the Filters sheet; until Explore lands it goes to the explorer */}
+      {withFilters ? <button className="loc-pill filters press" data-act="filters" onClick={() => go(`/${lang}/explorer/`)}><L n="sliders-horizontal" /><b>{c.location.filters}</b></button> : null}
+      {loc.city || loc.area ? <button className="icon-btn reset-btn press" data-act="reset-all" aria-label={c.location.reset} onClick={reset}><L n="rotate-ccw" /></button> : null}
+    </div>
+  );
+}
