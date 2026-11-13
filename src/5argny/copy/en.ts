@@ -13,7 +13,7 @@ export const en = {
   common: {
     seeAll: 'See all', back: 'Back', close: 'Close', more: 'More', share: 'Share', save: 'Save', love: 'Love', like: 'Like', remove: 'Remove',
     clear: 'Clear', create: 'Create', findPlaces: 'Find places', places: '{n} places', optional: 'optional', sendToTeam: 'Send to our team',
-    previousPhoto: 'Previous photo', nextPhoto: 'Next photo', showAll: 'Show all {n}', opening: 'Opening {name}', linkCopied: 'Link copied', copyLink: 'Copy link',
+    previousPhoto: 'Previous photo', nextPhoto: 'Next photo', showAll: 'Show all {n}', opening: 'Opening {name}', linkCopied: 'Link copied', copyLink: 'Copy link', tooMany: 'That is enough for today. Try again tomorrow', failed: 'That did not go through. Try again',
   },
   // the T dictionary entries that no screen uses today, kept so nothing is lost
   unused: { want: 'What do you want to do?', where: 'Where?', anywhere: 'Anywhere in', forYou: 'For you', directions: 'Directions', badgesWhy: 'What these marks mean' },
@@ -38,7 +38,7 @@ export const en = {
     },
     nearYou: 'Near you', nearestFirst: 'Nearest first', nearestFirstIn: 'Nearest first in {place}',
     earned: 'Earned on {brand}', earnedAll: 'All {n}', teamCollections: 'Collections by {brand}', social: '{brand} Social',
-    loveHint: 'Double-tap anything you love. Hold 2 seconds to share',
+    loveHint: 'Double-tap to love. Double-tap and hold to share',
   },
   trending: {
     title: 'Trending', in: 'in {place}', hereNow: '{n} here now', market: 'Trending in {market}', marketRail: 'Marketplace', seeAllExperiences: 'See all experiences',
@@ -49,7 +49,7 @@ export const en = {
     goTotal: 'people who tapped 5argny! here', opened30: 'people who opened it in the last 30 days', goBefore: 'people who tapped 5argny! here before you',
     viewsGroup: 'views in the last 30 days',
   },
-  go5: { label: '5argny!', aria: '5argny! Take me there', mapsSheet: 'Which map?', maps: ['Google Maps', 'Apple Maps', 'Waze'] },
+  go5: { label: '5argny!', aria: '5argny! Take me there', mapsSheet: 'Which map?', maps: ['Google Maps', 'Apple Maps'] },
   share: { sheet: 'Share', apps: ['WhatsApp', 'Facebook', 'Messenger'], copyLink: 'Copy link' },
   open: {
     open: 'Open', closed: 'Closed', openNow: 'Open now', closedNow: 'Closed now', left: '{dur} left', opensIn: 'Opens in {dur}',
@@ -85,7 +85,7 @@ export const en = {
     when: { any: 'Any time', now: 'Open now', tonight: 'Tonight', weekend: 'This weekend' },
     sort: { popular: 'Popular', near: 'Nearest', open: 'Open first' },
   },
-  filters: { title: 'Filters', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places' },
+  filters: { title: 'Filters', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places', showPlaces: 'Show places' },
   market: {
     title: 'Marketplace', all: 'All', verifiedOnly: 'ID verified only', verified: 'ID verified', notVerified: 'Not verified', trips: '{n} trips', seatsLeft: '{n} seats left',
     perPerson: 'per person', hostKinds: { guide: 'Guide', individual: 'Individual', office: 'Travel office' },
@@ -93,6 +93,9 @@ export const en = {
     notChecked: "We haven't checked this host. Meet in public places and don't pay before you see the trip.", included: 'Included',
     messageHost: 'Message the host', openingWhatsApp: 'Opening WhatsApp', reportTrip: 'Report this trip', whatWrong: 'What is wrong?',
     reasons: ['Wrong hours', 'Wrong location', 'Closed for good', 'Wrong photos', 'Something else'], reported: 'Thanks. Our team will look at it',
+    about: 'About', tripsBy: 'Trips by {name}', since: 'On {brand} since {year}', idLicence: 'ID and licence verified', reviewsOfHost: 'Reviews of the host', reviewsOfTrip: 'Reviews of this trip',
+    noReviews: 'No reviews yet. Only people who went can review, after the trip.', reviewsFrom: '{n} reviews from people who went', reviewFrom: '1 review from people who went', reviewsN: '{n} reviews', outOf5: '{n} out of 5',
+    oneTrip: '1 trip', hostLineOne: '{kind}, 1 trip on {brand}', nights: '{n} nights', oneNight: '1 night', empty: 'No experiences listed yet', emptyBody: 'Trips and experiences people list for free show up here.',
   },
   saved: {
     places: 'Places', collections: 'Collections', emptyTitle: 'Nothing saved yet', emptyBody: 'Tap the bookmark on any place and it waits for you here.',

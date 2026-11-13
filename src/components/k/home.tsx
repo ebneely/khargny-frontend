@@ -1,18 +1,27 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // Home from proto/app.js Home(): Stories, TakeMe, Near you, Earned, Collections by 5argny, 5argny Social, and the right rail.
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { blend, type BlendPlace } from '@5argny/core/rules';
+import { apiRequest } from '@/lib/api/client';
+import { normalizePlaceList } from '@/lib/api/normalize-place-list';
+import { useCities } from '@/lib/api/hooks/use-cities';
+import { useCategories } from '@/lib/api/hooks/use-categories';
+import { likeStore } from '@/lib/likes';
+import { saveStore } from '@/lib/saves';
 import Link from 'next/link';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
 import { L, Ic } from './icons';
 import { Brand, Tag, Bit } from './bits';
 import { INTENTS, moment, t12, k, openState as openStateOf, type Intent } from './rules';
-import { placeHref, type KPlace } from './data';
+import { placeHref, toK, type KPlace } from './data';
 import { Post, Tile, Go5, StatePill, Meta, BadgeTags, usePlaceStats, catIcon } from './place';
-import { Shell, usePlaceName } from './Shell';
+import { Shell, usePlaceName, useLocKeys } from './Shell';
 import { useK, haptic, reduce, spring } from './KProvider';
-import { useTrips, coverSrc } from '@/lib/trips/api';
+import { ColCard, useGroupViews } from './collections';
+import { MarketCard } from './market';
 
 export type HomeCollection = { id: string; slug: string; title: string; places: KPlace[] };
 export type HomeData = { pool: KPlace[]; trending: KPlace[]; collections: HomeCollection[]; categories: { id: string; en: string; label: string }[]; openByCategory: Record<string, number> | null; totalByCategory: Record<string, number | null> };
@@ -20,21 +29,75 @@ export type HomeData = { pool: KPlace[]; trending: KPlace[]; collections: HomeCo
 /** "Earned on {brand}" with the brand drawn as the brand. */
 export function withBrand(s: string) { const [a, b = ''] = s.split('{brand}'); return <>{a}<Brand />{b}</>; }
 
+/**
+ * Home's rows for the location bar: the server's Egypt-wide rows until a city is picked, then the pool and the counts
+ * fetched again for that city and area, so every number says what it counts.
+ */
+function useHere(data: HomeData) {
+  const { lang } = useK();
+  const { city, areaKey } = useLocKeys();
+  const { data: cities = [] } = useCities();
+  const { data: categories = [] } = useCategories();
+  const on = !!city;
+  const scope = { cityId: city?.id, ...(areaKey ? { region: areaKey } : {}) };
+  const { data: pool } = useQuery({
+    queryKey: ['home', 'pool', city?.id ?? '', areaKey ?? ''], enabled: on, staleTime: 60_000, placeholderData: (prev) => prev,
+    queryFn: async () => normalizePlaceList(await apiRequest('GET', '/v1/places', { params: { limit: 40, ...scope } })).items,
+  });
+  const { data: open } = useQuery({
+    queryKey: ['places', 'counts', 'now', city?.slug ?? '', areaKey ?? ''], enabled: on, staleTime: 60_000,
+    queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now', city: city?.slug, ...(areaKey ? { area: areaKey } : {}) } }).catch(() => null),
+  });
+  const { data: totals } = useQuery({
+    queryKey: ['places', 'totals', city?.id ?? '', areaKey ?? ''], enabled: on && categories.length > 0, staleTime: 5 * 60_000,
+    queryFn: async () => Object.fromEntries(await Promise.all(categories.map(async (cat) => [cat.id, await apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: cat.id, limit: 1, ...scope } }).then((r) => r.meta?.total ?? null).catch(() => null)] as const))),
+  });
+  if (!on) return { pool: data.pool, openByCategory: data.openByCategory, totalByCategory: data.totalByCategory, areaKey: null, city: null };
+  const bySlug = new Map(categories.map((x) => [x.slug, x.id]));
+  return {
+    pool: (pool ?? []).map((raw) => toK(raw as never, { cities, categories }, lang)).filter((p) => p.photos.length),
+    openByCategory: open ? Object.fromEntries(Object.entries(open.byCategory).map(([slug, n]) => [bySlug.get(slug) ?? slug, n])) : null,
+    totalByCategory: (totals ?? {}) as Record<string, number | null>, areaKey, city: city.slug,
+  };
+}
+
+// ads shown this session and per place today (proto SEEN/SHOWN); production counts them server-side
+const adSeen = new Set<string>(), adShown: Record<string, number> = {};
+const DAY = 864e5;
+/** Stories and 5argny Social through the one blend (organic rank, paid places blended in under the caps and the relevance floor). */
+function useBlend(pool: KPlace[], city: string | null, area: string | null) {
+  const out = useMemo(() => {
+    const affinity: Record<string, number> = {};
+    for (const p of pool) affinity[p.cat] = (affinity[p.cat] ?? 0) + (likeStore.liked(p.id) ? 3 : 0) + (saveStore.saved(p.id) ? 5 : 0);
+    const byId = new Map(pool.map((p) => [p.id, p]));
+    // shortcut: popularity uses the all-time counters the list carries; switch to 30-day windows when the list serves them
+    const bp: BlendPlace[] = pool.map((p) => ({ id: p.id, cat: p.cat, city: p.citySlug, area: p.region, promoted: p.promoted, views30: p.views, likes30: p.likes, go30: p.dir,
+      photos: p.photos.length, hasHours: p.hours.length > 0, amenities: p.amen.length, badges: p.badges.length,
+      freshness: p.updatedAt ? Math.max(0, 1 - (Date.now() - Date.parse(p.updatedAt)) / (90 * DAY)) : 0 }));
+    const ctx = { affinity, city, area, seen: adSeen, shownToday: adShown };
+    const pick = (list: ReturnType<typeof blend>) => list.map((x) => byId.get(x.p.id)!);
+    const stories = blend('stories', bp, 8, ctx), social = blend('social', bp, 14, ctx);
+    return { stories: pick(stories), social: pick(social), ads: [...stories, ...social].filter((x) => x.ad).map((x) => x.p.id) };
+  }, [pool, city, area]);
+  useEffect(() => { out.ads.forEach((id) => { adSeen.add(id); adShown[id] = (adShown[id] ?? 0) + 1; }); }, [out]);
+  return out;
+}
+
 export function HomeView({ data }: { data: HomeData }) {
-  const { c, loc, lang } = useK();
-  const here = data.pool.filter((p) => (!loc.city || p.citySlug === loc.city) && (!loc.area || p.area === loc.area));
-  const pool = here.length ? here : data.pool;
-  const feed = pool.slice(0, 14);
+  const { c, lang } = useK();
+  const here = useHere(data);
+  const pool = here.pool;
+  const { stories, social } = useBlend(pool, here.city, here.areaKey);
   const near = pool.slice(10, 17);
   return (
     <Shell cur="home" right={<><TrendCard list={data.trending} /><MarketCard /></>}>
-      <Stories list={pool.slice(0, 8)} />
-      <TakeMe data={data} pool={pool} />
+      <Stories list={stories} />
+      <TakeMe data={{ ...data, openByCategory: here.openByCategory, totalByCategory: here.totalByCategory }} pool={pool} />
       <NearYou list={near.length ? near : pool.slice(0, 7)} />
       <Earned pool={pool} />
       <TeamCollections list={data.collections} />
       <h1 className="t-display page-pad social-h" style={{ margin: '6px 0 10px' }}>{withBrand(c.home.social)}</h1>
-      {feed.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 ? <div className="desk-only"><Rail title={c.home.nearYou} list={pool.slice(10, 16)} href={`/${lang}/explorer/`} /></div> : null}</Fragment>)}
+      {social.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 ? <div className="desk-only"><Rail title={c.home.nearYou} list={pool.slice(10, 16)} href={`/${lang}/explorer/`} /></div> : null}</Fragment>)}
     </Shell>
   );
 }
@@ -59,10 +122,10 @@ function Rail({ title, list, href }: { title: string; list: KPlace[]; href: stri
 
 // Phone: Near you is highlighted right under the intents
 function NearYou({ list }: { list: KPlace[] }) {
-  const { c, lang, loc } = useK();
-  const where = usePlaceName();
+  const { c, lang } = useK();
+  // shortcut: no "Nearest first" line until the person's location is known (no prompt on load); then sort by distance and show it
   return <section className="near phone-only" aria-label={c.home.nearYou}><div className="rail-head"><h2 className="t-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}><Ic n="near" />{c.home.nearYou}</h2><Link className="btn plain press" href={`/${lang}/explorer/`}>{c.common.seeAll}</Link></div>
-    <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{loc.city ? fill(c.home.nearestFirstIn, { place: where }) : c.home.nearestFirst}</p><div className="rail-row">{list.map((p) => <Mini key={p.id} p={p} />)}</div></section>;
+    <div className="rail-row">{list.map((p) => <Mini key={p.id} p={p} />)}</div></section>;
 }
 
 function Earned({ pool }: { pool: KPlace[] }) {
@@ -74,19 +137,11 @@ function Earned({ pool }: { pool: KPlace[] }) {
 }
 
 function TeamCollections({ list }: { list: HomeCollection[] }) {
-  const { c, lang, toast } = useK();
-  const [saved, setSaved] = useState<Set<string>>(new Set());
+  const { c } = useK();
+  const views = useGroupViews(list.map((col) => col.id));
   if (!list.length) return null;
   return <section className="rail cols"><div className="rail-head"><h2 className="t-head"><L n="library" /> {withBrand(c.home.teamCollections)}</h2></div>
-    <div className="rail-row">{list.map((col) => {
-      const ph = col.places.slice(0, 4), on = saved.has(col.id);
-      return <div key={col.id} className="col-card" data-item>
-        <Link className="card press" href={`/${lang}/c/${col.slug}/`}><span className={`col-cover n${Math.max(1, ph.length)}`}>{ph.length ? ph.map((p) => <img key={p.id} src={p.photos[0]?.s} alt="" loading="lazy" />) : <span className="col-empty"><L n="images" /></span>}</span>
-          <span className="col-body"><b>{col.title}</b><span className="t-small"><span className="bit"><L n="badge-check" />{fill(c.collections.byTeam, { brand: '' })}<Brand /></span><span className="bit"><L n="map-pin" />{fill(c.collections.places, { n: col.places.length })}</span></span></span></Link>
-        {/* TODO(T024): PUT /v1/home/sections/:id/save once it exists; the toggle is local until then */}
-        <button className={`icon-btn col-save press ${on ? 'on' : ''}`} data-act="col-save" aria-pressed={on} aria-label={fill(c.collections.saveAria, { title: col.title })} onClick={(e) => { haptic(); const svg = e.currentTarget.querySelector('svg'); if (svg) animate(svg, { transform: ['scale(.7)', 'scale(1)'] }, spring(0.3, 0.35)); setSaved((s) => { const n = new Set(s); if (on) n.delete(col.id); else n.add(col.id); return n; }); toast(on ? c.collections.removedToast : c.collections.savedToast); }}><Ic n="saved" /></button>
-      </div>;
-    })}</div></section>;
+    <div className="rail-row">{list.map((col) => <ColCard key={col.id} col={col} views={views[col.id]} />)}</div></section>;
 }
 
 /* ---------- "Take me out" card: answer first, photo tiles, Surprise me ---------- */
@@ -169,7 +224,7 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
 /* ---------- right rail: Trending with its window menu ---------- */
 const WINDOWS = ['live', '24h', '7d', '30d'] as const;
 type Win = (typeof WINDOWS)[number];
-function TrendCard({ list }: { list: KPlace[] }) {
+export function TrendCard({ list }: { list: KPlace[] }) {
   const { c, lang } = useK();
   const where = usePlaceName();
   const [win, setWin] = useState<Win>('24h');
@@ -198,15 +253,3 @@ function TrendRow({ p, i, win, href }: { p: KPlace; i: number; win: Win; href: s
 }
 
 
-/* ---------- right rail: the Marketplace, two real experiences ---------- */
-function MarketCard() {
-  const { c, lang } = useK();
-  const { data: trips = [] } = useTrips({});
-  const list = trips.slice(0, 2);
-  if (!list.length) return null;
-  return <section className="card rail-card"><h2 className="t-head"><L n="store" /> {c.trending.marketRail}</h2>
-    {list.map((t) => <Link key={t.id} className="trend-main press" href={`/${lang}/trips/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{(lang === 'en' && t.titleEn) || t.title}</b>
-      <span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{new Date(t.startsAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')}</Bit></span>
-      {t.agency.verified ? <Tag label={c.market.verified} tone="good" icon="shield-check" /> : <Tag label={c.market.notVerified} tone="warn" icon="shield-alert" />}</span></Link>)}
-    <Link className="btn plain press" href={`/${lang}/marketplace/`}>{c.trending.seeAllExperiences} <L n="arrow-right" /></Link></section>;
-}

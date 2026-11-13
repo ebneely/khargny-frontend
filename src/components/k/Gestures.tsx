@@ -4,7 +4,7 @@
 import { useEffect, useRef } from 'react';
 import { animate } from 'motion';
 import { useK, haptic, reduce, spring } from './KProvider';
-import { useShare, markLove, lastLoveAt } from './place';
+import { useShare, markLove, lastLoveAt, markPress } from './place';
 import { strokePaths } from '@5argny/core/icons';
 
 const svg = (n: keyof typeof strokePaths) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${strokePaths[n]}"/></svg>`;
@@ -59,7 +59,8 @@ export function Gestures() {
     };
     const onDown = (e: PointerEvent) => {
       const z = loveZone(e.target as Element); if (!z?.btn || e.button > 0) return; stopHold();
-      if (!near(e.clientX, e.clientY)) return; // only the second press of a double tap can become a hold
+      const second = !!near(e.clientX, e.clientY); markPress(second);
+      if (!second) return; // only the second press of a double tap can become a hold
       const x0 = e.clientX, y0 = e.clientY, btn = z.btn;
       hold = { x: x0, y: y0, sy: scrollY, lift: e.pointerType === 'mouse' ? 0 : 76 }; // the ring sits above the thumb
       document.documentElement.classList.add('holding'); getSelection()?.removeAllRanges();

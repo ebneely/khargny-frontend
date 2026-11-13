@@ -7,6 +7,7 @@ const every = (o: string, c: string): HoursRow[] => [0, 1, 2, 3, 4, 5, 6].map((d
 const only = (d: number, o: string, c: string): HoursRow[] => [{ d, o, c, x: false }];
 
 describe('openState', () => {
+  it('an opening time with no closing time is unknown, not 24 hours', () => expect(openState([0, 1, 2, 3, 4, 5, 6].map((d) => ({ d, o: '10:00:00', c: null, x: false })), at(3, 12))).toEqual({ kind: 'unknown' }));
   it('no hours is unknown', () => {
     expect(openState([], at(3, 12))).toEqual({ kind: 'unknown' });
     expect(openState(null, at(3, 12))).toEqual({ kind: 'unknown' });

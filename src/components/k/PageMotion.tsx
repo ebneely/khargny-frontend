@@ -4,10 +4,11 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { animate } from 'motion';
-import { isPlacePath } from './data';
+import { isSheetPath } from './data';
 import { desk, reduce, spring } from './KProvider';
 
-const depthOf = (path: string) => (isPlacePath(path) ? 1 : 0);
+// proto renderBase depths: a place, collection, listing or host and Report a problem are 1; a correction is 2
+const depthOf = (path: string) => (/\/correct\/?$/.test(path) ? 2 : isSheetPath(path) || /\/settings\/report\/?$/.test(path) ? 1 : 0);
 type Ghost = { clip: HTMLDivElement; ghost: HTMLElement; width: number; from: number };
 
 export function PageMotion() {

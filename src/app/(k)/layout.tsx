@@ -19,10 +19,11 @@ export { generateMetadata } from '@/lib/root-metadata';
 const cairo = Cairo({ weight: ['600', '700', '800', '900'], subsets: ['arabic', 'latin'], display: 'swap' });
 const plex = IBM_Plex_Sans_Arabic({ weight: ['400', '600', '700'], subsets: ['arabic', 'latin'], display: 'swap' });
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#FBF6EE' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, maximumScale: 1, viewportFit: 'cover', themeColor: '#FBF6EE' };
 
-// Light, Dark or Auto from kh.theme, set before the first paint so there is no flash.
-const THEME = `(function(){try{var t=localStorage.getItem('kh.theme')||'auto';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d?'#14100D':'#FBF6EE')}catch(e){}})()`;
+// Light, Dark or Auto from kh.theme, set before the first paint so there is no flash. A phone landing on a sheet address
+// hides the server-drawn page until the sheet comes up over Home (no desktop page flashing first).
+const THEME = `(function(){try{var t=localStorage.getItem('kh.theme')||'auto';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d?'#14100D':'#FBF6EE');var p=location.pathname.split('/').filter(Boolean);if(innerWidth<1024&&((p[1]==='explorer'&&p.length===4)||(['c','marketplace','host'].indexOf(p[1])>=0&&p.length===3)))document.documentElement.classList.add('landing')}catch(e){}})()`;
 
 const tabOf = (path: string): Tab => {
   const first = path.split('/').filter(Boolean)[0] ?? '';
@@ -43,7 +44,7 @@ export default async function KLayout({ children }: Readonly<{ children: React.R
   const fonts = { '--display': `${cairo.style.fontFamily},${plex.style.fontFamily},system-ui,sans-serif`, '--text': `system-ui,-apple-system,'SF Pro Text','Segoe UI',${plex.style.fontFamily},sans-serif` } as React.CSSProperties;
   return (
     <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} style={fonts} suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: THEME }} /></head>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME }} /><style>{'html.landing #app{visibility:hidden}'}</style></head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(graph(organizationSchema(locale, settings), webSiteSchema(locale))) }} />
         <LocaleProvider initialLocale={locale}>

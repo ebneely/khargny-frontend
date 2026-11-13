@@ -14,12 +14,13 @@ import { useCities } from '@/lib/api/hooks/use-cities';
 import { regionLabel } from '@/lib/egypt-regions';
 import { likeStore } from '@/lib/likes';
 import { saveStore } from '@/lib/saves';
-import { trackPlaceAction } from '@/lib/analytics/track';
+import { trackPlaceAction, trackPlaceView } from '@/lib/analytics/track';
 import { L, Ic } from './icons';
 import { Cnt, Tag, Bit } from './bits';
 import { dur, openState, type OpenState } from './rules';
 import { placeHref, type KPlace, type KStats, type KBadge } from './data';
-import { useK, haptic, reduce, spring } from './KProvider';
+import { useK, haptic, reduce, spring, desk } from './KProvider';
+import { useOpenCorrection } from './settings';
 
 /** 30-day windows from GET /v1/places/:id/stats; null until that route answers (counts stay hidden). */
 export function usePlaceStats(id: string) {
@@ -31,6 +32,11 @@ export function usePlaceStats(id: string) {
 }
 
 const serverSnap = () => 0;
+// this session's own views: opening a place or seeing a feed post adds 1 to its eye count at once (proto viewed())
+const myViews = new Map<string, number>(), viewSubs = new Set<() => void>();
+export function bumpView(id: string) { trackPlaceView(id); myViews.set(id, (myViews.get(id) ?? 0) + 1); viewSubs.forEach((f) => f()); }
+const subViews = (f: () => void) => { viewSubs.add(f); return () => { viewSubs.delete(f); }; };
+export const useMyViews = (id: string) => useSyncExternalStore(subViews, () => myViews.get(id) ?? 0, serverSnap);
 export function useLove(p: KPlace) {
   useSyncExternalStore(likeStore.subscribe, likeStore.snapshot, serverSnap);
   const [local, setLocal] = useState<boolean | null>(null);
@@ -79,7 +85,8 @@ export function AllDay() {
 // no hours yet: say so plainly and let people fill the gap (it lands in Inbox > Corrections as "hours")
 export function HoursUnknown({ p }: { p: KPlace }) {
   const { c, lang } = useK();
-  return <div className="open-tl unknown"><span className="live-pill unknown"><i className="live off" />{c.open.unknown}</span><Link className="hours-ask press" href={`${placeHref(p, lang)}correct/`}><L n="clock-plus" />{c.open.tellUs}</Link></div>;
+  const correct = useOpenCorrection();
+  return <div className="open-tl unknown"><span className="live-pill unknown"><i className="live off" />{c.open.unknown}</span><Link className="hours-ask press" href={`${placeHref(p, lang)}correct/`} onClick={(e) => { if (desk()) return; e.preventDefault(); correct(p); }}><L n="clock-plus" />{c.open.tellUs}</Link></div>;
 }
 /** The opening piece of a place: one of the four states. */
 export function OpenPiece({ p }: { p: KPlace }) {
@@ -102,15 +109,17 @@ export function Meta({ p, extra }: { p: KPlace; extra?: ReactNode }) {
 // Meta swap: tapping a bubble opens the real list to swap that half (the place's city stays).
 // TODO: use src/5argny/rules/metaSwap.ts. Per-row counts and views need /v1/places/counts and /v1/aggregates/views; hidden until then.
 function useSwap() {
-  const { openSheet, c, lang, go, dismissAll } = useK();
+  const { openSheet, c, lang, go, dismissAll, setLoc } = useK();
   const { data: categories = [] } = useCategories();
   const { data: cities = [] } = useCities();
   return {
     openSwap: (kind: 'cat' | 'area', p: KPlace) => {
       haptic();
       const area = p.area || p.city;
-      const href = (cat: string, region: string | null) => `/${lang}/explorer/${p.citySlug}/?category=${cat}${region ? `&area=${encodeURIComponent(region)}` : ''}`;
-      const row = (key: string, label: string, icon: string, to: string, on: boolean) => <button key={key} className="option press" role="radio" aria-checked={on} data-act="meta-pick" onClick={(e) => { haptic(); e.currentTarget.closest('.sheet')?.querySelectorAll('[role="radio"]').forEach((o) => o.setAttribute('aria-checked', String(o === e.currentTarget))); setTimeout(() => { dismissAll(); go(to); }, 220); }}><L n={icon} /><span className="grow">{label}</span><Ic n="check" cls="check" /></button>;
+      const city0 = cities.find((x) => x.id === p.cityId);
+      // the swap lands on Explore with that half changed: the place's city, the area (if any), the category
+      const href = (catId: string, region: string | null) => { const cat = categories.find((x) => x.id === catId); return { to: `/${lang}/explorer/?cat=${encodeURIComponent(cat?.nameEn || cat?.nameAr || '')}`, loc: { city: p.citySlug, area: region ? regionLabel(region, lang, city0?.nameEn || city0?.name) || region : null } }; };
+      const row = (key: string, label: string, icon: string, { to, loc }: { to: string; loc: { city: string; area: string | null } }, on: boolean) => <button key={key} className="option press" role="radio" aria-checked={on} data-act="meta-pick" onClick={(e) => { haptic(); e.currentTarget.closest('.sheet')?.querySelectorAll('[role="radio"]').forEach((o) => o.setAttribute('aria-checked', String(o === e.currentTarget))); setTimeout(() => { dismissAll(); setLoc(loc); go(to); }, 220); }}><L n={icon} /><span className="grow">{label}</span><Ic n="check" cls="check" /></button>;
       if (kind === 'cat') openSheet(fill(c.place.swap.what, { area }), categories.map((x) => { const en = x.nameEn || x.nameAr; return row(x.id, (lang === 'ar' ? x.nameAr : en) || en, catIcon(en), href(x.id, p.region), x.id === p.catId); }));
       else {
         const city = cities.find((x) => x.id === p.cityId);
@@ -152,9 +161,11 @@ function useDirections() {
   const { openSheet, c, closeTop, toast } = useK();
   return (p: KPlace) => {
     const ll = p.lat != null && p.lng != null ? `${p.lat},${p.lng}` : '';
-    const q = encodeURIComponent(ll || [p.name, p.area, p.city].filter(Boolean).join(' '));
-    const links = [p.maps || `https://www.google.com/maps/search/?api=1&query=${q}`, `https://maps.apple.com/?q=${encodeURIComponent(p.name)}${ll ? `&ll=${ll}` : ''}`, ll ? `https://waze.com/ul?ll=${ll}&navigate=yes` : `https://waze.com/ul?q=${q}`];
-    openSheet(c.go5.mapsSheet, <>{p.address || p.area ? <p className="t-small" style={{ padding: '0 4px 8px' }}>{p.address || p.area}</p> : null}{c.go5.maps.map((n, i) => <button key={n} className="option press" data-act="go-maps" data-v={n} onClick={() => { closeTop(); haptic(); toast(fill(c.common.opening, { name: n })); window.open(links[i], '_blank', 'noopener'); }}><Ic n="go" /><span className="grow">{n}</span></button>)}</>);
+    const q = encodeURIComponent([p.name, p.address || p.area, p.city].filter(Boolean).join(' '));
+    // straight to directions to the place; the name and address only when it has no coordinates
+    const links = [ll ? `https://www.google.com/maps/dir/?api=1&destination=${ll}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`, ll ? `https://maps.apple.com/?daddr=${ll}` : `https://maps.apple.com/?daddr=${q}`];
+    const icons = ['/maps/google-maps.svg', '/maps/apple-maps.svg'];
+    openSheet(c.go5.mapsSheet, <>{p.address || p.area ? <p className="t-small" style={{ padding: '0 4px 8px' }}>{p.address || p.area}</p> : null}{c.go5.maps.map((n, i) => <button key={n} className="option press map-opt" data-act="go-maps" data-v={n} onClick={() => { closeTop(); haptic(); toast(fill(c.common.opening, { name: n })); window.open(links[i], '_blank', 'noopener'); }}><img className="map-ic" src={icons[i]} alt="" width={28} height={28} /><span className="grow">{n}</span></button>)}</>);
   };
 }
 
@@ -198,12 +209,13 @@ export function Actions({ p, end }: { p: KPlace; end?: ReactNode }) {
   const s = usePlaceStats(p.id);
   const love = useLove(p), save = useSave(p), share = useShare();
   const [shares, setShares] = useState(0);
+  const mine = useMyViews(p.id);
   const pop = (e: MouseEvent<HTMLButtonElement>, kf: string[], sp: ReturnType<typeof spring>) => { const svg = e.currentTarget.querySelector('svg'); if (svg) animate(svg, { transform: kf }, sp); };
   return <>
     <ActBtn lang={lang} icon="heart" label={c.common.love} act="like" p={p} base={love.count} on={love.on} onClick={(e) => { e.preventDefault(); haptic(); love.toggle(); pop(e, ['scale(.6)', 'scale(1)'], spring(0.5, 0.45)); }} />
     <ActBtn lang={lang} icon="saved" label={c.common.save} act="save" p={p} base={s?.d30 ? s.d30.saves + save.delta : null} on={save.on} onClick={(e) => { e.preventDefault(); haptic(); save.toggle(); pop(e, ['scale(.75)', 'scale(1)'], spring(0, 0.35)); toast(save.on ? c.saved.removed : c.saved.added); }} />
     <ActBtn lang={lang} icon="share" label={c.common.share} act="share" p={p} base={s?.d30 ? s.d30.shares + shares : null} on={false} onClick={(e) => { e.preventDefault(); share({ id: p.id, href: placeHref(p, lang) }, () => setShares((n) => n + 1)); }} />
-    <span className="act-views" title={c.stats.opened30}><Ic n="eye" /><Cnt base={s?.d30?.views ?? null} /></span>
+    <span className="act-views" title={c.stats.opened30}><Ic n="eye" /><Cnt base={s?.d30 ? s.d30.views + mine : null} /></span>
     <span className="grow" />{end}
   </>;
 }
@@ -211,10 +223,10 @@ export function Actions({ p, end }: { p: KPlace; end?: ReactNode }) {
 export function Stats({ p }: { p: KPlace }) {
   const { c } = useK();
   const s = usePlaceStats(p.id);
-  const love = useLove(p), save = useSave(p);
+  const love = useLove(p), save = useSave(p), mine = useMyViews(p.id);
   const st = (icon: 'eye' | 'heart' | 'saved' | 'share' | 'go', title: string, base: number | null) => base == null ? null : <span className="views" title={title}><Ic n={icon} /><Cnt base={base} /></span>;
   return <span className="stats">
-    {st('eye', c.stats.views30, s?.d30?.views ?? null)}{st('heart', c.stats.loves, love.count)}{st('saved', c.stats.saves30, s?.d30 ? s.d30.saves + save.delta : null)}{st('share', c.stats.shares30, s?.d30?.shares ?? null)}{st('go', c.stats.goTotal, p.dir)}
+    {st('eye', c.stats.views30, s?.d30 ? s.d30.views + mine : null)}{st('heart', c.stats.loves, love.count)}{st('saved', c.stats.saves30, s?.d30 ? s.d30.saves + save.delta : null)}{st('share', c.stats.shares30, s?.d30?.shares ?? null)}{st('go', c.stats.goTotal, p.dir)}
   </span>;
 }
 
@@ -235,14 +247,29 @@ export function BadgeTags({ p }: { p: KPlace }) {
   return <>{p.badges.map((b, i) => <Tag key={b.key + i} label={label(b)} tone="good" icon={badgeIcon(b)} />)}</>;
 }
 
+// a post seen 60% for 1 s counts as a view, once per session (proto feedIO)
+const feedSeen = new Set<string>();
+function useFeedView(ref: React.RefObject<HTMLElement | null>, id: string) {
+  useEffect(() => {
+    const el = ref.current; if (!el || feedSeen.has(id) || !('IntersectionObserver' in window)) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const io = new IntersectionObserver(([en]) => {
+      if (!en?.isIntersecting) { clearTimeout(t); return; }
+      t = setTimeout(() => { if (feedSeen.has(id)) return; feedSeen.add(id); io.disconnect(); bumpView(id); }, 1000);
+    }, { threshold: 0.6 });
+    io.observe(el); return () => { clearTimeout(t); io.disconnect(); };
+  }, [ref, id]);
+}
+
 export function Post({ p }: { p: KPlace }) {
   const { lang, now, go } = useK();
   const st = openState(p, now, lang);
-  const openT = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // a tap opens the place after the double-tap window, unless that tap became a love
-  const onClick = (e: MouseEvent) => { if ((e.target as Element).closest('button,a,[role="button"]')) return; clearTimeout(openT.current); openT.current = setTimeout(() => { if (Date.now() - lastLoveAt() > 450) go(placeHref(p, lang)); }, 300); };
+  const ref = useRef<HTMLElement>(null);
+  useFeedView(ref, p.id);
+  // a tap opens the place after the double-tap window, unless that tap became a love or the second press of a double tap (love or hold to share)
+  const onClick = (e: MouseEvent) => { if ((e.target as Element).closest('button,a,[role="button"]')) return; clearTimeout(openT); if (secondPress) { secondPress = false; return; } openT = setTimeout(() => { if (Date.now() - lastLoveAt() > 450) go(placeHref(p, lang)); }, 300); };
   return (
-    <article className="card post press" data-item data-open={p.slug} data-id={p.id} onClick={onClick}>
+    <article ref={ref} className="card post press" data-item data-open={p.slug} data-id={p.id} onClick={onClick}>
       
       <header className="post-head"><img className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b>{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
       <div className="media"><Carousel photos={p.photos.slice(0, 5)} /></div>
@@ -252,6 +279,9 @@ export function Post({ p }: { p: KPlace }) {
   );
 }
 
+let openT: ReturnType<typeof setTimeout> | undefined, secondPress = false;
+/** Every press in a love zone says whether it is the second of a double tap; the second one never opens the place (proto app.js:1025). */
+export const markPress = (second: boolean) => { secondPress = second; if (second) clearTimeout(openT); };
 let loveAt = 0;
 export const lastLoveAt = () => loveAt;
 export const markLove = () => { loveAt = Date.now(); };

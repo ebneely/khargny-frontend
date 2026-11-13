@@ -14,6 +14,8 @@ export type KPlace = {
   /** all-time counters the place itself carries; 30-day windows come from usePlaceStats */
   likes: number; saves: number; views: number; dir: number;
   badges: KBadge[]; hours: KHour[]; amen: string[]; photos: { s: string; m: string }[];
+  /** the API marks a paid card `sponsored`; never labelled on cards, disclosed on the place and in its ··· */
+  promoted: boolean; updatedAt: string | null;
 };
 export type KCatalog = { cities: CityWithAreas[]; categories: Category[] };
 
@@ -50,11 +52,14 @@ export function toK(raw: Raw, catalog: KCatalog, lang: Lang): KPlace {
     lat: raw.lat == null ? null : Number(raw.lat), lng: raw.lng == null ? null : Number(raw.lng), band: (raw.priceRange as number) ?? null,
     likes: num(raw.likeCount), saves: num(raw.saveCount), views: num(raw.viewCount), dir: num(raw.directionsCount),
     badges: (raw.badges as KBadge[]) ?? [], hours, amen, photos: photosOf(raw),
+    promoted: raw.sponsored === true, updatedAt: str(raw.updatedAt) || str(raw.createdAt),
   };
 }
 
 export const placeHref = (p: Pick<KPlace, 'citySlug' | 'slug'>, lang: Lang) => `/${lang}/explorer/${p.citySlug}/${p.slug}/`;
 export const isPlacePath = (path: string) => /^\/(ar|en)\/explorer\/[^/]+\/[^/]+\/?$/.test(path);
+/** Opens as a sheet on a phone and as a depth-1 page on desktop: a place, a collection, a Marketplace listing, a host. */
+export const isSheetPath = (path: string) => isPlacePath(path) || /^\/(ar|en)\/(c|marketplace|host)\/[^/]+\/?$/.test(path);
 
 /** GET /v1/places/:id/stats (contracts/api.md). Missing route or place -> null: counts stay hidden, never a fake 0. */
 export type KStats = {

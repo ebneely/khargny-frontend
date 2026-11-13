@@ -15,7 +15,7 @@ export const ar: Copy = {
   common: {
     seeAll: 'الكل', back: 'رجوع', close: 'قفل', more: 'المزيد', share: 'شارك', save: 'احفظ', love: 'حبيته', like: 'عجبني', remove: 'امسح',
     clear: 'امسح', create: 'اعمل', findPlaces: 'دور على أماكن', places: '{n} مكان', optional: 'اختياري', sendToTeam: 'ابعت لفريقنا',
-    previousPhoto: 'الصورة اللي قبلها', nextPhoto: 'الصورة اللي بعدها', showAll: 'اعرض الـ {n} كلهم', opening: 'بنفتح {name}', linkCopied: 'اتنسخ اللينك', copyLink: 'انسخ اللينك',
+    previousPhoto: 'الصورة اللي قبلها', nextPhoto: 'الصورة اللي بعدها', showAll: 'اعرض الـ {n} كلهم', opening: 'بنفتح {name}', linkCopied: 'اتنسخ اللينك', copyLink: 'انسخ اللينك', tooMany: 'كفاية كده النهارده. جرب تاني بكرة', failed: 'ما وصلتش. جرب تاني',
   },
   unused: { want: 'عايز تعمل إيه؟', where: 'فين؟', anywhere: 'في أي مكان في', forYou: 'ليك', directions: 'الاتجاهات', badgesWhy: 'معنى العلامات' },
   intents: { eat: 'أكل', coffee: 'قهوة', fun: 'خروجة', history: 'تاريخ', stay: 'إقامة', shop: 'تسوق', outdoors: 'في الهوا' },
@@ -39,7 +39,7 @@ export const ar: Copy = {
     },
     nearYou: 'قريب منك', nearestFirst: 'الأقرب الأول', nearestFirstIn: 'الأقرب الأول في {place}',
     earned: 'اتكسب على {brand}', earnedAll: 'الـ {n} كلهم', teamCollections: 'قوايم من {brand}', social: 'سوشيال {brand}',
-    loveHint: 'دوس مرتين على أي حاجة بتحبها. اضغط ثانيتين عشان تشاركها',
+    loveHint: 'دوس مرتين عشان تحبه. دوس مرتين وسيب صباعك عشان تشارك',
   },
   trending: {
     title: 'التريند', in: 'في {place}', hereNow: '{n} هنا دلوقتي', market: 'التريند في {market}', marketRail: 'السوق', seeAllExperiences: 'شوف كل التجارب',
@@ -50,7 +50,7 @@ export const ar: Copy = {
     goTotal: 'شخص داس خرجني! هنا', opened30: 'شخص فتحه في آخر 30 يوم', goBefore: 'شخص داس خرجني! هنا قبلك',
     viewsGroup: 'مشاهدة في آخر 30 يوم',
   },
-  go5: { label: 'خرجني!', aria: 'خرجني! وديني هناك', mapsSheet: 'أنهي خريطة؟', maps: ['Google Maps', 'Apple Maps', 'Waze'] },
+  go5: { label: 'خرجني!', aria: 'خرجني! وديني هناك', mapsSheet: 'أنهي خريطة؟', maps: ['Google Maps', 'Apple Maps'] },
   share: { sheet: 'شارك', apps: ['WhatsApp', 'Facebook', 'Messenger'], copyLink: 'انسخ اللينك' },
   open: {
     open: 'مفتوح', closed: 'مقفول', openNow: 'مفتوح دلوقتي', closedNow: 'مقفول دلوقتي', left: 'فاضل {dur}', opensIn: 'يفتح بعد {dur}',
@@ -86,7 +86,7 @@ export const ar: Copy = {
     when: { any: 'أي وقت', now: 'مفتوح دلوقتي', tonight: 'بالليل', weekend: 'الويك إند ده' },
     sort: { popular: 'الأشهر', near: 'الأقرب', open: 'المفتوح الأول' },
   },
-  filters: { title: 'فلاتر', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', show: 'اعرض {n} مكان' },
+  filters: { title: 'فلاتر', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', showPlaces: 'اعرض الأماكن', show: 'اعرض {n} مكان' },
   market: {
     title: 'السوق', all: 'الكل', verifiedOnly: 'المتأكد من هويتهم بس', verified: 'الهوية متأكدة', notVerified: 'الهوية مش متأكدة', trips: '{n} رحلة', seatsLeft: 'فاضل {n} مكان',
     perPerson: 'للفرد', hostKinds: { guide: 'مرشد', individual: 'فرد', office: 'شركة سياحة' },
@@ -94,6 +94,9 @@ export const ar: Copy = {
     notChecked: 'لسه ما اتأكدناش من صاحب الرحلة. اتقابلوا في مكان عام وما تدفعش قبل ما تشوف الرحلة.', included: 'متضمن',
     messageHost: 'كلم صاحب الرحلة', openingWhatsApp: 'بنفتح WhatsApp', reportTrip: 'بلغ عن الرحلة دي', whatWrong: 'إيه المشكلة؟',
     reasons: ['المواعيد غلط', 'المكان غلط', 'قفل خلاص', 'الصور غلط', 'حاجة تانية'], reported: 'شكرا. فريقنا هيبص عليها',
+    about: 'عنه', tripsBy: 'رحلات {name}', since: 'على {brand} من {year}', idLicence: 'الهوية والرخصة متأكدين', reviewsOfHost: 'آراء في صاحب الرحلة', reviewsOfTrip: 'آراء في الرحلة دي',
+    noReviews: 'لسه مفيش آراء. اللي راحوا بس يقدروا يقيموا، بعد الرحلة.', reviewsFrom: '{n} رأي من ناس راحت', reviewFrom: 'رأي واحد من ناس راحت', reviewsN: '{n} رأي', outOf5: '{n} من 5',
+    oneTrip: 'رحلة واحدة', hostLineOne: '{kind}، رحلة واحدة على {brand}', nights: '{n} ليالي', oneNight: 'ليلة واحدة', empty: 'لسه مفيش تجارب معروضة', emptyBody: 'الرحلات والتجارب اللي الناس بتعرضها ببلاش بتظهر هنا.',
   },
   saved: {
     places: 'أماكن', collections: 'قوايم', emptyTitle: 'لسه ما حفظتش حاجة', emptyBody: 'دوس على علامة الحفظ في أي مكان وهتلاقيه مستنيك هنا.',

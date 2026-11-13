@@ -17,9 +17,10 @@ const mod7 = (d: number) => ((d % 7) + 7) % 7;
 
 // Port of app.js openState: today's span and yesterday's (which may run past midnight) decide open; otherwise the next opening.
 export function openState(hours: HoursRow[] | null | undefined, now: Date): OpenState {
-  if (!hours || !hours.length) return { kind: 'unknown' };
+  // a day with an opening but no closing time says nothing usable (not 24 hours): only closed days and full spans count
+  if (!hours || !hours.some((h) => h.x || (h.o && h.c))) return { kind: 'unknown' };
   const day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
-  const on = (d: number) => hours.find((x) => x.d === mod7(d) && !x.x && x.o);
+  const on = (d: number) => hours.find((x) => x.d === mod7(d) && !x.x && x.o && x.c);
   const span = (h: HoursRow, k: number): [number, number] => {
     const o = toM(h.o!) + 1440 * k;
     let c = toM(h.c ?? h.o!) + 1440 * k;
@@ -69,9 +70,9 @@ export const timeLeftText = (st: { kind: 'open' | 'closed'; left: number }, lang
 // open at a weekday and minute of the day, counting a span that runs past midnight (Filters "When" and the counts per time)
 export function openAt(hours: HoursRow[] | null | undefined, day: number, mins: number) {
   const h = hours?.find((x) => x.d === day);
-  if (!h || h.x || !h.o) return false;
+  if (!h || h.x || !h.o || !h.c) return false;
   const o = toM(h.o);
-  let c = toM(h.c ?? h.o);
+  let c = toM(h.c);
   if (c <= o) c += 1440;
   return (mins >= o && mins < c) || (mins + 1440 >= o && mins + 1440 < c);
 }

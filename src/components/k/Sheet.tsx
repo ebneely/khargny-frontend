@@ -1,11 +1,13 @@
 'use client';
 // ONE sheet for every action (proto app.js "sheets"): bottom only, grabber, drag with velocity projection and a rubber band,
 // pull down from the top of the content to close; the page recedes behind the first sheet and a stacked sheet pushes its parent back.
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import { animate } from 'motion';
 import { useK, spring, reduce, type SheetEntry } from './KProvider';
 import { IconBtn } from './bits';
+import { renderSheet } from './sheets';
 
 type Anim = { stop: () => void } | null;
 type El = HTMLDivElement & { _pos?: number; _anim?: Anim };
@@ -20,6 +22,14 @@ function depth(prog: number, animated: boolean) {
     if (prog === 0 && !animated) { app.style.transform = ''; delete app.dataset.origin; }
   }
   if (sc) { sc.style.opacity = String(prog); const b = reduce() ? 'none' : `blur(${(prog * 3).toFixed(2)}px)`; sc.style.backdropFilter = b; sc.style.setProperty('-webkit-backdrop-filter', b); }
+}
+
+// the page behind a sheet is pinned where it was (proto lockPage): no scroll-through, same place after
+let lockedAt: number | null = null;
+function lockPage(on: boolean) {
+  const b = document.body, h = document.documentElement;
+  if (on && lockedAt === null) { lockedAt = scrollY; h.classList.add('sheet-open'); Object.assign(b.style, { position: 'fixed', top: -lockedAt + 'px', left: '0', right: '0', width: '100%' }); }
+  else if (!on && lockedAt !== null) { const y = lockedAt; lockedAt = null; h.classList.remove('sheet-open'); Object.assign(b.style, { position: '', top: '', left: '', right: '', width: '' }); scrollTo({ top: y, behavior: 'instant' }); }
 }
 
 function setPos(sh: El, y: number) { sh._pos = y; sh.style.transform = `translateY(${y}px)`; }
@@ -118,17 +128,23 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
   );
 }
 
-/** Renders the stack; the content sheet (a place on a phone) draws its body from `renderContent`. */
-export function SheetHost({ renderContent }: { renderContent: (path: string, dir: 1 | -1, depth: number) => { label: string; body: ReactNode; foot?: ReactNode } }) {
-  const { sheets, content, closeTop, c } = useK();
+/** Renders the stack; the content sheet (a place, collection, listing or host on a phone) draws itself from renderSheet. */
+export function SheetHost() {
+  const { sheets, content, closeTop, c, lang } = useK();
+  const qc = useQueryClient();
+  // the content sheet's label is the name its query brings, so redraw when a query lands
+  const [, redraw] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => qc.getQueryCache().subscribe((e) => { if (e.type === 'updated' && e.action.type === 'success') redraw(); }), [qc]);
   useEffect(() => { const f = () => closeTop(); document.addEventListener('k-close-top', f); return () => document.removeEventListener('k-close-top', f); }, [closeTop]);
-  if (typeof document === 'undefined' || !sheets.length) return null;
   const open = sheets.filter((x) => !x.closing);
+  const anyOpen = open.length > 0;
+  useLayoutEffect(() => { lockPage(anyOpen); }, [anyOpen]);
+  if (typeof document === 'undefined' || !sheets.length) return null;
   return createPortal(sheets.map((entry, index) => {
     const top = open[open.length - 1]?.id === entry.id;
     if (entry.kind === 'content') {
       const path = content?.keys[content.keys.length - 1];
-      const view = path ? renderContent(path, content!.dir, content!.keys.length) : { label: '', body: null };
+      const view = path ? renderSheet(path, qc, lang) : { label: '', body: null };
       const head = <>{(content?.keys.length ?? 0) > 1 ? <IconBtn icon="back" label={c.common.back} cls="filled" onClick={() => history.back()} /> : <span />}<IconBtn icon="x" label={c.common.close} cls="filled" onClick={() => closeTop()} /></>;
       return <SheetView key={entry.id} entry={{ ...entry, label: view.label }} index={index} top={top} head={head} body={view.body} foot={view.foot} />;
     }

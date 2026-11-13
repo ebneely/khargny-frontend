@@ -1,6 +1,7 @@
 /* @5argny/core web.css: the prototype stylesheet (ui-unify/proto/styles.css, copied verbatim on 2026-11-13 20:38: hosts, reviews, sheets, glass, dark).
    Pixel source for the Next.js site: class names unchanged. Colours, radii, type and motion are mirrored in tokens/ (tokens.test.ts keeps them equal).
-   Tidy into layers later; pixel identity first. */
+   Tidy into layers later; pixel identity first.
+   Order: -webkit-backdrop-filter BEFORE backdrop-filter. The build minifier keeps only the last of the pair, so the other order loses the blur in Chrome. */
 /* Khargny client prototype: variant A "Paper" + apple-design. One token set, one component per pattern. */
 :root{
   --bg:#FBF6EE; --card:#FFFDF9; --ink:#241C16; --ink2:#6E6259; --ink3:#A39689; --line:#EFE6DA;
@@ -37,7 +38,7 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 
 /* ---------- shell ---------- */
 .shell{min-height:100vh}
-.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;background:var(--bar);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%)}
+.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;background:var(--bar);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
 .topbar::after{content:"";position:absolute;left:0;right:0;top:100%;height:12px;pointer-events:none;background:linear-gradient(var(--bar),transparent);opacity:0;transition:opacity .2s}
 .topbar.scrolled::after{opacity:1}
 .wordmark{font:900 22px/1 var(--display);color:var(--accent);letter-spacing:-.01em}
@@ -47,7 +48,7 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 .sidebar,.rail-right{display:none}
 
 /* tab bar (phone) */
-.tabbar{position:fixed;z-index:40;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;padding:5px;border-radius:24px;background:var(--bar);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);box-shadow:var(--sh2);border:1px solid rgba(255,255,255,.6);isolation:isolate}
+.tabbar{position:fixed;z-index:40;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;padding:5px;border-radius:24px;background:var(--bar);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:var(--sh2);border:1px solid rgba(255,255,255,.6);isolation:isolate}
 .tabbar .nav-item{position:relative;display:grid;justify-items:center;gap:1px;min-width:58px;padding:7px 6px 5px;border-radius:18px;font-size:10.5px;font-weight:650;color:var(--ink2)}
 .tabbar .nav-item[aria-current="page"]{color:var(--accent)}
 .pill{position:absolute;z-index:-1;border-radius:18px;background:var(--accent-soft);pointer-events:none}
@@ -377,7 +378,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 @media (prefers-reduced-motion: reduce){ .tm-photos img{transition:none} }
 
 /* ONE location bar, pinned */
-.locbar-wrap{position:sticky;top:52px;z-index:28;padding:6px 16px 8px;background:var(--bar);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%)}
+.locbar-wrap{position:sticky;top:52px;z-index:28;padding:6px 16px 8px;background:var(--bar);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
 .locbar-wrap .locbar{margin:0}
 .loc-pill.off{opacity:.5}
 .loc-pill.on b{color:var(--accent)}
@@ -497,10 +498,10 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 @media (max-width:1023px){ .post-foot .post-actions .icon-btn svg{width:19px;height:19px} }
 
 /* ---- one top material (apple-design: never stack translucent layers) ---- */
-.chrome-top{position:sticky;top:0;z-index:30;background:rgba(251,246,238,.86);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%)}
-.chrome-top .topbar{position:relative;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.chrome-top{position:sticky;top:0;z-index:30;background:rgba(251,246,238,.86);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+.chrome-top .topbar{position:relative;background:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 .chrome-top .topbar::after{display:none}
-.chrome-top .locbar-wrap{position:static;display:grid;grid-template-rows:1fr;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;transition:grid-template-rows .32s cubic-bezier(.2,.9,.3,1),opacity .2s ease}
+.chrome-top .locbar-wrap{position:static;display:grid;grid-template-rows:1fr;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;transition:grid-template-rows .32s cubic-bezier(.2,.9,.3,1),opacity .2s ease}
 .locbar-in{overflow:hidden;min-height:0}
 
 .chrome-top::after{content:"";position:absolute;left:0;right:0;top:100%;height:14px;pointer-events:none;background:linear-gradient(rgba(251,246,238,.86),rgba(251,246,238,0));opacity:0;transition:opacity .2s}
@@ -553,7 +554,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .chrome-top.searching .wordmark{max-width:0;opacity:0}
 
 .chrome-top.searching .gsearch{box-shadow:0 0 0 2px var(--accent-soft)}
-#search-scrim{position:fixed;inset:0;z-index:29;background:rgba(20,14,10,.18);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#search-scrim{position:fixed;inset:0;z-index:29;background:rgba(20,14,10,.18);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 #suggest{z-index:46}
 #suggest mark{background:none;color:var(--accent);font-weight:800}
 .sg-sec{display:flex;align-items:center;gap:6px}
@@ -588,7 +589,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .sg-open{position:absolute;top:-2px;right:-2px;box-shadow:0 0 0 2px var(--card)}
 
 /* one live pill (counts and Open): a material, not a fade; it grows out of its dot */
-.tm-count{color:#fff;backdrop-filter:blur(10px) saturate(160%);-webkit-backdrop-filter:blur(10px) saturate(160%);transform-origin:right center;animation:pillGrow .42s cubic-bezier(.2,.9,.25,1) both}
+.tm-count{color:#fff;-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);transform-origin:right center;animation:pillGrow .42s cubic-bezier(.2,.9,.25,1) both}
 .tm-count .live{flex:none}
 [dir=rtl] .tm-count{right:auto;left:7px;transform-origin:left center}
 @keyframes pillGrow{from{clip-path:inset(0 0 0 calc(100% - 19px) round 999px);transform:scale(.85)}to{clip-path:inset(0 0 0 0 round 999px);transform:scale(1)}}
@@ -642,7 +643,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .place-side > .group{margin:0}
 
 .back-pin{position:sticky;top:var(--back-top,76px);height:0;z-index:6}
-.back-pin .page-back{position:relative;top:12px;inset-inline-start:12px;background:rgba(36,28,22,.42);color:#fff;backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);box-shadow:0 2px 10px rgba(36,28,22,.18)}
+.back-pin .page-back{position:relative;top:12px;inset-inline-start:12px;background:rgba(36,28,22,.42);color:#fff;-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);box-shadow:0 2px 10px rgba(36,28,22,.18)}
 .back-pin{transition:top .3s cubic-bezier(.2,.9,.3,1)}
 
 /* the fold-away clip must not cut the descenders of g and y */
@@ -656,7 +657,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .go5 b{font-weight:800}
 
 /* one live pill: the counts, the Open spot on photos and the open status share it */
-.live-pill{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:rgba(20,14,10,.72);color:#fff;font-size:12px;font-weight:700;overflow:hidden;backdrop-filter:blur(10px) saturate(160%);-webkit-backdrop-filter:blur(10px) saturate(160%);transform-origin:left center;animation:pillGrow .42s cubic-bezier(.2,.9,.25,1) both}
+.live-pill{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:rgba(20,14,10,.72);color:#fff;font-size:12px;font-weight:700;overflow:hidden;-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);transform-origin:left center;animation:pillGrow .42s cubic-bezier(.2,.9,.25,1) both}
 [dir=rtl] .live-pill{transform-origin:right center}
 .live-pill .live{position:relative;width:6px;height:6px;box-shadow:none}
 .live-pill .live::after{content:"";position:absolute;inset:-1px;border-radius:999px;border:1.5px solid rgba(61,220,132,.7);animation:pillSignal 2.4s cubic-bezier(.25,.6,.35,1) .45s infinite}
@@ -677,7 +678,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .col-body b{display:block;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .col-body .t-small,.col-meta{display:flex;align-items:center;gap:4px}
 .col-body .lucide,.col-meta .lucide{width:13px;height:13px}
-.col-save{position:absolute;top:8px;right:8px;width:30px;height:30px;background:rgba(36,28,22,.42);color:#fff;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.col-save{position:absolute;top:8px;right:8px;width:30px;height:30px;background:rgba(36,28,22,.42);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .col-save.on{background:var(--accent)}
 .col-save.on svg{fill:currentColor}
 .cols .rail-head h2,.saved-sub{display:flex;align-items:center;gap:6px}
@@ -723,7 +724,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .meta-area .lucide{width:12px;height:12px;color:var(--ink3);flex:none}
 .tm-deal-text .meta-area{color:rgba(255,255,255,.85)}
 .tm-deal-text .meta-area .lucide{color:rgba(255,255,255,.7)}
-.tm-deal-text .cat-bubble{background:rgba(255,255,255,.18);color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.tm-deal-text .cat-bubble{background:rgba(255,255,255,.18);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .tl-ends > span{display:inline-flex;align-items:center;gap:4px}
 .tl-ends .lucide{width:13px;height:13px;color:var(--ink3)}
 
@@ -740,7 +741,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .post,.place-media,.place-head{touch-action:manipulation}
 .love-fly{position:fixed;z-index:90;pointer-events:none;width:84px;height:84px;transform:translate(-50%,-50%) scale(0);color:#E5484D;filter:drop-shadow(0 6px 16px rgba(229,72,77,.45))}
 .love-fly svg{width:100%;height:100%;fill:currentColor;stroke:none}
-.hold-ring{position:fixed;z-index:90;pointer-events:none;width:64px;height:64px;transform:translate(-50%,-50%);display:grid;place-items:center;border-radius:999px;background:rgba(20,14,10,.38);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;animation:holdIn .2s cubic-bezier(.2,.9,.3,1) both}
+.hold-ring{position:fixed;z-index:90;pointer-events:none;width:64px;height:64px;transform:translate(-50%,-50%);display:grid;place-items:center;border-radius:999px;background:rgba(20,14,10,.38);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;animation:holdIn .2s cubic-bezier(.2,.9,.3,1) both}
 .hold-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
 .hold-ring circle{fill:none;stroke:rgba(255,255,255,.25);stroke-width:4}
 .hold-ring circle.fill{stroke:#fff;stroke-linecap:round;stroke-dasharray:176;stroke-dashoffset:176;animation:holdFill 1.75s linear forwards}
@@ -759,7 +760,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .open-tl.closed .tl-left{color:var(--ink)}
 
 /* photo dots: always on a pill (readable on any photo); arrows only for a mouse on desktop */
-.dots{left:50%;right:auto;transform:translateX(-50%);align-items:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(20,14,10,.38);backdrop-filter:blur(10px) saturate(160%);-webkit-backdrop-filter:blur(10px) saturate(160%)}
+.dots{left:50%;right:auto;transform:translateX(-50%);align-items:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(20,14,10,.38);-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%)}
 .dot-nav{display:none;pointer-events:auto;width:22px;height:22px;place-items:center;color:#fff;border-radius:999px}
 .dot-nav .lucide{width:15px;height:15px;stroke-width:2.4}
 .dot-nav:hover{background:rgba(255,255,255,.18)}
@@ -856,11 +857,11 @@ html,body{overflow-anchor:none}
 .col-body .bits,.col-meta{gap:2px 8px}
 
 /* top chrome v3: the location bar slides up under the top bar; the chrome's height never changes, so the page never jumps */
-.chrome-top{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;pointer-events:none}
+.chrome-top{background:none;-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:none}
 .chrome-top > *{pointer-events:auto}
 .chrome-top::after{display:none}
-.chrome-top .topbar{position:relative;z-index:2;background:rgba(251,246,238,.86);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%)}
-.chrome-top .locbar-wrap{position:relative;z-index:1;display:block;grid-template-rows:none;background:rgba(251,246,238,.86);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);transition:transform .34s cubic-bezier(.2,.9,.3,1),opacity .22s ease;will-change:transform}
+.chrome-top .topbar{position:relative;z-index:2;background:rgba(251,246,238,.86);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+.chrome-top .locbar-wrap{position:relative;z-index:1;display:block;grid-template-rows:none;background:rgba(251,246,238,.86);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);transition:transform .34s cubic-bezier(.2,.9,.3,1),opacity .22s ease;will-change:transform}
 .chrome-top.compact .locbar-wrap,.chrome-top.searching .locbar-wrap{grid-template-rows:none;transform:translateY(-100%);opacity:0;pointer-events:none}
 .chrome-top.scrolled .topbar{box-shadow:0 1px 0 rgba(36,28,22,.06)}
 @media (prefers-reduced-motion: reduce){ .chrome-top .locbar-wrap{transition:opacity .15s} }
@@ -1149,3 +1150,6 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 @media (min-width:1024px){ .host-head{padding-top:8px} }
 .stars i.on svg,.row .stars i.on svg,.stars i.half svg{color:#F5A524!important;fill:#F5A524}
 .stars i svg{color:var(--fill2);fill:currentColor;stroke:none}
+
+/* map choice: the real app icons (third-party logos keep their colours) */
+.map-opt .map-ic{width:28px;height:28px;object-fit:contain;flex:none}

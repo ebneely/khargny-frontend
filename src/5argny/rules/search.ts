@@ -29,6 +29,20 @@ export const searchNormalize = (s: unknown) =>
     .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
     .replace(/\s+/g, ' ').trim();
 
+// where a query sits in the original text, for <mark>: positions come from the original, not the normalized text
+export function highlightRange(text: string, q: string): [number, number] | null {
+  const n = searchNormalize(q); if (!n) return null;
+  let norm = ''; const at: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const c = /\s/.test(text[i]!) ? (!norm || norm.endsWith(' ') ? '' : ' ') : searchNormalize(text[i]);
+    for (const ch of c) { norm += ch; at.push(i); }
+  }
+  const s = norm.indexOf(n); if (s < 0) return null;
+  let end = at[s + n.length - 1]! + 1;
+  while (end < text.length && !/\s/.test(text[end]!) && searchNormalize(text[end]) === '') end++; // a trailing mark stays with its letter
+  return [at[s]!, end];
+}
+
 // what people type for each intent, already normalized (app.js SYN)
 export const SYN: Record<IntentKey, string[]> = {
   eat: ['akl', 'food', 'restaurant', 'اكل', 'مطعم', 'مطاعم', 'غدا', 'عشا', 'dinner', 'lunch'],

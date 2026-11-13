@@ -7,10 +7,7 @@ import { SheetHost } from './Sheet';
 import { TabNav } from './Shell';
 import { Gestures } from './Gestures';
 import { PageMotion } from './PageMotion';
-import { PlaceSheetBody, PlaceSheetFoot } from './placeview';
 import type { Lang } from './rules';
-
-const slugOf = (path: string) => path.split('/').filter(Boolean)[3] ?? '';
 
 export function KChrome({ lang, time, tab, children }: { lang: Lang; time: string | null; tab: Tab; children: ReactNode }) {
   return (
@@ -18,7 +15,7 @@ export function KChrome({ lang, time, tab, children }: { lang: Lang; time: strin
       <div id="app" className="shell">{children}</div>
       <TabNav />
       <div id="fx" />
-      <SheetHost renderContent={(path) => ({ label: slugOf(path), body: <PlaceSheetBody key="body" slug={slugOf(path)} />, foot: <PlaceSheetFoot slug={slugOf(path)} /> })} />
+      <SheetHost />
       <Gestures />
       <PageMotion />
     </KProvider>

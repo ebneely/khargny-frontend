@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { intentFor, matchText, momentFor, searchNormalize } from './search.ts';
+import { highlightRange, intentFor, matchText, momentFor, searchNormalize } from './search.ts';
 
 describe('searchNormalize', () => {
   it('alef forms become one alef', () => expect(searchNormalize('أإآٱ')).toBe('اااا'));
@@ -42,4 +42,12 @@ describe('momentFor', () => {
     expect(momentFor(23)).toEqual({ intent: 'fun', title: 'lateNight' });
     expect(momentFor(3)).toEqual({ intent: 'fun', title: 'lateNight' });
   });
+});
+
+describe('highlightRange', () => {
+  it('finds the typed word in the original text', () => expect(highlightRange('Zamalek Cafe', 'cafe')).toEqual([8, 12]));
+  it('positions stay right with Arabic diacritics before the match', () => expect(highlightRange('قَهْوَة الفيشاوي', 'الفيشاوي')).toEqual([8, 16]));
+  it('a match ending on a diacritic keeps the mark', () => expect(highlightRange('قَهْوَة', 'قهوه')).toEqual([0, 7]));
+  it('collapsed spaces still map', () => expect(highlightRange('Garden  8', 'garden 8')).toEqual([0, 9]));
+  it('no match is null', () => expect(highlightRange('Garden', 'sushi')).toBeNull());
 });

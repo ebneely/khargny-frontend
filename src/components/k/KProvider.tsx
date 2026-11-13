@@ -2,11 +2,11 @@
 // One client context for the 5argny shell: language and copy, "now", the location bar, the sheet stack, the toast,
 // and the document-level behaviours the prototype binds once (press feedback, bars that hide on scroll, theme).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { animate } from 'motion';
 import { copy } from '@5argny/core/copy';
 import { nowIn, type Lang, type Now } from './rules';
-import { isPlacePath } from './data';
+import { isSheetPath } from './data';
 
 export type Tab = 'home' | 'explore' | 'market' | 'saved' | 'profile';
 export type SheetEntry = { id: number; kind: 'action' | 'content'; label: string; head?: ReactNode; body: ReactNode; foot?: ReactNode; closing?: number };
@@ -61,13 +61,21 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
   // closing is two steps: mark it (the sheet springs away), then the sheet removes itself when it is gone
   const dismiss = useCallback((id: number, velocity = 0) => setSheets((s) => s.map((x) => (x.id === id ? { ...x, closing: velocity || 0.0001 } : x))), []);
   const removeSheet = useCallback((id: number) => setSheets((s) => s.filter((x) => x.id !== id)), []);
+  // landed on the sheet's page: the page under it (Home) takes the address in place, so closing adds no Back step (proto location.replace)
+  const homeOnPop = useRef(false);
+  const closeLanded = useCallback((velocity = 0) => {
+    // the screen under the sheet takes the address: the Marketplace for a listing or a host, Home otherwise (proto route())
+    const first = contentRef.current?.keys[0] ?? '';
+    history.replaceState(history.state, '', /^\/(ar|en)\/(marketplace|host)\//.test(first) ? `/${lang}/marketplace/` : `/${lang}/`); setContent(null); contentRef.current = null;
+    setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: velocity || 0.0001 })));
+  }, [lang]);
   const closeTop = useCallback((velocity = 0) => {
     const open = sheetsRef.current.filter((x) => !x.closing); const top = open[open.length - 1]; if (!top) return;
     if (top.kind !== 'content') { dismiss(top.id, velocity); return; }
-    // landed on the place: there is no earlier entry to go back to, the page under the sheet (Home) becomes the address
-    if (contentRef.current?.landed && (contentRef.current.keys.length < 2)) { history.pushState(null, '', `/${lang}/`); setContent(null); setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: velocity || 0.0001 }))); return; }
-    history.back();
-  }, [dismiss, lang]);
+    const cur = contentRef.current, n = cur?.keys.length ?? 1;
+    if (cur?.landed) { if (n > 1) { homeOnPop.current = true; history.go(-(n - 1)); } else closeLanded(velocity); return; }
+    history.go(-n); // closing removes every step the sheet pushed (proto history.go(-n))
+  }, [dismiss, closeLanded]);
   const dismissAll = useCallback(() => setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: 0.0001 }))), []);
 
   const router = useRouter();
@@ -88,7 +96,7 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
   }, []);
   const go = useCallback((href: string) => {
     const url = new URL(href, location.href);
-    if (!desk() && isPlacePath(url.pathname)) { if (url.pathname !== location.pathname) { history.pushState({ kSheet: true }, '', url.pathname + url.search); openContent(url.pathname); } return; }
+    if (!desk() && isSheetPath(url.pathname)) { if (url.pathname !== location.pathname) { history.pushState({ kSheet: true }, '', url.pathname + url.search); openContent(url.pathname); } return; }
     router.push(url.pathname + url.search);
   }, [openContent, router]);
 
@@ -97,20 +105,24 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || desk()) return;
       const a = (e.target as Element).closest?.('a[href]') as HTMLAnchorElement | null; if (!a || a.target) return;
-      const url = new URL(a.href, location.href); if (url.origin !== location.origin || !isPlacePath(url.pathname)) return;
+      const url = new URL(a.href, location.href); if (url.origin !== location.origin || !isSheetPath(url.pathname)) return;
       e.preventDefault(); go(url.href);
     };
     const onPop = () => {
       const cur = contentRef.current; if (!cur) return;
+      if (homeOnPop.current) { homeOnPop.current = false; closeLanded(); return; }
       const path = location.pathname;
-      if (isPlacePath(path) && cur.keys.includes(path)) { const at = cur.keys.indexOf(path); setContent({ ...cur, keys: cur.keys.slice(0, at + 1), dir: -1 }); return; }
+      if (isSheetPath(path) && cur.keys.includes(path)) { const at = cur.keys.indexOf(path); setContent({ ...cur, keys: cur.keys.slice(0, at + 1), dir: -1 }); return; }
       setContent(null);
       setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: 0.0001 })));
     };
     document.addEventListener('click', onClick, true);
     addEventListener('popstate', onPop);
     return () => { document.removeEventListener('click', onClick, true); removeEventListener('popstate', onPop); };
-  }, [go]);
+  }, [go, closeLanded]);
+
+  // a phone landing on a sheet address hid the server page (layout script); the sheet is up over Home by now
+  useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('landing'))); }, []);
 
   // press feedback lives on pointer-down
   useEffect(() => {
@@ -124,23 +136,39 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     return () => { document.removeEventListener('pointerdown', on, true); ['pointerup', 'pointercancel', 'scroll', 'dragstart'].forEach((n) => document.removeEventListener(n, off, true)); document.removeEventListener('keydown', key); };
   }, [closeTop]);
 
-  // the top chrome folds and the tab bar slides away while reading down; both come back on the way up
+  // the location bar folds under the top bar following the scroll 1:1, then springs to the side it was heading (proto applyFold);
+  // frozen while a sheet or the search is open. The tab bar never moves.
+  const fold = useRef(0);
+  const pathname = usePathname();
   useEffect(() => {
-    let lastY = scrollY, acc = 0, away = false;
-    const setBars = (a: boolean) => {
-      away = a; const c = document.querySelector('.chrome-top'); c?.classList.toggle('compact', a);
-      const bar = document.body.classList.contains('has-glass') ? document.getElementById('glass-tabs') : document.querySelector<HTMLElement>('#chrome .tabbar');
-      if (bar) animate(bar, { transform: a ? 'translateY(140%)' : 'translateY(0%)' }, a ? spring(0, 0.35) : spring(0.1, 0.4));
-      requestAnimationFrame(() => { const top = c && (a ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); });
+    let lastY = scrollY, lastDir = 0, settleT: ReturnType<typeof setTimeout> | undefined, a: { stop: () => void } | null = null;
+    const applyFold = (f: number, settle: boolean) => {
+      const c = document.querySelector('.chrome-top'), lb = c?.querySelector<HTMLElement>('.locbar-wrap');
+      if (lb) {
+        const H = lb.offsetHeight || 1; a?.stop(); a = null;
+        if (settle && !reduce()) a = animate(lb, { transform: `translateY(${-f * H}px)`, opacity: 1 - f }, spring(0, 0.32));
+        else { lb.style.transform = `translateY(${-f * H}px)`; lb.style.opacity = String(1 - f * 0.95); }
+        lb.style.pointerEvents = f > 0.5 ? 'none' : '';
+      }
+      c?.classList.toggle('compact', f > 0.5);
+      requestAnimationFrame(() => { const top = c && (f > 0.5 ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); });
     };
     const onScroll = () => {
-      const y = scrollY, d = y - lastY; lastY = y; document.querySelector('.chrome-top')?.classList.toggle('scrolled', y > 4);
-      if (!d) return; if (Math.sign(d) !== Math.sign(acc)) acc = 0; acc += d;
-      const next = y < 60 ? false : acc > 24 ? true : acc < -24 ? false : away; if (next !== away) setBars(next);
+      if (document.documentElement.classList.contains('sheet-open')) return; // pinned under a sheet: keep lastY from before
+      const y = scrollY, d = y - lastY; lastY = y; const c = document.querySelector('.chrome-top'); c?.classList.toggle('scrolled', y > 4);
+      if (!d || c?.classList.contains('searching')) return;
+      const H = c?.querySelector<HTMLElement>('.locbar-wrap')?.offsetHeight || 56;
+      lastDir = Math.sign(d); fold.current = y < 8 ? 0 : Math.max(0, Math.min(1, fold.current + d / H)); applyFold(fold.current, false);
+      clearTimeout(settleT); settleT = setTimeout(() => { // the scroll rested: finish the way it was heading
+        const f = fold.current; fold.current = scrollY < 60 ? 0 : f > 0 && f < 1 ? (lastDir > 0 ? 1 : 0) : f; applyFold(fold.current, true); }, 120);
     };
     addEventListener('scroll', onScroll, { passive: true });
-    return () => removeEventListener('scroll', onScroll);
+    return () => { removeEventListener('scroll', onScroll); clearTimeout(settleT); a?.stop(); };
   }, []);
+  useEffect(() => {
+    fold.current = 0; const c = document.querySelector('.chrome-top'); c?.classList.remove('compact');
+    const lb = c?.querySelector<HTMLElement>('.locbar-wrap'); if (lb) Object.assign(lb.style, { transform: '', opacity: '', pointerEvents: '' });
+  }, [pathname]);
 
   // Auto follows the system while the page is open (Light/Dark are set in Settings; the first paint is set by the head script)
   useEffect(() => {
