@@ -38,8 +38,10 @@ export function toK(raw: Raw, catalog: KCatalog, lang: Lang): KPlace {
   const city = catalog.cities.find((c) => c.id === raw.cityId);
   const cat = catalog.categories.find((c) => c.id === raw.categoryId);
   const cityEn = city?.nameEn || city?.name || '';
-  const hours = ((raw.placeHours as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }>) ?? [])
-    .map((h) => ({ d: h.dayOfWeek, o: h.openTime, c: h.closeTime, x: !!h.isClosed }));
+  // the detail carries placeHours; every list card (places, search, home) carries the week as `hours` [{d, o, c, x?}]
+  const hours = Array.isArray(raw.placeHours)
+    ? (raw.placeHours as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }>).map((h) => ({ d: h.dayOfWeek, o: h.openTime, c: h.closeTime, x: !!h.isClosed }))
+    : ((raw.hours as Array<{ d: number; o: string | null; c: string | null; x?: boolean }>) ?? []).map((h) => ({ d: h.d, o: h.o, c: h.c, x: !!h.x }));
   const amen = ((raw.amenities as Array<{ name: string; nameEn: string | null }>) ?? []).map((a) => a.nameEn || a.name);
   return {
     id: raw.id, slug: raw.slug, citySlug: city?.slug || '', cityId: String(raw.cityId ?? ''), catId: String(raw.categoryId ?? ''),

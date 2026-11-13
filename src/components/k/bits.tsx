@@ -25,6 +25,8 @@ export const Group = ({ title, children, label }: { title: ReactNode; children: 
 export function Seg<V extends string>({ opts, val, onPick }: { opts: [V, string][]; val: V; onPick: (v: V) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => { if (ref.current) slidePill(ref.current, false); });
+  // the pill is measured, so measure again whenever the row changes size (web fonts landing, language, theme, a sheet opening)
+  useEffect(() => { const el = ref.current; if (!el || !('ResizeObserver' in window)) return; const ro = new ResizeObserver(() => slidePill(el, false)); ro.observe(el); el.querySelectorAll('button').forEach((b) => ro.observe(b)); return () => ro.disconnect(); }, []);
   return <div className="seg" role="group" ref={ref}><span className="pill" />{opts.map(([v, l]) => <button key={v} className="press" aria-pressed={v === val} data-v={v} onClick={(e) => { onPick(v); requestAnimationFrame(() => slidePill(e.currentTarget.parentElement!, true)); }}>{l}</button>)}</div>;
 }
 

@@ -74,6 +74,7 @@ const CRAWLERS =
 
 const nextConfig: NextConfig = {
   env: { SEO_BUILD_DATE: new Date().toISOString() },
+  devIndicators: false, // dev only: keeps the Next badge out of the prototype screenshots
   outputFileTracingIncludes: {
     '/og/default.png': ['./public/images/5argny-mark-96.png', './public/images/khargny-ar-wordmark.svg'],
   },

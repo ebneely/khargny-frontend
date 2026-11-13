@@ -10,7 +10,7 @@ import { fill } from '@5argny/core/copy';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { useSearchPlaces } from '@/lib/api/hooks/use-search';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { regionLabel } from '@/lib/egypt-regions';
 import { L, Ic, Gov } from './icons';
@@ -228,13 +228,16 @@ function LocBar({ withFilters }: { withFilters: boolean }) {
   const { loc, setLoc, c, lang, openSheet, closeTop, toast, go } = useK();
   const { data: cities = [] } = useCities();
   const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
+  // the city sheet lists cities by most places, as the prototype does (same queries as each row's count, so one fetch)
+  const totals = useQueries({ queries: cities.map((x) => ({ queryKey: ['places', 'total', { cityId: x.id }], staleTime: 5 * 60_000, queryFn: () => apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { limit: 1, cityId: x.id } }).then((r) => r.meta?.total ?? null).catch(() => null) })) });
+  const byCount = cities.map((x, i) => ({ x, n: totals[i]?.data ?? -1 })).sort((a, b) => b.n - a.n).map((o) => o.x);
   const cityName = city ? (lang === 'ar' ? city.name : city.nameEn || city.name) : null;
   const pick = (el: HTMLElement, after: () => void) => { haptic(); el.closest('.sheet')?.querySelectorAll('.option').forEach((o) => o.setAttribute('aria-checked', String(o === el))); setTimeout(() => { closeTop(); after(); }, 170); };
   const opt = (key: string, on: boolean, icon: ReactNode, label: string, act: string, then: () => void, nums?: ReactNode) => <button key={key} className="option press" role="radio" aria-checked={on} data-act={act} onClick={(e) => pick(e.currentTarget, then)}>{icon}<span className="grow">{label}</span>{nums}<Ic n="check" cls="check" /></button>;
   const cityIds = cities.map((x) => x.id), areaIds = city?.areaKeys ?? [];
   const openCity = () => openSheet(c.location.citySheet, <>
     {opt('all', !loc.city, <L n="map" />, c.location.allEgypt, 'pick-city', () => setLoc({ city: null, area: null }), <LocNums params={{}} />)}
-    {cities.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Gov name={x.slug} fallback={<Ic n="pin" />} />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); }, <LocNums views={{ kind: 'city', ids: cityIds, id: x.id }} params={{ cityId: x.id }} />); })}
+    {byCount.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Gov name={x.slug} fallback={<Ic n="pin" />} />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); }, <LocNums views={{ kind: 'city', ids: cityIds, id: x.id }} params={{ cityId: x.id }} />); })}
   </>);
   const openArea = () => { if (!city) return; openSheet(fill(c.location.areaSheet, { city: cityName ?? '' }), <>
     {opt('all', !loc.area, <L n="layers" />, c.location.allAreas, 'pick-area', () => setLoc({ city: loc.city, area: null }), <LocNums params={{ cityId: city.id }} />)}
