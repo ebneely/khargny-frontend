@@ -53,7 +53,8 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
   const toast = useCallback((msg: string) => {
     let el = document.querySelector<HTMLElement>('.toast');
     if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); document.body.append(el); }
-    el.textContent = msg;
+    // each sentence stays whole: a toast too long for a phone breaks between its sentences, never inside one
+    el.replaceChildren(...msg.split(/(?<=\.)\s+/).map((part, i) => { const sp = document.createElement('span'); sp.textContent = (i ? ' ' : '') + part; sp.style.display = 'inline-block'; return sp; }));
     animate(el, { opacity: [0, 1], transform: ['translate(-50%,12px)', 'translate(-50%,0)'] }, spring(0, 0.3));
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => el && animate(el, { opacity: 0, transform: 'translate(-50%,12px)' }, spring(0, 0.3)), 1700);
