@@ -12,8 +12,9 @@ import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { regionLabel } from '@/lib/egypt-regions';
 import { useCategories } from '@/lib/api/hooks/use-categories';
-import { Ic } from './icons';
-import { Brand, Seg } from './bits';
+import { L } from './icons';
+import { Brand, Btn, Seg } from './bits';
+import { Failed, StateBlock, useReveal } from './states';
 import { INTENTS, openState } from './rules';
 import { toK, type KPlace } from './data';
 import { Tile, TileSkel, BadgeTags } from './place';
@@ -74,12 +75,15 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
     pages: pages.map((pg) => pg.filter((p) => p.photos.length)),
     total: badge ? earned?.length ?? null : L.none && !q ? 0 : first?.total ?? null,
     loading: badge ? !earned : L.none && !q ? false : !!src?.isPending,
-    more: !badge && !!src?.hasNextPage, fetchingMore: !!src?.isFetchingNextPage, loadMore: () => { if (src?.hasNextPage && !src.isFetchingNextPage) void src.fetchNextPage(); },
+    more: !badge && !!src?.hasNextPage, fetchingMore: !!src?.isFetchingNextPage, loadMore: () => { if (src?.hasNextPage && !src.isFetchingNextPage && !src.isFetchNextPageError) void src.fetchNextPage(); },
+    // the first page failed: the whole list says so; a later page failed: a line under the grid asks again for that page only
+    error: src?.isError && !src.isFetchNextPageError ? src.error : null, retry: () => src?.refetch(), retrying: !!src?.isRefetching,
+    moreError: !!src?.isFetchNextPageError, retryMore: () => { void src?.fetchNextPage(); },
   };
 }
 
 export function ExploreView() {
-  const { c, lang, now, loc, content, setLoc } = useK();
+  const { c, lang, now, loc, content, setLoc, go } = useK();
   // an old city page (/explorer/<city>/?area=) lands here as ?city=&area=: set the location bar once, then drop them from the address
   const { data: allCities = [] } = useCities();
   const seed = useSearchParams();
@@ -113,6 +117,7 @@ export function ExploreView() {
   // shortcut: each page is ordered on its own and appended, so loading more never reshuffles what is on screen
   const res = res0.pages.flatMap((pg) => [...fit(pg)].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a))); // paid places first inside a match, looking like any other
   const total = q && f.when ? (res0.more ? null : res.length) : res0.total;
+  const reveal = useReveal(res0.loading);
   const intent = INTENTS.find((x) => x.key === f.intent);
   const { data: categories = [] } = useCategories();
   const catLabel = f.cat ? (categories.find((x) => (x.nameEn || x.nameAr) === f.cat || x.slug === f.cat || x.id === f.cat)?.[lang === 'ar' ? 'nameAr' : 'nameEn'] || f.cat) : '';
@@ -121,6 +126,7 @@ export function ExploreView() {
   const whenText = f.when ? c.explore.when[f.when] : '';
   const setSort = (v: Sort) => { const n = new URLSearchParams(sp); if (v === 'popular') n.delete('sort'); else n.set('sort', v); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
   const busy = res0.loading;
+  const filtered = !!(loc.city || f.intent || f.cat || f.when || q || badge || f.filters.size);
   // the next page starts loading a screen before the end of the grid
   const end = useRef<HTMLDivElement>(null);
   const loadMore = useRef(res0.loadMore); loadMore.current = res0.loadMore;
@@ -133,10 +139,14 @@ export function ExploreView() {
   return (
     <Shell cur="explore" wide withFilters>
       <h1 className="t-display page-pad" style={{ margin: '2px 0 10px' }}>{head} <span style={{ color: 'var(--ink3)', fontWeight: 800 }}>{c.explore.in} <PlaceWord word={where} key={loc.city + '|' + loc.area} /></span></h1>
-      <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{total == null ? <span className="count-skel" aria-hidden="true" /> : <><b style={{ color: 'var(--ink)' }}>{total}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
+      <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{total == null ? (res0.error ? null : <span className="sk" aria-hidden="true"><b>000</b> {fill(c.explore.results, { n: '' }).trim()}</span>) : <><b style={{ color: 'var(--ink)' }}>{total}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
         <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open]] as [Sort, string][]} val={sort} onPick={setSort} /></div>
-      {busy ? <div className="grid" aria-busy="true">{skel(8)}</div> : res.length ? <><div className="grid">{res.map((p) => <Tile key={p.id} p={p} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div><div ref={end} aria-hidden="true" /></>
-        : <div className="group empty"><Ic n="search" /><p className="t-head">{fill(c.explore.empty, { what: headText.toLowerCase(), when: whenText.toLowerCase(), place: where }).replace(/\s+/g, ' ')}</p></div>}
+      {busy ? <div className="grid" aria-busy="true">{skel(8)}</div>
+        : res0.error && !res.length ? <Failed error={res0.error} retry={res0.retry} busy={res0.retrying} />
+        : res.length ? <><div className={`grid ${reveal}`}>{res.map((p) => <Tile key={p.id} p={p} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>
+          {res0.moreError ? <div className="more-fail" role="alert">{c.states.moreFailed}<button className="btn secondary press" data-act="retry-more" onClick={res0.retryMore}><L n="rotate-ccw" />{c.states.retry}</button></div> : null}<div ref={end} aria-hidden="true" /></>
+        : <StateBlock icon="search" title={fill(c.explore.empty, { what: headText.toLowerCase(), when: whenText.toLowerCase(), place: where }).replace(/\s+/g, ' ')}
+          action={<Btn label={filtered ? c.states.explore.clear : c.states.explore.everything} kind="primary" act="empty-reset" onClick={() => { setLoc({ city: null, area: null }); go(`/${lang}/explorer/`); }} />} />}
     </Shell>
   );
 }
