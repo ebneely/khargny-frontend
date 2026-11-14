@@ -8,7 +8,6 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { GlassTabBar } from './GlassTabBar';
 import { animate } from 'motion';
-import { TabBar as Glass } from 'glisse';
 import { fill } from '@5argny/core/copy';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
@@ -155,58 +154,13 @@ function Sidebar({ cur }: { cur: Tab }) {
 }
 
 /** The phone tab bar (GlassTabBar: Liquid Glass, compositor-only motion). It lives in the layout, so it never remounts. */
-// iOS Safari (owner 2026-11-14): glisse's bar, which runs smooth there; everywhere else the own GlassTabBar (60 fps on
-// Android). Both are drawn from the server; the head script marks iOS before the first paint and CSS shows only one, so
-// nothing swaps in.
-const PrefetchLink = (props: React.ComponentProps<typeof Link>) => <Link prefetch {...props} />;
-
-/**
- * Dragging the glass tab bar (owner 2026-11-14): glisse already carries its selection 1:1 from where it was grabbed and clicks
- * the tab it settles on. On top of it: a stretch along the movement while the finger moves, and a fling projected to the
- * tab it is heading for (velocity hand-off, deceleration 0.99) instead of the one under the finger.
- */
-function useGlassDrag() {
-  useEffect(() => {
-    const host = document.getElementById('glass-tabs'); if (!host) return;
-    type Drag = { x0: number; x: number; t: number; vx: number; moved: boolean };
-    let drag: Drag | null = null, fling: number | null = null;
-    const lens = () => host.querySelector<HTMLElement>('.lg-tab-lens');
-    const tabs = () => [...host.querySelectorAll<HTMLElement>('.lg-tab')];
-    const down = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.lg-tab')) return; drag = { x0: e.clientX, x: e.clientX, t: e.timeStamp, vx: 0, moved: false }; fling = null; };
-    const move = (e: PointerEvent) => {
-      if (!drag) return; const dt = e.timeStamp - drag.t;
-      if (dt > 0) drag.vx = 0.8 * ((e.clientX - drag.x) / dt) + 0.2 * drag.vx; // px/ms, smoothed
-      drag.x = e.clientX; drag.t = e.timeStamp; if (Math.abs(e.clientX - drag.x0) > 6) drag.moved = true;
-      const l = lens(); if (l && drag.moved && !reduce()) { const st = Math.min(0.14, Math.abs(drag.vx) * 0.08); l.style.scale = `${1 + st} ${1 - st * 0.4}`; }
-    };
-    const up = (e: PointerEvent) => {
-      if (!drag) return; const d = drag; drag = null; const l = lens(); if (l) l.style.scale = '';
-      if (!l || !d.moved || e.type !== 'pointerup' || e.timeStamp - d.t > 80 || Math.abs(d.vx) < 0.3) return; // a resting finger hands off no velocity
-      const r = l.getBoundingClientRect(), to = r.left + r.width / 2 + d.vx * 99;
-      const centers = tabs().map((t) => { const b = t.getBoundingClientRect(); return b.left + b.width / 2; });
-      fling = centers.reduce((best, cx, i) => (Math.abs(cx - to) < Math.abs(centers[best] - to) ? i : best), 0);
-    };
-    // glisse clicks the tab under the selection right after pointerup; a fling swaps it for the projected one
-    const click = (e: MouseEvent) => {
-      if (fling == null || e.isTrusted) return; const list = tabs(), at = list.indexOf((e.target as Element).closest('.lg-tab') as HTMLElement), to = fling; fling = null;
-      if (at < 0 || to === at) return; e.preventDefault(); e.stopPropagation(); list[to].click();
-    };
-    host.addEventListener('pointerdown', down, true); addEventListener('pointermove', move, { passive: true });
-    addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true); host.addEventListener('click', click, true);
-    return () => { host.removeEventListener('pointerdown', down, true); removeEventListener('pointermove', move); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); host.removeEventListener('click', click, true); };
-  }, []);
-}
-
+/** The phone tab bar: one bar on every phone (owner 2026-11-14: smooth on iOS too once its spring ran as keyframes). */
 export function TabNav() {
-  const { setTab, lang, c } = useK(), tab = useKS((s) => s.tab);
+  const { lang, c } = useK(), tab = useKS((s) => s.tab);
   const items = useMemo(() => NAV.map(([key, href, icon]) => ({ key, href: `${langPrefix(lang)}${href}`, label: c.nav[key], icon })), [lang, c]);
-  useGlassDrag();
   return <>
     <div id="chrome" />
     <GlassTabBar items={items} current={tab} label={c.nav.tabsAria} dir={lang === 'ar' ? 'rtl' : 'ltr'} />
-    {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
-    <div id="glass-tabs" dir="ltr"><Glass aria-label={c.nav.tabsAria} value={tab} onValueChange={(v) => setTab(v as Tab)} link={PrefetchLink}
-      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `${langPrefix(lang)}${href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /></div>
   </>;
 }
 

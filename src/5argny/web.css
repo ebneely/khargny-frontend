@@ -1385,21 +1385,6 @@ html.sheet-abs .sheet.content{height:calc(90dvh + var(--sheet-under))}
 html.sheet-abs .sheet-foot{margin-bottom:calc(-1 * var(--sheet-under));padding-bottom:calc(max(12px,env(safe-area-inset-bottom)) + var(--sheet-under))}
 html.sheet-abs .scrim{position:absolute;inset:auto 0 auto 0}
 @media (min-width:1024px){ html.sheet-abs .sheet{max-height:calc(80vh + var(--sheet-under))} }
-
-/* the phone tab bar: iOS Safari gets glisse's bar back (owner 2026-11-14, the own bar ran at 10 fps there), in 5argny's
-   colours instead of glisse's blue; every other phone keeps the own GlassTabBar. html.ios is set by the head script. */
-#glass-tabs{display:none}
-@media (max-width:1023px){
-  html.ios .gbar{display:none}
-  html.ios #glass-tabs{position:fixed;z-index:45;left:0;right:0;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:center;padding:0 14px;overflow-x:clip;overflow-y:visible;pointer-events:none}
-}
-#glass-tabs > *{pointer-events:auto}
-#glass-tabs .gl-ic{display:inline-grid;place-items:center}
-#glass-tabs .gl-ic svg{width:22px;height:22px}
-#glass-tabs{--lg-foreground:var(--ink);--lg-muted:var(--ink2);--lg-fill:var(--accent);--lg-tab-selected:var(--accent);--lg-glass:rgba(251,246,238,.62);--lg-glass-active:rgba(251,246,238,.85);--lg-edge:rgba(36,28,22,.08);--lg-drop:rgba(36,28,22,.08);--lg-selection:rgba(217,98,42,.15);--lg-lens:rgba(217,98,42,.06);--lg-lens-drop:rgba(36,28,22,.12);--lg-ring:var(--accent)}
-[data-theme=dark] #glass-tabs{--lg-glass:rgba(30,24,20,.62);--lg-glass-active:rgba(46,38,32,.7);--lg-edge:rgba(255,255,255,.08);--lg-drop:transparent;--lg-selection:rgba(232,116,58,.22);--lg-lens:rgba(232,116,58,.08);--lg-lens-drop:transparent}
-body.form-page #glass-tabs{display:none!important}
-
 /* layers exist before they move (owner 2026-11-14: "the first time is broken, the second is fine"). On touch phones the page
    has its own GPU layer from the start, so the first sheet does not have to build and paint one while it animates. The
    scrim's blur is constant; only its opacity animates. */
