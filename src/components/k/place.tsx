@@ -25,12 +25,13 @@ import { useOpenCorrection } from './settings';
 import { KmAway } from './near';
 
 /** 30-day windows from GET /v1/places/:id/stats; null until that route answers (counts stay hidden). */
+export const placeStatsQuery = (id: string, enabled = true) => ({
+  queryKey: ['places', 'stats', id],
+  queryFn: async () => { try { return await apiRequest<KStats>('GET', `/v1/places/${id}/stats`); } catch { return null; } },
+  staleTime: 5 * 60 * 1000, retry: false, enabled,
+});
 export function usePlaceStats(id: string, enabled = true) {
-  return useQuery({
-    queryKey: ['places', 'stats', id],
-    queryFn: async () => { try { return await apiRequest<KStats>('GET', `/v1/places/${id}/stats`); } catch { return null; } },
-    staleTime: 5 * 60 * 1000, retry: false, enabled,
-  }).data ?? null;
+  return useQuery(placeStatsQuery(id, enabled)).data ?? null;
 }
 
 const serverSnap = () => 0;

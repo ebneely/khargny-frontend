@@ -14,7 +14,8 @@ import { L, Ic } from './icons';
 import { Btn, IconBtn, Group } from './bits';
 import { t12, k, hypePath } from './rules';
 import { toK, placeHref, type KPlace, type KStats } from './data';
-import { Carousel, Meta, OpenPiece, Actions, Go5, Tile, usePlaceStats, badgeIcon, useBadgeLabel, useShare, bumpView, useMyViews } from './place';
+import { Carousel, Meta, OpenPiece, Actions, Go5, Tile, placeStatsQuery, badgeIcon, useBadgeLabel, useShare, bumpView, useMyViews } from './place';
+import { useQuery } from '@tanstack/react-query';
 import { Shell, putOpened } from './Shell';
 import { withBrand, HomeView, type HomeData } from './home';
 import { useK, spring, desk } from './KProvider';
@@ -75,6 +76,15 @@ function Overview({ s, id }: { s: KStats; id: string }) {
   );
 }
 
+// while the stats load, an invisible On 5argny of the same shape holds its place, so the page below never jumps
+const ZERO = { views: 0, likes: 0, saves: 0, shares: 0, goes: 0 };
+const HOLD: KStats = { d30: { ...ZERO, days: Array(30).fill(0) }, all: ZERO };
+function OverviewSlot({ id }: { id: string }) {
+  const q = useQuery(placeStatsQuery(id));
+  if (q.isPending) return <div aria-hidden="true" style={{ visibility: 'hidden' }}><Overview s={HOLD} id={id} /></div>;
+  return q.data ? <Overview s={q.data} id={id} /> : null;
+}
+
 function Badges({ p }: { p: KPlace }) {
   const { c } = useK();
   const label = useBadgeLabel();
@@ -103,7 +113,6 @@ function Similar({ p }: { p: KPlace }) {
 /** The place itself: body (both layouts), foot (5argny! and Call), side (desktop column). */
 export function usePlaceParts(p: KPlace) {
   const { c, lang, now, openSheet, toast, closeTop } = useK();
-  const s = usePlaceStats(p.id);
   const today = now.day;
   const band = p.band ? priceBandLabel(p.band, lang) : null;
   const hours = p.hours.length ? <Group title={c.place.hours}>{[...p.hours].sort((a, b) => ((a.d - today + 7) % 7) - ((b.d - today + 7) % 7)).map((h) => <div key={h.d} className={`row ${h.d === today ? 'today' : ''}`}><span className="grow">{c.days.long[h.d]}{h.d === today ? <> <span className="tag accent">{c.days.today}</span></> : null}</span><span>{h.x || !h.o || !h.c ? c.place.closedDay : `${t12(h.o, lang)} – ${t12(h.c, lang)}`}</span></div>)}</Group> : null;
@@ -124,14 +133,14 @@ export function usePlaceParts(p: KPlace) {
       <span><svg className="gh-share" viewBox="0 0 20 20"><circle className="tap t1" cx="10" cy="10" r="3" /><circle className="tap t2" cx="10" cy="10" r="3" /><circle className="track" cx="10" cy="10" r="7.5" /><circle className="fill" cx="10" cy="10" r="7.5" pathLength={1} /><path className="arr" d="M10 13V5.5M7 8.2 10 5.2l3 3M5.5 11.5v3h9v-3" /></svg>{c.place.shareHint}</span></span><h1 className="t-display" dir="auto">{p.name}</h1>
       <p style={{ marginTop: 6 }}><Meta p={p} extra={band ? <span className="meta-area"><L n="wallet" />{band}</span> : null} /></p><OpenPiece p={p} /></div>
     <div className="place-tools"><Actions p={p} end={<IconBtn icon="more" label={c.common.more} cls="filled" act="place-more" id={p.id} onClick={placeMore} />} /></div>
-    <div className="phone-only"><Badges p={p} />{s ? <Overview s={s} id={p.id} /> : null}</div>
+    <div className="phone-only"><Badges p={p} /><OverviewSlot id={p.id} /></div>
     {/* TODO: "<Place> services" (menu items with "from N EGP") once the backend serves p.services; the prototype's offers are samples */}
     {hours}{amen}{more.length ? <Group title={c.place.contact}>{more}</Group> : null}<Similar p={p} />
     {p.promoted ? <p className="t-micro page-pad" style={{ margin: '4px 0 16px', display: 'flex', alignItems: 'center', gap: 6 }}><L n="info" />{c.place.promoted}</p> : null}
     <Link className="corr-entry page-pad press" href={`${placeHref(p, lang)}correct/`} data-act="corr-open" onClick={(e) => { if (desk()) return; e.preventDefault(); correct(p); }}><L n="flag" /><span className="grow">{c.place.correctionAsk}</span><b>{c.place.correctionCta}</b><L n="chevron-right" /></Link>
   </>;
   const foot = <><Go5 p={p} wide />{p.phone ? <Btn label={c.place.call} icon="phone" act="call" wide onClick={call} /> : null}</>;
-  const side = <>{s ? <Overview s={s} id={p.id} /> : null}<Badges p={p} /></>;
+  const side = <><OverviewSlot id={p.id} /><Badges p={p} /></>;
   return { body, foot, side };
 }
 

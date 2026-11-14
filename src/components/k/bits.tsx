@@ -68,7 +68,8 @@ export function Cnt({ base, mine = false }: { base: number | null | undefined; m
     io.observe(el); return () => io.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [to == null]);
-  if (to == null) return null;
+  // not known yet: an empty line of the same height, so the count arriving never moves the row (never a fake 0)
+  if (to == null) return <span className="n" ref={ref} aria-hidden="true">{'\u00a0'}</span>;
   return <span className="n" ref={ref}>{k(to)}</span>;
 }
 
