@@ -1203,6 +1203,8 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
   .layout.wide{grid-template-columns:240px minmax(0,932px);max-width:none;margin:0}
   .locbar-space{display:block;height:52px}
   .sidebar,.rail-right{top:128px}
+  /* the page itself starts right under the top bar, where the prototype has it (T050 row 13); only the columns keep the row */
+  .locbar-space + .layout > .page{margin-top:-52px}
 }
 
 
