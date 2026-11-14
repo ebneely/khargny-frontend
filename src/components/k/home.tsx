@@ -152,7 +152,7 @@ function TeamCollections({ list }: { list: HomeCollection[] }) {
 }
 
 /* ---------- "Take me out" card: answer first, photo tiles, Surprise me ---------- */
-function TakeMe({ data, pool, totalByCategory }: { data: HomeData; pool: KPlace[]; totalByCategory: Record<string, number | null>; coverByCategory: Record<string, string | null> }) {
+function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeData; pool: KPlace[]; totalByCategory: Record<string, number | null>; coverByCategory: Record<string, string | null> }) {
   const { c, lang, now, openSheet } = useK();
   const where = usePlaceName();
   const m = moment(now), lead = m.x, rest = INTENTS.filter((x) => x.key !== lead.key).slice(0, 5);
@@ -200,7 +200,10 @@ function TakeMe({ data, pool, totalByCategory }: { data: HomeData; pool: KPlace[
   };
   const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)); };
   const allCats = () => {
-    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{data.categories.map((cat) => <Link key={cat.id} className="tm-tile press" href={`/${lang}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photoFor([cat.en], 0)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
+    // most places first (proto), each with a photo of its own: the pool's, else the one its count request brought
+    const cats = [...data.categories].sort((a, b) => (totalByCategory[b.id] ?? -1) - (totalByCategory[a.id] ?? -1));
+    const photo = (cat: HomeData['categories'][number]) => pool.find((p) => p.cat === cat.en)?.photos[0]?.m || coverByCategory[cat.id] || photoFor([cat.en], 0);
+    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{cats.map((cat) => <Link key={cat.id} className="tm-tile press" href={`/${lang}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photo(cat)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
     requestAnimationFrame(() => document.querySelectorAll('.sheet .tm-sheet .tm-tile').forEach((tl, n) => animate(tl, { opacity: [0, 1], transform: ['translateY(14px) scale(.96)', 'translateY(0) scale(1)'] }, { ...spring(0, 0.45), delay: 0.04 + n * 0.03 })));
   };
   const tile = (x: Intent, n: number) => { const t = total(x); return <Link key={x.key} className="tm-pick press" href={`/${lang}/explorer/?intent=${x.key}`}><span className="tm-pick-img"><img src={photoFor(x.cats, n)} alt="" loading="lazy" /></span>
