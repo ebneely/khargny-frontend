@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchApi } from "@/lib/api/transport";
+import { geoCell } from "@5argny/core/rules";
 
 /**
  * Audience analytics for the web: page, place and city views plus intent actions.
@@ -28,6 +29,18 @@ const MAX_BATCH = 50;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const queue: Queued[] = [];
+// The device's position when the page already knows it (never asked for analytics): rides on the next batch, once per
+// visit (30 min) and again when it moves to another ~1 km cell.
+type Geo = { lat: number; lng: number; accuracyM?: number };
+let geo: Geo | null = null;
+let geoSent: { cell: string; at: number } | null = null;
+const VISIT_MS = 30 * 60_000;
+
+/** The position is known (Near you, Nearest, Surprise me, Take me out); kept rounded to 2 decimals. */
+export function setAnalyticsGeo(p: { lat: number; lng: number }, accuracyM?: number): void {
+  if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+  geo = { ...geoCell(p), ...(Number.isFinite(accuracyM) ? { accuracyM: Math.round(accuracyM!) } : {}) };
+}
 let timer: ReturnType<typeof setTimeout> | null = null;
 let listening = false;
 
@@ -52,7 +65,12 @@ export function sendTrackingBatch(path: string, body: unknown, keepalive: boolea
 }
 
 function send(events: Queued[], keepalive: boolean): void {
-  sendTrackingBatch("/v1/analytics/events", { platform: "web", events }, keepalive);
+  const cell = geo ? `${geo.lat},${geo.lng}` : null;
+  const attach = cell && (geoSent?.cell !== cell || Date.now() - geoSent.at > VISIT_MS) ? geo : null;
+  if (attach) geoSent = { cell: cell!, at: Date.now() };
+  sendTrackingBatch("/v1/analytics/events", { platform: "web", events, ...(attach ? { geo: attach } : {}) }, keepalive).then((ok) => {
+    if (attach && !ok) geoSent = null; // try again with the next batch
+  });
 }
 
 export function flushAnalytics(keepalive = false): void {

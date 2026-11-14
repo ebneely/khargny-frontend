@@ -10,6 +10,9 @@ export function kmText(km: number): string {
 export const coarse = (p: { lat: number; lng: number }) => ({ lat: Math.round(p.lat * 1000) / 1000, lng: Math.round(p.lng * 1000) / 1000 });
 
 /** The API ranks by distance only from inside Egypt (backend readNear: lat 22-32, lng 24-37); outside, there is no "near you". */
+/** The position analytics may keep: 2 decimals (~1 km), the cell the backend names a city for (its readGeo rounds the same). */
+export const geoCell = (p: { lat: number; lng: number }) => ({ lat: Math.round(p.lat * 100) / 100, lng: Math.round(p.lng * 100) / 100 });
+
 export const inEgypt = (p: { lat: number; lng: number }) => p.lat >= 22 && p.lat <= 32 && p.lng >= 24 && p.lng <= 37;
 
 /**

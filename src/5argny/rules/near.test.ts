@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kmText, coarse, pickNear, inEgypt } from './near.ts';
+import { kmText, coarse, pickNear, inEgypt, geoCell } from './near.ts';
 
 describe('near', () => {
   it('writes distances with one decimal under 10 km and whole km above, western digits', () => {
@@ -18,6 +18,16 @@ describe('near', () => {
     expect(inEgypt({ lat: 30.061, lng: 31.22 })).toBe(true);
     expect(inEgypt({ lat: 51.5, lng: -0.12 })).toBe(false);
     expect(inEgypt({ lat: 25.2, lng: 55.3 })).toBe(false); // Dubai
+  });
+  it('analytics gets the position rounded to 2 decimals (~1 km cell), never finer', () => {
+    expect(geoCell({ lat: 30.06264, lng: 31.21971 })).toEqual({ lat: 30.06, lng: 31.22 });
+    expect(geoCell({ lat: 30.065, lng: -0.125 })).toEqual({ lat: 30.07, lng: -0.12 });
+  });
+  it('the Egypt box keeps its edges (lat 22-32, lng 24-37) and nothing past them', () => {
+    expect(inEgypt({ lat: 22, lng: 24 })).toBe(true);
+    expect(inEgypt({ lat: 32, lng: 37 })).toBe(true);
+    expect(inEgypt({ lat: 21.99, lng: 30 })).toBe(false);
+    expect(inEgypt({ lat: 30, lng: 37.01 })).toBe(false);
   });
   it('Surprise me draws from the nearest 20 and skips the last 5 picks', () => {
     const list = Array.from({ length: 30 }, (_, i) => ({ id: String(i) }));

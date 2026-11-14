@@ -7,6 +7,7 @@ import { fill } from '@5argny/core/copy';
 import { coarse, inEgypt, kmText } from '@5argny/core/rules';
 import { apiRequest } from '@/lib/api/client';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
+import { setAnalyticsGeo } from '@/lib/analytics/track';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { Bit } from './bits';
@@ -23,6 +24,9 @@ const read = (): Pos | null => {
   return cache.pos;
 };
 const subscribe = (f: () => void) => { listeners.add(f); return () => listeners.delete(f); };
+
+// A position kept from earlier in this tab goes to analytics too (the city viewers are in), without asking again.
+if (typeof window !== 'undefined') { const kept = read(); if (kept) setAnalyticsGeo(kept); }
 
 export const usePosition = () => useSyncExternalStore(subscribe, read, () => null);
 /** The position right now (after askPosition resolved, before the next render). */
@@ -43,6 +47,7 @@ export function askPosition(): Promise<boolean> {
     if (!navigator.geolocation) return end(done, 'unavailable');
     navigator.geolocation.getCurrentPosition((g) => {
       const pos = coarse({ lat: g.coords.latitude, lng: g.coords.longitude });
+      setAnalyticsGeo(pos, g.coords.accuracy); // outside Egypt too: the dashboard counts it as outside Egypt
       if (!inEgypt(pos)) return end(done, 'outside'); // outside Egypt the API has no nearest; nothing changes
       try { sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch {}
       end(done, null);
