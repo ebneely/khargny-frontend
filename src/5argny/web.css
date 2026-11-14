@@ -902,7 +902,7 @@ html,body{overflow-anchor:none}
 #glass-tabs > *{pointer-events:auto;--lg-fill:var(--accent);--lg-foreground:var(--ink);--lg-muted:var(--ink2);font-family:inherit}
 #glass-tabs .gl-ic{display:inline-grid;place-items:center}
 #glass-tabs .gl-ic svg{width:22px;height:22px}
-body.has-glass #chrome .tabbar{display:none}
+#chrome .tabbar{display:none} /* glisse is the only phone bar (owner 2026-11-14) */
 @media (min-width:1024px){ #glass-tabs{display:none} }
 @media (min-width:1024px){ #glass-tabs{bottom:20px} }
 #glass-tabs .lg-tab-label{font-weight:650}

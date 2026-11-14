@@ -11,6 +11,7 @@ import { getSiteSettings } from '@/lib/api/site-settings';
 import { getCatalog, getCategoryTotals, markPublicError, optional, primePublicRoute, publicHydration } from '@/lib/server/public-data';
 import { catTotalsKey } from '@/components/k/data';
 import { KChrome } from '@/components/k/KChrome';
+import { frameOf } from '@/components/k/frame';
 import type { Tab } from '@/components/k/KProvider';
 
 // The 5argny redesign's root layout (spec 002): the prototype stylesheet from @5argny/core is the only global CSS here.
@@ -51,7 +52,7 @@ export default async function KLayout({ children }: Readonly<{ children: React.R
         <LocaleProvider initialLocale={locale}>
           <QueryProvider>
             <HydrationBoundary state={publicHydration([[['cities'], catalog.cities], [['categories'], catalog.categories], ...(totals ? [[catTotalsKey(null, null), totals] as [readonly string[], unknown]] : [])])}>
-              <KChrome lang={locale} time={time} tab={tabOf(path)}>{children}</KChrome>
+              <KChrome lang={locale} time={time} tab={tabOf(path)} frame={frameOf(path)}>{children}</KChrome>
             </HydrationBoundary>
             <PageViewTracker />
           </QueryProvider>

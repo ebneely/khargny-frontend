@@ -2,10 +2,11 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // The shell from proto/app.js shell(): one top chrome (top bar with the search, the location bar folding under it),
 // the sidebar on desktop, the page, the right rail; the tab bar lives in the layout (TabNav) so it persists across pages.
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { TabBar as Glass } from 'glisse';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
 import { useCities } from '@/lib/api/hooks/use-cities';
@@ -23,6 +24,7 @@ import { Meta, Stats, ShowingScope, useShowing } from './place';
 import { trackSearchResults, trackSearchTap } from '@/lib/analytics/track';
 import { Failed, Sk } from './states';
 import { FootLinks } from './footlinks';
+import { hasLocBar, type Frame } from './frame';
 import { useK, haptic, reduce, spring, type Tab } from './KProvider';
 import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
@@ -31,10 +33,13 @@ import { useSearchParams } from 'next/navigation';
 export const NAV: [Tab, string, 'home' | 'explore' | 'market' | 'saved' | 'cog'][] = [['home', '/', 'home'], ['explore', '/explorer/', 'explore'], ['market', '/marketplace/', 'market'], ['saved', '/saved/', 'saved'], ['profile', '/settings/', 'cog']];
 let lastNavTab: Tab | null = null;
 const noop = () => () => {};
+/** The glass bar's tabs: the same Next link, prefetching its page. */
+const PrefetchLink = (props: React.ComponentProps<typeof Link>) => <Link prefetch {...props} />;
 
 function NavItems({ cur }: { cur: Tab }) {
-  const { lang, c } = useK();
-  return <>{NAV.map(([key, href, icon]) => <Link key={key} className="nav-item press" href={`${langPrefix(lang)}${href}`} aria-current={cur === key ? 'page' : undefined}><Ic n={icon} /><span>{c.nav[key]}</span></Link>)}</>;
+  const { lang, c, setTab } = useK();
+  // the tab takes the selection on press, before the page arrives; prefetch brings the page in while the finger is still on its way
+  return <>{NAV.map(([key, href, icon]) => <Link key={key} className="nav-item press" href={`${langPrefix(lang)}${href}`} prefetch onClick={() => setTab(key)} aria-current={cur === key ? 'page' : undefined}><Ic n={icon} /><span>{c.nav[key]}</span></Link>)}</>;
 }
 
 /**
@@ -69,21 +74,49 @@ export function useLocKeys() {
   return { city, areaKey };
 }
 
-export function Shell({ cur, wide, right, noLoc, withFilters, actionbar, children }: { cur: Tab; wide?: boolean; right?: ReactNode; noLoc?: boolean; withFilters?: boolean; actionbar?: ReactNode; children: ReactNode }) {
-  const { setTab } = useK();
-  useEffect(() => { setTab(cur); }, [cur, setTab]);
-  const chrome = useSyncExternalStore(noop, () => document.getElementById('chrome'), () => null);
-  useEffect(() => { window.scrollTo(0, 0); }, []);
-  const showLoc = ['home', 'explore', 'market'].includes(cur) && !noLoc;
-  return <ShowingScope>
-    <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={withFilters ?? cur === 'explore'} /></div></div> : null}</div>
+const FrameCtx = createContext<(f: Frame) => void>(() => {});
+let popped = false; // a back or forward move keeps the browser's own scroll; every other move starts at the top
+if (typeof window !== 'undefined') addEventListener('popstate', () => { popped = true; });
+
+/**
+ * The frame every page shares, mounted once in the layout (owner 2026-11-14): the top bar, the location bar and the sidebar
+ * never unmount when you change page, so their icons and the sliding pill stay exactly as they are. The page between them
+ * is the only thing that changes.
+ */
+export function FrameHost({ initial, children }: { initial: Frame; children: ReactNode }) {
+  const [frame, setFrame] = useState(initial);
+  const { tab } = useK();
+  const set = useCallback((f: Frame) => setFrame((was) => (was.wide === f.wide && was.noLoc === f.noLoc && was.withFilters === f.withFilters ? was : f)), []);
+  const showLoc = hasLocBar(tab, frame.noLoc);
+  // one CSS variable for the sticky header's full height: every sticky column (sidebar, right rail, place card) sits below it in either scroll direction
+  useLayoutEffect(() => {
+    const top = document.querySelector('.chrome-top'); if (!top) return;
+    const put = () => document.documentElement.style.setProperty('--chrome-h', `${top.getBoundingClientRect().height}px`);
+    put(); const ro = new ResizeObserver(put); ro.observe(top); return () => ro.disconnect();
+  }, []);
+  // one showing tracker for the frame (search results in the top bar); each page opens its own inside (one visit = one scope)
+  return <FrameCtx.Provider value={set}><ShowingScope>
+    <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={frame.withFilters} /></div></div> : null}</div>
     {/* desktop: a page without the location bar keeps its height, so the sidebar and the page start at the same place on every page */}
     {showLoc ? null : <div className="locbar-space" aria-hidden="true" />}
-    <div className={`layout ${wide ? 'wide' : ''}`}>
-      <Sidebar cur={cur} />
-      <main className="page" id="view">{children}</main>
-      {wide ? null : <aside className="rail-right">{right}</aside>}
+    <div className={`layout ${frame.wide ? 'wide' : ''}`}>
+      <Sidebar cur={tab} />
+      {children}
     </div>
+  </ShowingScope></FrameCtx.Provider>;
+}
+
+/** A page: its column and (unless wide) its right rail, set into the shared frame. */
+export function Shell({ cur, wide, right, noLoc, withFilters, actionbar, children }: { cur: Tab; wide?: boolean; right?: ReactNode; noLoc?: boolean; withFilters?: boolean; actionbar?: ReactNode; children: ReactNode }) {
+  const { setTab } = useK();
+  const setFrame = useContext(FrameCtx);
+  const filters = withFilters ?? cur === 'explore';
+  useLayoutEffect(() => { setTab(cur); setFrame({ wide: !!wide, noLoc: !!noLoc, withFilters: filters }); }, [cur, wide, noLoc, filters, setTab, setFrame]);
+  const chrome = useSyncExternalStore(noop, () => document.getElementById('chrome'), () => null);
+  useEffect(() => { if (!popped) window.scrollTo(0, 0); popped = false; }, []);
+  return <ShowingScope>
+    <main className="page" id="view">{children}</main>
+    {wide ? null : <aside className="rail-right">{right}</aside>}
     {actionbar && chrome ? createPortal(<div className="actionbar">{actionbar}</div>, chrome) : null}
   </ShowingScope>;
 }
@@ -146,13 +179,11 @@ function useGlassDrag() {
   }, []);
 }
 
-/** The tab bar: glisse's Liquid Glass TabBar on phones, the plain bar if glisse cannot load. Lives in the layout. */
+/** The tab bar: glisse's Liquid Glass TabBar is the only bar on phones and tablets (owner 2026-11-14), bundled with the page so it is there at the first paint and never swaps in. Lives in the layout. */
 export function TabNav() {
-  const { tab, lang, c } = useK();
+  const { tab, setTab, lang, c } = useK();
   const plain = useRef<HTMLElement>(null);
-  const [Glass, setGlass] = useState<null | typeof import('glisse').TabBar>(null);
   const [dark, setDark] = useState(false);
-  useEffect(() => { import('glisse').then((m) => { setGlass(() => m.TabBar); document.body.classList.add('has-glass'); }).catch(() => {}); }, []);
   useEffect(() => { const read = () => setDark(document.documentElement.dataset.theme === 'dark'); read(); const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); return () => mo.disconnect(); }, []);
   const last = useRef(tab);
   useLayoutEffect(() => { if (plain.current) slidePill(plain.current, last.current !== tab, last.current !== tab ? plain.current.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === last.current)] : null); last.current = tab; }, [tab]);
@@ -163,8 +194,8 @@ export function TabNav() {
   return <>
     <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
     {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
-    <div id="glass-tabs" dir="ltr">{Glass ? <Glass aria-label={c.nav.tabsAria} value={tab} style={glassStyle} link={Link}
-      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `${langPrefix(lang)}${href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /> : null}</div>
+    <div id="glass-tabs" dir="ltr"><Glass aria-label={c.nav.tabsAria} value={tab} onValueChange={(v) => setTab(v as Tab)} style={glassStyle} link={PrefetchLink}
+      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `${langPrefix(lang)}${href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /></div>
   </>;
 }
 

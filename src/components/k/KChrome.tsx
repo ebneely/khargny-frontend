@@ -4,17 +4,18 @@
 import type { ReactNode } from 'react';
 import { KProvider, type Tab } from './KProvider';
 import { SheetHost } from './Sheet';
-import { TabNav } from './Shell';
+import { FrameHost, TabNav } from './Shell';
+import type { Frame } from './frame';
 import { Gestures } from './Gestures';
 import { PageMotion } from './PageMotion';
 import { OfflineBar } from './states';
 import { GetAppSheet } from './getapp';
 import type { Lang } from './rules';
 
-export function KChrome({ lang, time, tab, children }: { lang: Lang; time: string | null; tab: Tab; children: ReactNode }) {
+export function KChrome({ lang, time, tab, frame, children }: { lang: Lang; time: string | null; tab: Tab; frame: Frame; children: ReactNode }) {
   return (
     <KProvider lang={lang} time={time} initialTab={tab}>
-      <div id="app" className="shell">{children}</div>
+      <div id="app" className="shell"><FrameHost initial={frame}>{children}</FrameHost></div>
       <TabNav />
       <div id="fx" />
       <SheetHost />

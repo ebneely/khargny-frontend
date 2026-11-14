@@ -162,29 +162,34 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
   const fold = useRef(0);
   const pathname = usePathname();
   useEffect(() => {
-    let lastY = scrollY, lastDir = 0, settleT: ReturnType<typeof setTimeout> | undefined, a: { stop: () => void } | null = null;
+    let lastY = scrollY, lastDir = 0, settleT: ReturnType<typeof setTimeout> | undefined, a: { stop: () => void } | null = null, H = 0, compact = false, raf = 0;
+    const chrome = () => document.querySelector('.chrome-top'), locbar = () => chrome()?.querySelector<HTMLElement>('.locbar-wrap');
+    const height = () => H || (H = locbar()?.offsetHeight || 56); // read once, not on every scroll event (a forced layout each time)
+    const backTop = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const c = chrome(), top = c && (c.classList.contains('compact') ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); }); };
     const applyFold = (f: number, settle: boolean) => {
-      const c = document.querySelector('.chrome-top'), lb = c?.querySelector<HTMLElement>('.locbar-wrap');
+      const c = chrome(), lb = locbar();
       if (lb) {
-        const H = lb.offsetHeight || 1; a?.stop(); a = null;
-        if (settle && !reduce()) a = animate(lb, { transform: `translateY(${-f * H}px)`, opacity: 1 - f }, spring(0, 0.32));
-        else { lb.style.transform = `translateY(${-f * H}px)`; lb.style.opacity = String(1 - f * 0.95); }
+        a?.stop(); a = null;
+        if (settle && !reduce()) a = animate(lb, { transform: `translateY(${-f * height()}px)`, opacity: 1 - f }, spring(0, 0.32));
+        else { lb.style.transform = `translateY(${-f * height()}px)`; lb.style.opacity = String(1 - f * 0.95); }
         lb.style.pointerEvents = f > 0.5 ? 'none' : '';
       }
       c?.classList.toggle('compact', f > 0.5);
-      requestAnimationFrame(() => { const top = c && (f > 0.5 ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); });
+      if (settle || (f > 0.5) !== compact) backTop(); // the back button's offset only changes when the bar flips or settles
+      compact = f > 0.5;
     };
     const onScroll = () => {
       if (document.documentElement.classList.contains('sheet-open')) return; // pinned under a sheet: keep lastY from before
-      const y = scrollY, d = y - lastY; lastY = y; const c = document.querySelector('.chrome-top'); c?.classList.toggle('scrolled', y > 4);
+      const y = scrollY, d = y - lastY; lastY = y; const c = chrome(); c?.classList.toggle('scrolled', y > 4);
       if (!d || c?.classList.contains('searching')) return;
-      const H = c?.querySelector<HTMLElement>('.locbar-wrap')?.offsetHeight || 56;
-      lastDir = Math.sign(d); fold.current = y < 8 ? 0 : Math.max(0, Math.min(1, fold.current + d / H)); applyFold(fold.current, false);
+      lastDir = Math.sign(d); fold.current = y < 8 ? 0 : Math.max(0, Math.min(1, fold.current + d / height())); applyFold(fold.current, false);
       clearTimeout(settleT); settleT = setTimeout(() => { // the scroll rested: finish the way it was heading
         const f = fold.current; fold.current = scrollY < 60 ? 0 : f > 0 && f < 1 ? (lastDir > 0 ? 1 : 0) : f; applyFold(fold.current, true); }, 120);
     };
+    const resized = () => { H = 0; };
+    addEventListener('resize', resized);
     addEventListener('scroll', onScroll, { passive: true });
-    return () => { removeEventListener('scroll', onScroll); clearTimeout(settleT); a?.stop(); };
+    return () => { removeEventListener('scroll', onScroll); removeEventListener('resize', resized); cancelAnimationFrame(raf); clearTimeout(settleT); a?.stop(); };
   }, []);
   useEffect(() => {
     const cur = contentRef.current;
