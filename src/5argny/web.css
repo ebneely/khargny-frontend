@@ -156,8 +156,8 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 
 /* sheet: ONE component for every action (phone bottom sheet / desktop side panel) */
 .scrim{position:fixed;inset:0;z-index:60;background:rgba(20,14,10,.34);opacity:0}
-.sheet{position:fixed;z-index:61;left:0;right:0;bottom:0;max-height:88vh;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:var(--card);box-shadow:var(--sh2);transform:translateY(100%);overflow:hidden;will-change:transform;transform-origin:50% 0}
-.sheet.content{height:94vh;max-height:none}
+.sheet{position:fixed;z-index:61;left:0;right:0;bottom:0;max-height:90vh;max-height:90dvh;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:var(--card);box-shadow:var(--sh2);transform:translateY(100%);overflow:hidden;will-change:transform;transform-origin:50% 0}
+.sheet.content{height:90vh;height:90dvh;max-height:90dvh}
 .sheet.behind{pointer-events:none}
 .grabber{padding:8px 0 2px;display:grid;place-items:center;cursor:grab;touch-action:none}
 .grabber i{width:36px;height:5px;border-radius:9px;background:var(--fill2)}
@@ -1153,3 +1153,5 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 
 /* map choice: the real app icons (third-party logos keep their colours) */
 .map-opt .map-ic{width:28px;height:28px;object-fit:contain;flex:none}
+/* owner 2026-11-14: every sheet is at most 90% of the screen; longer content scrolls inside, the grabber/header and the foot stay put */
+.sheet .sheet-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}

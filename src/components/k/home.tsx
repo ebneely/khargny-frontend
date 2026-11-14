@@ -134,7 +134,7 @@ function TakeMe({ data, pool }: { data: HomeData; pool: KPlace[] }) {
   const where = usePlaceName();
   const m = moment(now), lead = m.x, rest = INTENTS.filter((x) => x.key !== lead.key).slice(0, 5);
   const inCats = (x: Intent) => pool.filter((p) => (x.cats as readonly string[]).includes(p.cat));
-  const photoFor = (cats: readonly string[], n = 0) => { const list = pool.filter((p) => cats.includes(p.cat)); const pl = list[n % Math.max(1, list.length)] || pool[n % Math.max(1, pool.length)]; return pl?.photos[0]?.m || ''; };
+  const photoFor = (cats: readonly string[], n = 0) => { const list = pool.filter((p) => cats.includes(p.cat)); const pl = list[n % Math.max(1, list.length)] || pool[n % Math.max(1, pool.length)]; return pl?.photos[0]?.m || undefined; };
   const leadPhotos = inCats(lead).slice(0, 4).map((p) => p.photos[0]?.m).filter(Boolean);
   // counts per category come from GET /v1/places/counts?when=now; without it the count pills stay hidden
   const openCount = (x: Intent) => (data.openByCategory ? data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).reduce((a, cat) => a + (data.openByCategory![cat.id] ?? 0), 0) : null);
@@ -186,7 +186,7 @@ function TakeMe({ data, pool }: { data: HomeData; pool: KPlace[] }) {
         <div className="tm-head"><div><b className="tm-q">{lang === 'ar' ? 'خرجني فين؟' : c.home.takeMe.question}</b><span className="tm-time" aria-label={`${c.home.takeMe.timeNow} ${t12(now, lang)}`} suppressHydrationWarning><L n="clock" />{t12(now, lang)}<span className="tm-nudge">{c.home.takeMe.cantPick}</span></span></div>
           <svg className="tm-route" aria-hidden="true"><path className="tm-route-base" /><path className="tm-route-line" /><circle className="tm-route-end" r="3" /></svg>
           <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} onClick={shuffle}><L n="dices" /><span>{c.home.takeMe.surprise}</span></button></div>
-        <Link className="tm-lead press" href={`/${lang}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}`}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img key={u + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
+        <Link className="tm-lead press" href={`/${lang}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}`}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
           <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{open ? <span className="tm-sub"><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: where })}</span> : total(lead) != null ? <span className="tm-sub">{fill(c.home.takeMe.leadPlaces, { n: total(lead)!, place: where })}</span> : null}</span>
           <span className="tm-go"><L n="arrow-right" /></span></Link>
         <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img"><L n="layout-grid" /></span><span className="tm-pick-name"><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>
