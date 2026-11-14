@@ -1194,7 +1194,6 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
 /* desktop cards never fill the screen (owner 2026-11-14): photos are 16:10, at most 420 px tall; phones keep the prototype's tall photos */
 @media (min-width:700px){
   .post .media{width:100%;aspect-ratio:16/10;max-height:420px}
-  .tm-picks{grid-template-columns:repeat(6,minmax(0,1fr))}
   .place-media{width:100%;max-height:420px}
 }
 
