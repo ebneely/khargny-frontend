@@ -13,6 +13,7 @@ import type { HomeSection } from '@/lib/api/hooks/use-home';
 import { currentLocale } from '@/lib/seo';
 import type { Locale } from '@/i18n/dictionaries';
 import { browseQueries, readBrowseAddress } from '@/lib/browse-address';
+import { catTotals } from '@/components/k/data';
 import { hasLocalSearchFilters, loadSearchPage } from '@/lib/place-search';
 
 export function markPublicError(error: unknown, locale: Locale) {
@@ -78,9 +79,8 @@ export const getFeatured = cache(async () => normalizeFeaturedPlaces(await read(
 export const getTopPlaces = cache(async () => normalizeTopPlaces(await read('/v1/home/top-places', true)));
 // Home (spec 002): the pool the blended rows read from, ordered (and promoted) by the server.
 export const getHomePool = cache(async () => placeList(await read('/v1/places?limit=40')));
-/** How many places each category has (the list's total for one row per category), for Home's "{n} places". */
-export const getCategoryTotals = cache(async () => Object.fromEntries(await Promise.all((await getCategories()).map(async (c) => [c.id, (await optional(getPlaceCount(c.id), null)) ?? null] as const))));
-const getPlaceCount = cache(async (categoryId: string) => placeList(await read(`/v1/places?categoryId=${categoryId}&limit=1`)).total ?? null);
+/** How many places each category has Egypt-wide, with one photo each (components/k/data catTotals); hydrated by the (k) layout. */
+export const getCategoryTotals = cache(async () => catTotals(await Promise.all((await getCategories()).map(async (c) => [c.slug, await optional(read(`/v1/places?categoryId=${c.id}&limit=1`), null)] as [string, unknown]))));
 /** GET /v1/places/counts (contracts/api.md): open places per category for a time window. */
 export const getPlaceCounts = cache(async (when: 'now' | 'tonight' | 'weekend') => await read(`/v1/places/counts?when=${when}`, true) as { byCategory: Record<string, number>; total: number });
 export const getMenu = cache(async (slug: string) => normalizeMenu(await read(`/v1/places/${encodeURIComponent(slug)}/menu`)));

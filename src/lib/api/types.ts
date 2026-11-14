@@ -71,6 +71,8 @@ export interface City {
   /** Admin-uploaded cover photo (WebP, optimized). */
   imageUrl?: string | null;
   parentCityId: string | null;
+  /** Places shown on the site in this city (GET /v1/cities), so the city sheet needs no count requests. */
+  visiblePlacesCount?: number;
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;

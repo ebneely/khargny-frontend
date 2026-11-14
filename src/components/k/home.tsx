@@ -23,9 +23,10 @@ import { useK, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
 import { MarketCard } from './market';
 import { usePosition, askPosition, useNearPlaces } from './near';
+import { useCatTotals } from './filters';
 
 export type HomeCollection = { id: string; slug: string; title: string; places: KPlace[] };
-export type HomeData = { pool: KPlace[]; trending: KPlace[]; collections: HomeCollection[]; categories: { id: string; en: string; label: string }[]; openByCategory: Record<string, number> | null; totalByCategory: Record<string, number | null> };
+export type HomeData = { pool: KPlace[]; trending: KPlace[]; collections: HomeCollection[]; categories: { id: string; en: string; label: string }[]; openByCategory: Record<string, number> | null };
 
 /** "Earned on {brand}" with the brand drawn as the brand. */
 export function withBrand(s: string) { const [a, b = ''] = s.split('{brand}'); return <>{a}<Brand />{b}</>; }
@@ -49,16 +50,16 @@ function useHere(data: HomeData) {
     queryKey: ['places', 'counts', 'now', city?.slug ?? '', areaKey ?? ''], enabled: on, staleTime: 60_000,
     queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now', city: city?.slug, ...(areaKey ? { area: areaKey } : {}) } }).catch(() => null),
   });
-  const { data: totals } = useQuery({
-    queryKey: ['places', 'totals', city?.id ?? '', areaKey ?? ''], enabled: on && categories.length > 0, staleTime: 5 * 60_000,
-    queryFn: async () => Object.fromEntries(await Promise.all(categories.map(async (cat) => [cat.id, await apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: cat.id, limit: 1, ...scope } }).then((r) => r.meta?.total ?? null).catch(() => null)] as const))),
-  });
-  if (!on) return { pool: data.pool, openByCategory: data.openByCategory, totalByCategory: data.totalByCategory, areaKey: null, city: null };
+  // places and a photo per category: one shared query with Filters (Egypt-wide it arrives with the page)
+  const totals = useCatTotals();
+  const byId = (r: Record<string, number | string | null> | undefined) => Object.fromEntries(categories.map((x) => [x.id, r?.[x.slug] ?? null]));
+  const counts = { totalByCategory: totals ? byId(totals.n) as Record<string, number | null> : {}, coverByCategory: byId(totals?.cover) as Record<string, string | null> };
+  if (!on) return { pool: data.pool, openByCategory: data.openByCategory, ...counts, areaKey: null, city: null };
   const bySlug = new Map(categories.map((x) => [x.slug, x.id]));
   return {
     pool: (pool ?? []).map((raw) => toK(raw as never, { cities, categories }, lang)).filter((p) => p.photos.length),
     openByCategory: open ? Object.fromEntries(Object.entries(open.byCategory).map(([slug, n]) => [bySlug.get(slug) ?? slug, n])) : null,
-    totalByCategory: (totals ?? {}) as Record<string, number | null>, areaKey, city: city.slug,
+    ...counts, areaKey, city: city.slug,
   };
 }
 
@@ -93,7 +94,7 @@ export function HomeView({ data }: { data: HomeData }) {
   return (
     <Shell cur="home" right={<><TrendCard list={data.trending} /><MarketCard /></>}>
       <Stories list={stories} />
-      <TakeMe data={{ ...data, openByCategory: here.openByCategory, totalByCategory: here.totalByCategory }} pool={pool} />
+      <TakeMe data={{ ...data, openByCategory: here.openByCategory }} totalByCategory={here.totalByCategory} coverByCategory={here.coverByCategory} pool={pool} />
       <NearYou list={near} />
       <Earned pool={pool} />
       <TeamCollections list={data.collections} />
@@ -151,7 +152,7 @@ function TeamCollections({ list }: { list: HomeCollection[] }) {
 }
 
 /* ---------- "Take me out" card: answer first, photo tiles, Surprise me ---------- */
-function TakeMe({ data, pool }: { data: HomeData; pool: KPlace[] }) {
+function TakeMe({ data, pool, totalByCategory }: { data: HomeData; pool: KPlace[]; totalByCategory: Record<string, number | null>; coverByCategory: Record<string, string | null> }) {
   const { c, lang, now, openSheet } = useK();
   const where = usePlaceName();
   const m = moment(now), lead = m.x, rest = INTENTS.filter((x) => x.key !== lead.key).slice(0, 5);
@@ -161,7 +162,7 @@ function TakeMe({ data, pool }: { data: HomeData; pool: KPlace[] }) {
   // counts per category come from GET /v1/places/counts?when=now; without it the count pills stay hidden
   const openCount = (x: Intent) => (data.openByCategory ? data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).reduce((a, cat) => a + (data.openByCategory![cat.id] ?? 0), 0) : null);
   const open = openCount(lead);
-  const total = (x: Intent) => { const ns = data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).map((cat) => data.totalByCategory[cat.id]); return ns.some((n) => n == null) ? null : ns.reduce<number>((a, n) => a + (n ?? 0), 0); };
+  const total = (x: Intent) => { const ns = data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).map((cat) => totalByCategory[cat.id]); return ns.some((n) => n == null) ? null : ns.reduce<number>((a, n) => a + (n ?? 0), 0); };
   const card = useRef<HTMLElement>(null);
   const [deal, setDeal] = useState<KPlace | null>(null);
   const nearList = useNearPlaces();
@@ -199,7 +200,7 @@ function TakeMe({ data, pool }: { data: HomeData; pool: KPlace[] }) {
   };
   const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)); };
   const allCats = () => {
-    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{data.categories.map((cat) => <Link key={cat.id} className="tm-tile press" href={`/${lang}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photoFor([cat.en], 0)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{data.totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{data.totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
+    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{data.categories.map((cat) => <Link key={cat.id} className="tm-tile press" href={`/${lang}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photoFor([cat.en], 0)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
     requestAnimationFrame(() => document.querySelectorAll('.sheet .tm-sheet .tm-tile').forEach((tl, n) => animate(tl, { opacity: [0, 1], transform: ['translateY(14px) scale(.96)', 'translateY(0) scale(1)'] }, { ...spring(0, 0.45), delay: 0.04 + n * 0.03 })));
   };
   const tile = (x: Intent, n: number) => { const t = total(x); return <Link key={x.key} className="tm-pick press" href={`/${lang}/explorer/?intent=${x.key}`}><span className="tm-pick-img"><img src={photoFor(x.cats, n)} alt="" loading="lazy" /></span>

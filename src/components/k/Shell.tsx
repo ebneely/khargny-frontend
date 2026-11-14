@@ -10,7 +10,7 @@ import { fill } from '@5argny/core/copy';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { useSearchPlaces } from '@/lib/api/hooks/use-search';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { regionLabel } from '@/lib/egypt-regions';
 import { L, Ic, Gov } from './icons';
@@ -20,7 +20,7 @@ import { intentFor, highlightRange } from '@5argny/core/rules';
 import { toK, placeHref, type KPlace } from './data';
 import { Meta, Stats } from './place';
 import { useK, haptic, reduce, spring, type Tab } from './KProvider';
-import { useOpenFilters, readF, nF } from './filters';
+import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
 import { useSearchParams } from 'next/navigation';
 
@@ -289,19 +289,19 @@ function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   </>;
 }
 
-/** A city or area row's numbers (proto Options): views in the last 30 days (GET /v1/aggregates/views) and how many places. Hidden until known. */
-function LocNums({ views, params, count }: { views?: { kind: 'city' | 'area'; ids: string[]; id: string }; params: Record<string, string>; count?: number }) {
+/** Views in the last 30 days per city or area (GET /v1/aggregates/views): one request for a whole sheet, asked before it opens. */
+function useGroupViews(kind: 'city' | 'area', ids: string[]) {
+  return useQuery({
+    queryKey: ['aggregates', 'views', kind, ids.join(',')], enabled: ids.length > 0, staleTime: 5 * 60_000,
+    queryFn: () => apiRequest<Record<string, number>>('GET', '/v1/aggregates/views', { params: { kind, ids: ids.join(',') } }).catch(() => null),
+  }).data;
+}
+/** A city or area row's numbers (proto Options): views in the last 30 days and how many places. Hidden until known. */
+function LocNums({ views, count }: { views?: { kind: 'city' | 'area'; ids: string[]; id: string }; count?: number | null }) {
   const { c } = useK();
-  const { data: agg } = useQuery({
-    queryKey: ['aggregates', 'views', views?.kind ?? '', views?.ids.join(',') ?? ''], enabled: !!views?.ids.length, staleTime: 5 * 60_000,
-    queryFn: () => apiRequest<Record<string, number>>('GET', '/v1/aggregates/views', { params: { kind: views!.kind, ids: views!.ids.join(',') } }).catch(() => null),
-  });
-  const { data: n } = useQuery({
-    queryKey: ['places', 'total', params], staleTime: 5 * 60_000, enabled: count === undefined,
-    queryFn: () => apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { limit: 1, ...params } }).then((r) => r.meta?.total ?? null).catch(() => null),
-  });
-  const v = views ? agg?.[views.id] : undefined, places = count ?? n;
-  return <>{v != null ? <span className="gv" title={c.stats.viewsGroup}><Ic n="eye" />{k(v)}</span> : null}{places != null ? <span className="t-small">{places}</span> : null}</>;
+  const agg = useGroupViews(views?.kind ?? 'city', views?.ids ?? []);
+  const v = views ? agg?.[views.id] : undefined;
+  return <>{v != null ? <span className="gv" title={c.stats.viewsGroup}><Ic n="eye" />{k(v)}</span> : null}{count != null ? <span className="t-small">{count}</span> : null}</>;
 }
 
 /** ONE location bar, pinned under the top bar on Home, Explore and Marketplace; Filters joins it on Explore only. */
@@ -309,24 +309,24 @@ function LocBar({ withFilters }: { withFilters: boolean }) {
   const { loc, setLoc, c, lang, openSheet, closeTop, toast, go } = useK();
   const { data: cities = [] } = useCities();
   const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
-  // the city sheet lists cities by most places, as the prototype does (same queries as each row's count, so one fetch)
-  const totals = useQueries({ queries: cities.map((x) => ({ queryKey: ['places', 'total', { cityId: x.id }], staleTime: 5 * 60_000, queryFn: () => apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { limit: 1, cityId: x.id } }).then((r) => r.meta?.total ?? null).catch(() => null) })) });
-  const byCount = cities.map((x, i) => ({ x, n: totals[i]?.data ?? -1 })).sort((a, b) => b.n - a.n).map((o) => o.x);
+  // the city sheet lists cities by most places, as the prototype does: the cities carry their counts, so the order never changes
+  const byCount = [...cities].sort((a, b) => (b.visiblePlacesCount ?? -1) - (a.visiblePlacesCount ?? -1));
+  const egypt = cities.length && cities.every((x) => typeof x.visiblePlacesCount === 'number') ? cities.reduce((a, x) => a + x.visiblePlacesCount!, 0) : null;
   // the area sheet: places per area in one request, areas with the most places first
-  const { data: areaCounts } = useQuery({ queryKey: ['places', 'counts', 'byArea', city?.id ?? ''], enabled: !!city, staleTime: 5 * 60_000,
-    queryFn: () => apiRequest<{ byArea: { area: string; places: number }[] }>('GET', '/v1/places/counts', { params: { city: city!.id, by: 'area' } }).then((r) => Object.fromEntries(r.byArea.map((x) => [x.area, x.places])) as Record<string, number>).catch(() => null) });
+  const areaCounts = useAreaCounts(city?.id);
   const areaKeys = [...(city?.areaKeys ?? [])].sort((a, b) => (areaCounts?.[b] ?? -1) - (areaCounts?.[a] ?? -1));
   const cityName = city ? (lang === 'ar' ? city.name : city.nameEn || city.name) : null;
   const pick = (el: HTMLElement, after: () => void) => { haptic(); el.closest('.sheet')?.querySelectorAll('.option').forEach((o) => o.setAttribute('aria-checked', String(o === el))); setTimeout(() => { closeTop(); after(); }, 170); };
   const opt = (key: string, on: boolean, icon: ReactNode, label: string, act: string, then: () => void, nums?: ReactNode) => <button key={key} className="option press" role="radio" aria-checked={on} data-act={act} onClick={(e) => pick(e.currentTarget, then)}>{icon}<span className="grow">{label}</span>{nums}<Ic n="check" cls="check" /></button>;
   const cityIds = cities.map((x) => x.id), areaIds = city?.areaKeys ?? [];
+  useGroupViews('city', cityIds); useGroupViews('area', areaIds); // asked now, so the sheets open with their numbers
   const openCity = () => openSheet(c.location.citySheet, <>
-    {opt('all', !loc.city, <L n="map" />, c.location.allEgypt, 'pick-city', () => setLoc({ city: null, area: null }), <LocNums params={{}} />)}
-    {byCount.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Gov name={x.slug} fallback={<Ic n="pin" />} />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); }, <LocNums views={{ kind: 'city', ids: cityIds, id: x.id }} params={{ cityId: x.id }} />); })}
+    {opt('all', !loc.city, <L n="map" />, c.location.allEgypt, 'pick-city', () => setLoc({ city: null, area: null }), <LocNums count={egypt} />)}
+    {byCount.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Gov name={x.slug} fallback={<Ic n="pin" />} />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); }, <LocNums views={{ kind: 'city', ids: cityIds, id: x.id }} count={x.visiblePlacesCount} />); })}
   </>);
   const openArea = () => { if (!city) return; openSheet(fill(c.location.areaSheet, { city: cityName ?? '' }), <>
-    {opt('all', !loc.area, <L n="layers" />, c.location.allAreas, 'pick-area', () => setLoc({ city: loc.city, area: null }), <LocNums params={{ cityId: city.id }} />)}
-    {areaKeys.map((key) => { const n = regionLabel(key, lang, city.nameEn || city.name) || key; return opt(key, loc.area === n, <L n="map-pin" />, n, 'pick-area', () => setLoc({ city: loc.city, area: n }), <LocNums views={{ kind: 'area', ids: areaIds, id: key }} params={{ cityId: city.id, region: key }} count={areaCounts ? areaCounts[key] ?? 0 : undefined} />); })}
+    {opt('all', !loc.area, <L n="layers" />, c.location.allAreas, 'pick-area', () => setLoc({ city: loc.city, area: null }), <LocNums count={city.visiblePlacesCount} />)}
+    {areaKeys.map((key) => { const n = regionLabel(key, lang, city.nameEn || city.name) || key; return opt(key, loc.area === n, <L n="map-pin" />, n, 'pick-area', () => setLoc({ city: loc.city, area: n }), <LocNums views={{ kind: 'area', ids: areaIds, id: key }} count={areaCounts ? areaCounts[key] ?? 0 : null} />); })}
   </>); };
   const reset = (e: React.MouseEvent<HTMLButtonElement>) => { const ic = e.currentTarget.querySelector('.lucide'); if (ic) animate(ic, { transform: ['rotate(0deg)', 'rotate(-360deg)'] }, spring(0, 0.5)); haptic(); setTimeout(() => { setLoc({ city: null, area: null }); if (n) { const keep = new URLSearchParams(location.search); ['intent', 'cat', 'when', 'f'].forEach((k) => keep.delete(k)); go(`${location.pathname}${keep.toString() ? '?' + keep : ''}`); } toast(c.location.cleared); }, 220); };
   const openFilters = useOpenFilters();

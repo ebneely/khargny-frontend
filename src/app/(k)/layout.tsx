@@ -8,7 +8,8 @@ import { PageViewTracker } from '@/components/analytics/PageViewTracker';
 import { LocaleProvider } from '@/i18n/LocaleProvider';
 import { graph, jsonLdScript, organizationSchema, webSiteSchema } from '@/lib/seo';
 import { getSiteSettings } from '@/lib/api/site-settings';
-import { getCatalog, markPublicError, optional, primePublicRoute, publicHydration } from '@/lib/server/public-data';
+import { getCatalog, getCategoryTotals, markPublicError, optional, primePublicRoute, publicHydration } from '@/lib/server/public-data';
+import { catTotalsKey } from '@/components/k/data';
 import { KChrome } from '@/components/k/KChrome';
 import type { Tab } from '@/components/k/KProvider';
 
@@ -36,9 +37,10 @@ export default async function KLayout({ children }: Readonly<{ children: React.R
   const locale = chosen === 'en' ? 'en' : 'ar';
   const path = h.get('x-khargny-path') ?? '/';
   const time = new URLSearchParams(h.get('x-khargny-search') ?? '').get('time');
-  const [settings, catalog] = await Promise.all([
+  const [settings, catalog, totals] = await Promise.all([
     getSiteSettings(),
     optional(getCatalog(), { cities: [], categories: [] }),
+    optional(getCategoryTotals(), null),
     primePublicRoute(path, h.get('x-khargny-search') ?? '').catch((error: unknown) => { throw markPublicError(error, locale); }),
   ]);
   const fonts = { '--display': `${cairo.style.fontFamily},${plex.style.fontFamily},system-ui,sans-serif`, '--text': `system-ui,-apple-system,'SF Pro Text','Segoe UI',${plex.style.fontFamily},sans-serif` } as React.CSSProperties;
@@ -49,7 +51,7 @@ export default async function KLayout({ children }: Readonly<{ children: React.R
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(graph(organizationSchema(locale, settings), webSiteSchema(locale))) }} />
         <LocaleProvider initialLocale={locale}>
           <QueryProvider>
-            <HydrationBoundary state={publicHydration([[['cities'], catalog.cities], [['categories'], catalog.categories]])}>
+            <HydrationBoundary state={publicHydration([[['cities'], catalog.cities], [['categories'], catalog.categories], ...(totals ? [[catTotalsKey(null, null), totals] as [readonly string[], unknown]] : [])])}>
               <KChrome lang={locale} time={time} tab={tabOf(path)}>{children}</KChrome>
             </HydrationBoundary>
             <PageViewTracker />

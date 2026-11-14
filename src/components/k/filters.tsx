@@ -7,6 +7,7 @@ import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
 import { amenityIcons, amenityIconFallback, mustHaveAmenities } from '@5argny/core/icons';
 import { apiRequest } from '@/lib/api/client';
+import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
@@ -17,6 +18,7 @@ import { searchNormalize } from '@5argny/core/rules';
 import { Btn, Seg } from './bits';
 import { INTENTS } from './rules';
 import { useK, haptic, spring } from './KProvider';
+import { catTotals, catTotalsKey } from './data';
 
 export type When = '' | 'now' | 'tonight' | 'weekend';
 export type F = { intent: string; cat: string; when: When; filters: Set<string> };
@@ -50,19 +52,31 @@ export function useCatIds(f: Pick<F, 'intent' | 'cat'>) {
   return categories.filter((c) => (f.cat ? (c.nameEn || c.nameAr) === f.cat || c.slug === f.cat || c.id === f.cat : intent ? (intent.cats as readonly string[]).includes(c.nameEn || '') : false));
 }
 
-/** Places per category: totals (GET /v1/places meta.total) or, for a When, GET /v1/places/counts. */
-export function useCounts(when: When) {
-  const { cityId, citySlug, area } = useLocIds();
+/** Places per category for the location bar, all time, with a photo each (one shared query; Egypt-wide it comes with the page). */
+export function useCatTotals(enabled = true) {
+  const { cityId, area } = useLocIds();
   const { data: categories = [] } = useCategories();
-  const timed = useQuery({
+  return useQuery({
+    queryKey: catTotalsKey(cityId, area), enabled: enabled && categories.length > 0, staleTime: 5 * 60_000,
+    queryFn: async () => catTotals(await Promise.all(categories.map(async (c) => [c.slug, await apiRequest<unknown>('GET', '/v1/places', { params: { categoryId: c.id, cityId: cityId ?? undefined, region: area ?? undefined, limit: 1 } }).catch(() => null)] as [string, unknown]))),
+  }).data;
+}
+
+/** Places open in a When, per category slug and in total (GET /v1/places/counts, one request). */
+export function useTimed(when: When) {
+  const { citySlug, area } = useLocIds();
+  return useQuery({
     queryKey: ['places', 'counts', when, citySlug ?? '', area ?? ''], enabled: !!when, staleTime: 60_000,
-    queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when, city: citySlug ?? undefined, area: area ?? undefined } }).then((r) => r.byCategory).catch(() => null),
-  });
-  const totals = useQuery({
-    queryKey: ['places', 'totals', cityId ?? '', area ?? '', categories.length], enabled: !when && categories.length > 0, staleTime: 5 * 60_000,
-    queryFn: async () => Object.fromEntries(await Promise.all(categories.map(async (c) => [c.slug, await apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: c.id, cityId: cityId ?? undefined, region: area ?? undefined, limit: 1 } }).then((r) => r.meta?.total ?? null).catch(() => null)] as const))),
-  });
-  const by = when ? timed.data : totals.data;
+    queryFn: () => apiRequest<{ byCategory: Record<string, number>; total: number }>('GET', '/v1/places/counts', { params: { when, city: citySlug ?? undefined, area: area ?? undefined } }).catch(() => null),
+  }).data;
+}
+
+/** Places per category: all-time totals, or for a When, GET /v1/places/counts. */
+export function useCounts(when: When) {
+  const { data: categories = [] } = useCategories();
+  const timed = useTimed(when);
+  const totals = useCatTotals(!when);
+  const by = when ? timed?.byCategory : totals?.n;
   // a count that failed to load stays hidden, never a false 0
   return (cats: readonly string[]) => { if (!by) return null; const ns = categories.filter((c) => cats.includes(c.nameEn || '')).map((c) => by[c.slug]); return ns.some((n) => n === null) ? null : ns.reduce<number>((a, n) => a + (n ?? 0), 0); };
 }
@@ -116,22 +130,72 @@ function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
   </>;
 }
 
-/** How many places a filter state finds: exact from the list total, or from the counts route for a When alone. */
-export function useResultCount(f: F, q: string, badge: boolean) {
+/** The /v1/places question a filter state asks: one request per category of an intent (the route takes one categoryId). */
+export function useListQuery(f: F) {
   const { cityId, area } = useLocIds();
   const cats = useCatIds(f);
-  const count = useCounts(f.when);
-  const intent = INTENTS.find((x) => x.key === f.intent);
+  const { data: categories = [] } = useCategories();
   const bands = [...f.filters].filter((x) => x.startsWith('band:')).map((x) => x.slice(5)).join(',');
   const amen = [...f.filters].filter((x) => !x.startsWith('band:')).join(',');
-  const wantCats = f.intent || f.cat;
+  const wantCats = !!(f.intent || f.cat);
+  return {
+    // categories still loading: wait, never the whole of Egypt by mistake; a category name that matches none finds nothing
+    ready: !wantCats || cats.length > 0, none: wantCats && categories.length > 0 && !cats.length,
+    catIds: wantCats ? cats.map((x) => x.id) : [null],
+    params: { cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, when: f.when || undefined },
+    key: [cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, f.when] as const,
+  };
+}
+export const totalKey = (key: ReturnType<typeof useListQuery>['key']) => ['places', 'total', ...key] as const;
+
+/** Places per area of the chosen city, in one request (GET /v1/places/counts?by=area). */
+export function useAreaCounts(cityId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['places', 'counts', 'byArea', cityId ?? ''], enabled: !!cityId, staleTime: 5 * 60_000,
+    queryFn: () => apiRequest<{ byArea: { area: string; places: number }[] }>('GET', '/v1/places/counts', { params: { city: cityId!, by: 'area' } }).then((r) => Object.fromEntries(r.byArea.map((x) => [x.area, x.places])) as Record<string, number>).catch(() => null),
+  }).data;
+}
+
+/** How many places the location bar alone holds: the cities already carry their counts, an area is one shared request. */
+export function usePlaceCount() {
+  const { data: cities = [] } = useCities();
+  const { cityId, area } = useLocIds();
+  const areas = useAreaCounts(area ? cityId : null);
+  if (area) return areas ? areas[area] ?? 0 : null;
+  const list = cityId ? cities.filter((x) => x.id === cityId) : cities;
+  return list.length && list.every((x) => typeof x.visiblePlacesCount === 'number') ? list.reduce((a, x) => a + x.visiblePlacesCount!, 0) : null;
+}
+
+/** How many places a filter state finds, with the fewest requests: none for the location alone, one for a When, else one per category. */
+export function useResultCount(f: F, q: string, badge: boolean) {
+  const L = useListQuery(f);
+  const cats = useCatIds(f);
+  const plain = !f.intent && !f.cat && !f.when && !f.filters.size, whenOnly = !!f.when && !f.filters.size;
+  const place = usePlaceCount();
+  const timed = useTimed(whenOnly ? f.when : '');
   const list = useQuery({
-    queryKey: ['places', 'total', cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, badge], enabled: !f.when && !q && (!wantCats || cats.length > 0), staleTime: 60_000,
-    queryFn: async () => (await Promise.all((wantCats ? cats : [null]).map((cat) => apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: cat?.id, cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, limit: 1 } }).then((r) => r.meta?.total ?? 0)))).reduce((a, n) => a + n, 0),
+    queryKey: totalKey(L.key), enabled: !q && !badge && !plain && !whenOnly && L.ready && !L.none, staleTime: 60_000,
+    queryFn: async () => (await Promise.all(L.catIds.map((cat) => apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { ...L.params, categoryId: cat ?? undefined, limit: 1 } }).then((r) => r.meta?.total ?? 0)))).reduce((a, n) => a + n, 0),
   });
   if (q || badge) return null;
-  if (f.when) return f.filters.size ? null : count(intent ? intent.cats : f.cat ? [f.cat] : cats.map((x) => x.nameEn || ''));
+  if (L.none) return 0;
+  if (plain) return place;
+  if (whenOnly) return !timed ? null : f.intent || f.cat ? cats.reduce((a, x) => a + (timed.byCategory[x.slug] ?? 0), 0) : timed.total;
   return list.data ?? null;
+}
+
+/** Places that earned a badge (the cards carry achievement badges), for the location bar; one small request per badge kind. */
+const EARNED_KEYS = ['most_viewed', 'most_saved', 'most_5argnyd'] as const;
+export function useEarned(enabled = true) {
+  const { cityId, area } = useLocIds();
+  return useQuery({
+    queryKey: ['places', 'earned', cityId ?? '', area ?? ''], enabled, staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const lists = await Promise.all(EARNED_KEYS.map((badge) => apiRequest<unknown>('GET', '/v1/places', { params: { badge, cityId: cityId ?? undefined, region: area ?? undefined, limit: 20 } }).then((r) => normalizePlaceList(r).items).catch(() => [])));
+      const seen = new Set<string>();
+      return lists.flat().filter((p) => !seen.has(p.id) && seen.add(p.id));
+    },
+  }).data;
 }
 
 function FiltersFoot({ get, onApply, onClear }: { get: () => F; onApply: () => void; onClear: () => void }) {

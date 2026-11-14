@@ -257,6 +257,12 @@ export function Tile({ p, extra }: { p: KPlace; extra?: ReactNode }) {
   );
 }
 
+/** A Tile's placeholder while results load: the same box, so nothing moves when the places arrive. */
+export function TileSkel() {
+  return <div className="card tile skel" aria-hidden="true"><span className="tile-media"><i className="sk-img" /></span>
+    <div className="tile-body"><b>&nbsp;</b><span className="sk-line" /><span className="t-small sk-line short">&nbsp;</span></div></div>;
+}
+
 export function BadgeTags({ p }: { p: KPlace }) {
   const label = useBadgeLabel();
   return <>{p.badges.map((b, i) => <Tag key={b.key + i} label={label(b)} tone="good" icon={badgeIcon(b)} />)}</>;

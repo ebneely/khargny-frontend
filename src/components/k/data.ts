@@ -1,5 +1,6 @@
 // The prototype's place shape (ui-unify/proto/data.js), built from the real API so every component reads the same fields.
 import { normalizePhoto, photoCandidates } from '@/lib/place-photo';
+import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { regionLabel } from '@/lib/egypt-regions';
 import type { Category, CityWithAreas } from '@/lib/api/types';
 import type { Lang } from './rules';
@@ -62,6 +63,26 @@ export function toK(raw: Raw, catalog: KCatalog, lang: Lang): KPlace {
     distanceKm: typeof raw.distanceKm === 'number' && Number.isFinite(raw.distanceKm) ? raw.distanceKm : null,
     d30: raw.d30 && typeof raw.d30 === 'object' ? { views: num((raw.d30 as Record<string, unknown>).views), saves: num((raw.d30 as Record<string, unknown>).saves), shares: num((raw.d30 as Record<string, unknown>).shares) } : null,
   };
+}
+
+/**
+ * Places per category (all time) and one real photo of each. No route counts every category in one answer
+ * (/v1/places/counts needs a When), so it is one GET /v1/places?categoryId=&limit=1 per category; Egypt-wide it is
+ * fetched once on the server and handed to the page (layout hydration), so the browser asks only once a city is chosen.
+ */
+export type CatTotals = { n: Record<string, number | null>; cover: Record<string, string> };
+export const catTotalsKey = (cityId: string | null | undefined, area: string | null | undefined) => ['places', 'totals', cityId ?? '', area ?? ''] as const;
+/** rows: [category slug, the list answer, or null when it failed (its count stays hidden, never a false 0)] */
+export function catTotals(rows: [string, unknown][]): CatTotals {
+  const out: CatTotals = { n: {}, cover: {} };
+  for (const [slug, raw] of rows) {
+    const list = raw == null ? null : normalizePlaceList(raw);
+    out.n[slug] = list?.total ?? null;
+    const first = list?.items[0];
+    const photo = first ? toK(first as never, { cities: [], categories: [] }, 'en').photos[0]?.m : '';
+    if (photo) out.cover[slug] = photo;
+  }
+  return out;
 }
 
 export const placeHref = (p: Pick<KPlace, 'citySlug' | 'slug'>, lang: Lang) => `/${lang}/explorer/${p.citySlug}/${p.slug}/`;
