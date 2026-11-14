@@ -265,9 +265,11 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
 function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.MouseEvent<HTMLButtonElement>) => void; onBack: () => void }) {
   const { c, lang, now } = useK();
   const st = openStateOf(p, now, lang);
-  return <div className="tm-deal"><img src={p.photos[0]?.m} alt="" /><span className="tm-fade" />
+  const href = placeHref(p, lang);
+  // the photo and the name open the place like every other card; the buttons keep their own actions
+  return <div className="tm-deal"><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img src={p.photos[0]?.m} alt="" /></Link><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
-    <div className="tm-deal-text"><b dir="auto">{p.name}</b><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
+    <div className="tm-deal-text"><Link className="tm-deal-name press" href={href}><b dir="auto">{p.name}</b></Link><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;
 }
 

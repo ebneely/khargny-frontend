@@ -368,7 +368,14 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .tm-deal-text{position:absolute;left:14px;right:14px;bottom:14px;display:grid;gap:4px}
 .tm-deal-text b{font:900 26px/1.1 var(--display);letter-spacing:-.02em}
 .tm-deal-text span{font-size:13px;color:rgba(255,255,255,.85)}
-.tm-deal-actions{display:flex;gap:8px;margin-top:8px}
+.tm-deal-actions{display:flex;gap:8px;margin-top:8px;min-width:0}
+/* fit the card: the text column may shrink below its nowrap buttons, the buttons shrink and clip their label with an ellipsis, the name wraps */
+.tm-deal-text{grid-template-columns:minmax(0,1fr);min-width:0}
+.tm-deal-actions .btn{min-width:0;padding-inline:10px;overflow:hidden;text-overflow:ellipsis}
+.tm-deal-name{display:block;min-width:0;overflow-wrap:anywhere}
+.tm-deal-photo{position:absolute;inset:0;display:block}
+.tm-deal .tm-fade{pointer-events:none}
+.tm-deal-top{pointer-events:none}.tm-deal-top>*{pointer-events:auto}
 .tm-deal-actions .btn{flex:1}
 .tm-deal-actions .btn.secondary{background:rgba(255,255,255,.18);color:#fff;backdrop-filter:blur(10px)}
 .tm-deal-actions .lucide{width:16px;height:16px}
