@@ -31,7 +31,7 @@ export function GetAppSheet() {
       try { localStorage.setItem(KEY, String(Date.now())); } catch {}
       const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
       const apple = <a key="ios" href={APP_STORE} target="_blank" rel="noopener" aria-label={c.getApp.appStore}><img src="/badges/app-store-en.svg" alt="" height={44} /></a>;
-      const play = <a key="android" href={GOOGLE_PLAY} target="_blank" rel="noopener" aria-label={c.getApp.googlePlay}><img src={`/badges/google-play-${lang}.png`} alt="" height={64} style={{ margin: '-10px' }} /></a>;
+      const play = <a key="android" href={GOOGLE_PLAY} target="_blank" rel="noopener" aria-label={c.getApp.googlePlay}><img decoding="async" src={`/badges/google-play-${lang}.png`} alt="" height={64} style={{ margin: '-10px' }} /></a>;
       openSheet(c.getApp.title, <div className="get-app"><p className="t-body">{c.getApp.body}</p>
         <div className="get-app-badges">{android && !ios ? [play, apple] : [apple, play]}</div></div>,
         <Btn label={c.getApp.notNow} kind="secondary" wide act="get-app-close" onClick={() => closeTop()} />);

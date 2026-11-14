@@ -51,7 +51,7 @@ export function MarketTrending({ list }: { list: Trip[] }) {
   const top = [...list].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
   if (!top.length) return null;
   return <section className="card rail-card"><h2 className="t-head"><L n="flame" /> {fill(c.trending.market, { market: c.market.title })}</h2>
-    {top.map((t, n) => <div key={t.id} className="trend-row" data-item><span className="trend-n">{n + 1}</span><Link className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
+    {top.map((t, n) => <div key={t.id} className="trend-row" data-item><span className="trend-n">{n + 1}</span><Link className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img decoding="async" src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
       <span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span><span className="stats"><Verified on={t.agency.verified} /></span></span></Link></div>)}</section>;
 }
 /** Home's rail: two experiences and a way into the Marketplace. */
@@ -61,7 +61,7 @@ export function MarketCard() {
   const list = trips.slice(0, 2);
   if (!list.length) return null;
   return <section className="card rail-card"><h2 className="t-head"><L n="store" /> {c.trending.marketRail}</h2>
-    {list.map((t) => <Link key={t.id} className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
+    {list.map((t) => <Link key={t.id} className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img decoding="async" src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
       <span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span><Verified on={t.agency.verified} /></span></Link>)}
     <Link className="btn plain press" href={`${langPrefix(lang)}/marketplace/`}>{c.trending.seeAllExperiences} <L n="arrow-right" /></Link></section>;
 }
@@ -76,7 +76,7 @@ export function MarketView() {
     <div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><h1 className="t-display grow">{c.market.title}</h1></div>
     <div className="page-pad" style={{ marginBottom: 12 }}><Seg opts={[['0', c.market.all], ['1', c.market.verifiedOnly]]} val={only ? '1' : '0'} onPick={(v) => go(`${langPrefix(lang)}/marketplace/${v === '1' ? '?v=1' : ''}`)} /></div>
     {isLoading ? null : list.length ? list.map((t) => { const kind = kindOf(t.agency.kind); return <Link key={t.id} className="card post press" data-item href={`${langPrefix(lang)}/marketplace/${t.id}/`} style={{ display: 'block' }}>
-      <div className="media" style={{ aspectRatio: '16/11' }}><img src={coverSrc(t)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
+      <div className="media" style={{ aspectRatio: '16/11' }}><img decoding="async" src={coverSrc(t)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
       <div style={{ padding: '12px 14px 14px' }}><div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}><Verified on={t.agency.verified} /><span className="t-small" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><L n={kindIcon[kind]} />{c.market.hostKinds[kind]}</span><HostTrips id={t.agency.id} /><span className="grow" /></div>
         <b className="t-head" style={{ display: 'block' }}>{tripTitle(t, lang)}</b><p className="bits" style={{ marginTop: 4 }}><Bit icon="calendar">{tripDate(t, lang)}</Bit><Bit icon="clock">{length(t)}</Bit><Bit icon="users">{fill(c.market.seatsLeft, { n: t.seatsLeft })}</Bit></p><Price t={t} /></div></Link>; })
       : <div className="group empty"><L n="store" /><p className="t-head">{c.market.empty}</p><p className="t-small">{c.market.emptyBody}</p></div>}
@@ -112,7 +112,7 @@ export function ListingBody({ id }: { id: string }) {
   const includes = (t.includes || '').split(/\n|,/).map((x) => x.trim()).filter(Boolean);
   const rate = host?.metrics.rating ?? null;
   return <>
-    <div className="place-media"><img src={coverSrc(t)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
+    <div className="place-media"><img decoding="async" src={coverSrc(t)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
     <div className="place-head"><h1 className="t-display">{tripTitle(t, lang)}</h1><p className="bits"><Bit icon="calendar">{tripDate(t, lang)}</Bit><Bit icon="clock">{length(t)}</Bit><Bit icon="users">{fill(c.market.seatsLeft, { n: t.seatsLeft })}</Bit></p><Price t={t} big /></div>
     <div className="place-tools"><IconBtn icon="saved" label={c.common.save} cls={on ? 'on' : ''} act="save" pressed={on} onClick={like} /><IconBtn icon="share" label={c.common.share} act="share" onClick={() => share({ href: `${langPrefix(lang)}/marketplace/${t.id}/` })} /><span className="grow" /><IconBtn icon="more" label={c.common.more} cls="filled" act="listing-more" onClick={() => report(t)} /></div>
     <Group title={c.market.host}><Link className="row press host-link" href={`${langPrefix(lang)}/host/${t.agency.id}/`} style={{ alignItems: 'flex-start', gap: 12 }}><span className="host-av sm">{t.agency.name[0]}</span><span className="grow"><b>{t.agency.name}</b>
@@ -137,7 +137,7 @@ export function HostBody({ id }: { id: string }) {
     <div className="host-head page-pad"><span className="host-av">{h.name[0]}</span><div><h1 className="t-display">{h.name}</h1>
       <p className="bits"><Bit icon={kindIcon[kind]}>{c.market.hostKinds[kind]}</Bit><Bit icon="route">{h.metrics.trips === 1 ? c.market.oneTrip : fill(c.market.trips, { n: h.metrics.trips })}</Bit>{since ? <Bit icon="calendar">{fill(c.market.since, { brand: c.brand, year: new Date(since).getFullYear() })}</Bit> : null}</p>
       <p className="host-tags">{h.verified ? <Tag label={kind === 'office' ? c.market.idLicence : c.market.verified} tone="good" icon="shield-check" /> : <Tag label={c.market.notVerified} tone="warn" icon="shield-alert" />}{rate ? <span className="host-rate"><Stars r={rate} /><b>{rate.toFixed(1)}</b></span> : null}</p></div></div>
-    {h.trips.length ? <Group title={fill(c.market.tripsBy, { name: h.name.split(',')[0] })}><div className="host-trips">{h.trips.map((t) => <Link key={t.id} className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b><span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span></span></Link>)}</div></Group> : null}
+    {h.trips.length ? <Group title={fill(c.market.tripsBy, { name: h.name.split(',')[0] })}><div className="host-trips">{h.trips.map((t) => <Link key={t.id} className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img decoding="async" src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b><span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span></span></Link>)}</div></Group> : null}
     <Reviews list={reviews} title={c.market.reviewsOfHost} />
   </div>;
 }

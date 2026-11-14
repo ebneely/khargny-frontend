@@ -76,7 +76,7 @@ export function ProofPicker({ kind }: { kind: 'corrections' | 'reports' }) {
         const up = !x.token && !x.error, retry = !!x.error && proofRetryable(x.error);
         return <div key={x.id} className={`proof-item${x.error ? ' err' : ''}`}>
           <button type="button" className="proof-thumb press" disabled={!retry} aria-label={retry ? c.proof.retry : x.file.name} onClick={() => { haptic(); send(x); }}>
-            {x.video ? <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" /> : <img src={x.url} alt="" onError={(ev) => { ev.currentTarget.style.visibility = 'hidden'; }} />}
+            {x.video ? <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" /> : <img decoding="async" src={x.url} alt="" onError={(ev) => { ev.currentTarget.style.visibility = 'hidden'; }} />}
             {x.video ? <span className="proof-kind"><L n="clapperboard" /></span> : null}
             {up ? <span className="proof-bar" role="progressbar" aria-label={c.proof.uploading} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(x.progress * 100)}><i style={{ transform: `scaleX(${x.progress})` }} /></span> : null}
             {retry ? <span className="proof-retry"><L n="rotate-ccw" /></span> : null}

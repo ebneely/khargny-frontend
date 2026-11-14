@@ -18,7 +18,7 @@ import type { Tab } from '@/components/k/KProvider';
 // The pages not rebuilt yet keep the (site) root layout with the old stylesheet; moving between the two is a full load.
 export { generateMetadata } from '@/lib/root-metadata';
 
-const cairo = Cairo({ weight: ['600', '700', '800', '900'], subsets: ['arabic', 'latin'], display: 'swap' });
+const cairo = Cairo({ subsets: ['arabic', 'latin'], display: 'swap' }) // the variable font: one file per script, not one per weight;
 const plex = IBM_Plex_Sans_Arabic({ weight: ['400', '600', '700'], subsets: ['arabic', 'latin'], display: 'swap' });
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, maximumScale: 1, viewportFit: 'cover', themeColor: '#FBF6EE' };

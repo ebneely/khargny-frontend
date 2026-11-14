@@ -87,7 +87,7 @@ function CorrForm({ p }: { p?: KPlace }) {
     other: <label className="corr-field"><span>{f.other.label}</span><textarea name="text" rows={3} placeholder={f.other.placeholder} /></label>,
   })[k];
   return <>
-    {p ? <div className="group corr-place" hidden={done}><img src={p.photos[0]?.s} alt="" /><span className="grow"><b dir="auto">{p.name}</b><Meta p={p} /></span></div> : null}
+    {p ? <div className="group corr-place" hidden={done}><img decoding="async" src={p.photos[0]?.s} alt="" /><span className="grow"><b dir="auto">{p.name}</b><Meta p={p} /></span></div> : null}
     <section className="group" data-corr={p ? p.slug : 'app'} hidden={done}><h2 className="group-title"><L n="circle-help" /> {p ? c.correction.whatsWrong : c.report.whatHappened}</h2>
       <div className="corr-list" role="radiogroup">{list.map(([k, l, i]) => <button key={k} className="option press" role="radio" aria-checked={pick === k} data-act="corr-pick" data-v={k} onClick={() => { haptic(); setPick(k); }}><L n={i} /><span className="grow">{l}</span><Ic n="check" cls="check" /></button>)}</div></section>
     <section className="group corr-detail" hidden={!pick || done} ref={det}>{!pick ? null : p ? <><h2 className="group-title"><L n="pencil-line" /> {c.correction.rightAnswer}</h2>{field(pick as Kind)}

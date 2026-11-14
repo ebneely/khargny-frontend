@@ -158,7 +158,7 @@ function Story({ p, position, mark }: { p: KPlace; position: number; mark: FeedM
   useShowing(ref, 'stories', p.id, position);
   return (
     <Link ref={ref} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
-      <img src={p.photos[0]?.s} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img decoding="async" src={p.photos[0]?.s} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <b dir="auto" style={{ position: 'absolute', left: 8, right: 8, bottom: 7, color: '#fff', fontSize: 12, fontWeight: 750, lineHeight: 1.2, textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{p.name}</b>
     </Link>
   );
@@ -275,10 +275,10 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
   const cats = [...data.categories].sort((a, b) => (totalByCategory[b.id] ?? -1) - (totalByCategory[a.id] ?? -1));
   const photo = (cat: HomeData['categories'][number]) => pool.find((p) => p.cat === cat.en)?.photos[0]?.m || coverByCategory[cat.id] || photoFor([cat.en], 0);
   const allCats = () => {
-    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{cats.map((cat) => <Link key={cat.id} className="tm-tile press" href={`${langPrefix(lang)}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photo(cat)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
+    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{cats.map((cat) => <Link key={cat.id} className="tm-tile press" href={`${langPrefix(lang)}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img decoding="async" src={photo(cat)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
     requestAnimationFrame(() => document.querySelectorAll('.sheet .tm-sheet .tm-tile').forEach((tl, n) => animate(tl, { opacity: [0, 1], transform: ['translateY(14px) scale(.96)', 'translateY(0) scale(1)'] }, { ...spring(0, 0.45), delay: 0.04 + n * 0.03 })));
   };
-  const tile = (x: Intent, n: number) => { const t = total(x); return <Link key={x.key} className="tm-pick press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><span className="tm-pick-img"><img src={photoFor(x.cats, n)} alt="" loading="lazy" /></span>
+  const tile = (x: Intent, n: number) => { const t = total(x); return <Link key={x.key} className="tm-pick press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><span className="tm-pick-img"><img decoding="async" src={photoFor(x.cats, n)} alt="" loading="lazy" /></span>
     <span className="tm-pick-name"><L n={x.icon} /><b>{c.intents[x.key]}</b></span>{t != null ? <span className="tm-pick-n">{fill(c.common.places, { n: t })}</span> : null}</Link>; };
   return (
     <section className={`tm tm3 ${flipped ? 'flipped' : ''}`} aria-label={c.home.takeMe.aria} ref={card}>
@@ -286,10 +286,10 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
         <div className="tm-head"><div><b className="tm-q">{lang === 'ar' ? 'خرجني فين؟' : c.home.takeMe.question}</b><span className="tm-time" aria-label={`${c.home.takeMe.timeNow} ${t12(now, lang)}`} suppressHydrationWarning><L n="clock" />{t12(now, lang)}<span className="tm-nudge">{c.home.takeMe.cantPick}</span></span></div>
           <svg className="tm-route" aria-hidden="true"><path className="tm-route-base" /><path className="tm-route-line" /><circle className="tm-route-end" r="3" /></svg>
           <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} onClick={shuffle}><L n="dices" /><span>{c.home.takeMe.surprise}</span></button></div>
-        <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
+        <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img decoding="async" key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
           <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{leadCity ? <span className="tm-sub">{open ? <><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: leadName })}</> : <><L n="map-pin" />{leadName}</>}</span> : null}</span>
           <span className="tm-go"><L n="arrow-right" /></span></Link>
-        <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img">{cats.slice(0, 4).map((cat) => <img key={cat.id} src={photo(cat)} alt="" loading="lazy" />)}</span><span className="tm-pick-name"><L n="layout-grid" /><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>
+        <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img">{cats.slice(0, 4).map((cat) => <img decoding="async" key={cat.id} src={photo(cat)} alt="" loading="lazy" />)}</span><span className="tm-pick-name"><L n="layout-grid" /><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>
       </div><div className="tm-back" aria-live="polite">{deal ? <DealCard p={deal} onShuffle={shuffle} onBack={unflip} /> : null}</div></div>
     </section>
   );
@@ -303,7 +303,7 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
   const ref = useRef<HTMLDivElement>(null);
   useShowing(ref, 'takeme', p.id, 1);
   // the photo and the name open the place like every other card; the buttons keep their own actions
-  return <div className="tm-deal" ref={ref}><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img src={p.photos[0]?.m} alt="" /></Link><span className="tm-fade" />
+  return <div className="tm-deal" ref={ref}><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img decoding="async" src={p.photos[0]?.m} alt="" /></Link><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
     <div className="tm-deal-text"><Link className="tm-deal-name press" href={href}><b dir="auto">{p.name}</b></Link><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;
@@ -350,7 +350,7 @@ function TrendRow({ p, i, win, href }: { p: KPlace; i: number; win: Win; href: s
   const s = usePlaceStats(p.id);
   const w = win === 'live' ? s?.live : win === '24h' ? s?.d1 : win === '7d' ? s?.d7 : s?.d30;
   const n = w?.views, g = w?.viewsPrev ? w.views / w.viewsPrev - 1 : 0; // nothing before: no growth figure (proto)
-  return <div className="trend-row" data-item><span className="trend-n">{i + 1}</span><Link className="trend-main press" href={href}><img src={p.photos[0]?.s} alt="" /><span className="grow"><b dir="auto">{p.name}</b>
+  return <div className="trend-row" data-item><span className="trend-n">{i + 1}</span><Link className="trend-main press" href={href}><img decoding="async" src={p.photos[0]?.s} alt="" /><span className="grow"><b dir="auto">{p.name}</b>
     <span className="trend-stat">{n == null ? null : win === 'live' ? <span className="live-pill"><i className="live" />{fill(c.trending.hereNow, { n })}</span> : <><span><Ic n="eye" />{k(n)}</span>
       {g > 0.02 ? <span className="up"><L n="trending-up" />{Math.round(g * 100)}%</span> : g < -0.02 ? <span className="down"><L n="trending-down" />{Math.round(-g * 100)}%</span> : null}</>}</span></span></Link><Go5 p={p} small /></div>;
 }

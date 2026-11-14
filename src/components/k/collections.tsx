@@ -69,7 +69,7 @@ export function useSaveSection() {
 
 export function Cover({ col }: { col: ColItem }) {
   const ph = col.places.slice(0, 4);
-  return <span className={`col-cover n${Math.max(1, ph.length)}`}>{ph.length ? ph.map((p) => <img key={p.id} src={p.photos[0]?.s} alt="" loading="lazy" />) : <span className="col-empty"><L n="images" /></span>}</span>;
+  return <span className={`col-cover n${Math.max(1, ph.length)}`}>{ph.length ? ph.map((p) => <img decoding="async" key={p.id} src={p.photos[0]?.s} alt="" loading="lazy" />) : <span className="col-empty"><L n="images" /></span>}</span>;
 }
 const GV = ({ n, title }: { n: number; title: string }) => <span className="gv" title={title}><Ic n="eye" />{k(n)}</span>;
 export function ColMeta({ col, views }: { col: ColItem; views?: number }) {

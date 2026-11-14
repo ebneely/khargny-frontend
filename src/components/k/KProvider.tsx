@@ -142,6 +142,20 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     return () => { document.removeEventListener('click', onClick, true); removeEventListener('popstate', onPop); };
   }, [go, closeLanded]);
 
+  // a choice made in a picker sheet that is a link (a category, a city, a shortcut) closes the sheet at once with its exit
+  // animation while the page behind updates; a place opening as a sheet on a phone stays a sheet
+  useEffect(() => {
+    const onPick = (e: MouseEvent) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element).closest?.('.sheet a[href]') as HTMLAnchorElement | null; if (!a || a.target) return;
+      const url = new URL(a.href, location.href); if (url.origin !== location.origin) return;
+      if (!desk() && isSheetPath(url.pathname)) return;
+      closeAll();
+    };
+    document.addEventListener('click', onPick);
+    return () => document.removeEventListener('click', onPick);
+  }, [closeAll]);
+
   // a phone landing on a sheet address hid the server page (layout script); the sheet is up over Home by now
   useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('landing'))); }, []);
 

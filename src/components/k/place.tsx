@@ -151,7 +151,7 @@ export function Carousel({ photos }: { photos: KPlace['photos'] }) {
   return <>
     <div className="carousel" data-carousel ref={ref} onScroll={(e) => setAt(Math.round(Math.abs(e.currentTarget.scrollLeft) / e.currentTarget.clientWidth))}>
       
-      {photos.map((ph, i) => <img key={ph.m + i} src={ph.m} alt="" draggable={false} loading={i ? 'lazy' : 'eager'} />)}
+      {photos.map((ph, i) => <img decoding="async" key={ph.m + i} src={ph.m} alt="" draggable={false} loading={i ? 'lazy' : 'eager'} />)}
     </div>
     {photos.length > 1 ? <div className="dots"><button className="dot-nav press" data-act="car-step" aria-label={c.common.previousPhoto} onClick={(e) => step(e, -1)}><L n="chevron-left" /></button>{photos.map((_, i) => <i key={i} className={i === at ? 'on' : ''} />)}<button className="dot-nav press" data-act="car-step" aria-label={c.common.nextPhoto} onClick={(e) => step(e, 1)}><L n="chevron-right" /></button></div> : null}
   </>;
@@ -183,7 +183,7 @@ function useDirections() {
     // straight to directions to the place; the name and address only when it has no coordinates
     const links = [ll ? `https://www.google.com/maps/dir/?api=1&destination=${ll}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`, ll ? `https://maps.apple.com/?daddr=${ll}` : `https://maps.apple.com/?daddr=${q}`];
     const icons = ['/maps/google-maps.svg', '/maps/apple-maps.svg'];
-    openSheet(c.go5.mapsSheet, <>{p.address || p.area ? <p className="t-small" style={{ padding: '0 4px 8px' }}>{p.address || p.area}</p> : null}{c.go5.maps.map((n, i) => <button key={n} className="option press map-opt" data-act="go-maps" data-v={n} onClick={() => { closeTop(); haptic(); toast(fill(c.common.opening, { name: n })); window.open(links[i], '_blank', 'noopener'); }}><img className="map-ic" src={icons[i]} alt="" width={28} height={28} /><span className="grow">{n}</span></button>)}</>);
+    openSheet(c.go5.mapsSheet, <>{p.address || p.area ? <p className="t-small" style={{ padding: '0 4px 8px' }}>{p.address || p.area}</p> : null}{c.go5.maps.map((n, i) => <button key={n} className="option press map-opt" data-act="go-maps" data-v={n} onClick={() => { closeTop(); haptic(); toast(fill(c.common.opening, { name: n })); window.open(links[i], '_blank', 'noopener'); }}><img decoding="async" className="map-ic" src={icons[i]} alt="" width={28} height={28} /><span className="grow">{n}</span></button>)}</>);
   };
 }
 
@@ -258,7 +258,7 @@ export function Tile({ p, extra, surface, position, mark, term }: { p: KPlace; e
   return (
     <Link ref={ref} className="card tile press" data-item href={placeHref(p, lang)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
       
-      <span className="tile-media"><img src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
+      <span className="tile-media"><img decoding="async" src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
       <div className="tile-body"><b dir="auto">{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
     </Link>
   );
@@ -334,7 +334,7 @@ export function Post({ p, surface, position, mark }: { p: KPlace } & CardTrack) 
   return (
     <article ref={ref} className="card post press" data-item data-open={p.slug} data-id={p.id} onClick={onClick}>
       
-      <header className="post-head"><img className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b dir="auto">{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
+      <header className="post-head"><img decoding="async" className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b dir="auto">{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
       <div className="media"><Carousel photos={p.photos.slice(0, 5)} /></div>
       <div className="post-foot">{p.badges.length ? <p className="post-meta"><BadgeTags p={p} /></p> : null}
         <div className="post-actions"><Actions p={p} end={<Go5 p={p} />} /></div></div>

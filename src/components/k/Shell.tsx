@@ -136,7 +136,7 @@ function Sidebar({ cur }: { cur: Tab }) {
   return (
     <aside className="sidebar"><nav data-slider="nav" ref={nav}><span className="pill" /><NavItems cur={cur} /></nav>
       <div className="side-section"><div className="t-micro">{c.sidebar.shortcuts}</div>{INTENTS.slice(0, 5).map((x) => <Link key={x.key} className="side-link press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><L n={x.icon} />{c.intents[x.key]}</Link>)}</div>
-      {cols.length ? <div className="side-section"><div className="t-micro">{c.sidebar.collections}</div>{cols.map((col) => <Link key={col.id} className="side-link press" href={`${langPrefix(lang)}/c/${col.slug}/`}>{col.places[0] ? <img src={col.places[0].photos[0]?.s} alt="" /> : <L n="library" />}{col.title}</Link>)}</div> : null}
+      {cols.length ? <div className="side-section"><div className="t-micro">{c.sidebar.collections}</div>{cols.map((col) => <Link key={col.id} className="side-link press" href={`${langPrefix(lang)}/c/${col.slug}/`}>{col.places[0] ? <img decoding="async" src={col.places[0].photos[0]?.s} alt="" /> : <L n="library" />}{col.title}</Link>)}</div> : null}
       <div className="side-section side-quiet"><FootLinks cls="side-link press" /></div>
     </aside>
   );
@@ -187,10 +187,9 @@ export function TabNav() {
   useEffect(() => { const read = () => setDark(document.documentElement.dataset.theme === 'dark'); read(); const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); return () => mo.disconnect(); }, []);
   const last = useRef(tab);
   useLayoutEffect(() => { if (plain.current) slidePill(plain.current, last.current !== tab, last.current !== tab ? plain.current.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === last.current)] : null); last.current = tab; }, [tab]);
-  useGlassDrag();
-  // the selection never grows into a lens (owner 2026-11-14): the orange pill itself is what moves
-  const glassStyle = { '--lg-lens-grow-x': '0px', '--lg-lens-grow-y': '0px', '--lg-glass-bend': 1, '--lg-glass-dispersion': 0.4, '--lg-blur': '10px', '--lg-rim-shine': 0.13,
-    '--lg-glass': dark ? 'rgba(34,27,22,.84)' : 'rgba(251,246,238,.84)', '--lg-glass-active': dark ? 'rgba(46,37,30,.92)' : 'rgba(246,238,228,.92)', '--lg-selection': dark ? 'rgba(232,116,58,.22)' : 'rgba(217,98,42,.16)', '--lg-lens': dark ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)' } as React.CSSProperties;
+  // owner's glisse settings (2026-11-14): clear bending glass, no frost, strong dispersion and rim
+  const glassStyle = { background: 'none', '--lg-glass-bend': 1, '--lg-glass-dispersion': 2, '--lg-blur': '0px', '--lg-rim-shine': 0.7,
+    '--lg-glass': 'transparent', '--lg-glass-active': dark ? 'rgba(46,37,30,.92)' : 'rgba(246,238,228,.92)', '--lg-selection': dark ? 'rgba(232,116,58,.22)' : 'rgba(217,98,42,.16)', '--lg-lens': dark ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)' } as React.CSSProperties;
   return <>
     <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
     {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
@@ -279,7 +278,7 @@ function SearchPanel({ q, onCancel, onGo }: { q: string; onCancel: () => void; o
     <div className="sg-chips">{chips.map(([l, h, i]) => <Link key={l} className="chip press" href={h} data-act="sg-go" onClick={() => onGo(l)}><L n={i} />{l}</Link>)}<button className="chip press" data-act="shuffle-search" onClick={() => { onGo(''); go(`${langPrefix(lang)}/`); setTimeout(() => document.querySelector<HTMLElement>('[data-act="shuffle"]')?.click(), 450); }}><L n="dices" />{c.search.zero.surprise}</button></div>
     {recent.length ? <><div className="sg-sec"><L n="history" /> {c.search.zero.recent}</div>{recent.map((r) => <div key={r} className="sg-row"><Link className="grow press" href={`${langPrefix(lang)}/explorer/?q=${encodeURIComponent(r)}`} data-act="sg-go" onClick={() => onGo(r)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}><L n="clock" /><b>{r}</b></Link><button className="icon-btn press" aria-label={c.search.remove} data-act="sg-forget" onClick={(e) => { const row = e.currentTarget.closest('.sg-row') as HTMLElement; localStorage.setItem(RECENT_KEY, JSON.stringify(getL<string>(RECENT_KEY).filter((x) => x !== r))); animate(row, { opacity: 0, transform: 'translateX(-12px)' }, spring(0, 0.25)).finished.then(() => setRecent((l) => l.filter((x) => x !== r))); }}><L n="x" /></button></div>)}</> : null}
     {trending.length ? <><div className="sg-sec"><L n="flame" /> {fill(c.search.zero.trendingIn, { place: where })}</div>{trending.map((x, n) => <Link key={x.term} className="sg-row press" href={`${langPrefix(lang)}/explorer/?q=${encodeURIComponent(x.term)}`} data-act="sg-go" onClick={() => onGo(x.term)}><span className="sg-rank">{n + 1}</span><b className="grow" dir="auto">{x.term}</b><em className="sg-n">{fill(x.searches === 1 ? c.search.zero.oneSearch : c.search.zero.searches, { n: x.searches })}</em></Link>)}</> : null}
-    {opened.length ? <><div className="sg-sec"><L n="eye" /> {c.search.zero.youOpened}</div><div className="sg-opened">{opened.map((p) => <Link key={p.slug} className="press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo('')}><img src={p.s} alt="" /><b dir="auto">{p.name}</b></Link>)}</div></> : null}
+    {opened.length ? <><div className="sg-sec"><L n="eye" /> {c.search.zero.youOpened}</div><div className="sg-opened">{opened.map((p) => <Link key={p.slug} className="press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo('')}><img decoding="async" src={p.s} alt="" /><b dir="auto">{p.name}</b></Link>)}</div></> : null}
   </>;
   return createPortal(<>
     <div id="search-scrim" style={{ top }} onPointerDown={onCancel} />
@@ -308,7 +307,7 @@ function SearchRow({ p, q, position, onGo, hl }: { p: KPlace; q: string; positio
   const { lang } = useK();
   const ref = useRef<HTMLAnchorElement>(null);
   useShowing(ref, 'search', p.id, position);
-  return <Link ref={ref} className="sg-row press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => { trackSearchTap(q, p.id, position); onGo(q); }}><span className="tile-media sg-thumb"><img src={p.photos[0]?.s} alt="" /></span><span className="grow"><b dir="auto">{hl(p.name)}</b><Meta p={p} /></span><Stats p={p} /></Link>;
+  return <Link ref={ref} className="sg-row press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => { trackSearchTap(q, p.id, position); onGo(q); }}><span className="tile-media sg-thumb"><img decoding="async" src={p.photos[0]?.s} alt="" /></span><span className="grow"><b dir="auto">{hl(p.name)}</b><Meta p={p} /></span><Stats p={p} /></Link>;
 }
 
 function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {

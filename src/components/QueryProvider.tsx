@@ -11,7 +11,7 @@ import { retryQuery } from '@5argny/core/rules';
 export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
   const [queryClient] = useState(() => {
     // one quiet retry for the network and the server, none for a 4xx that will not change (src/5argny/rules/loading.ts)
-    const client = new QueryClient({ defaultOptions: { queries: { retry: retryQuery } } });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: retryQuery, staleTime: 30_000 } } });
     prepareBrowseQueries(client);
     return client;
   });

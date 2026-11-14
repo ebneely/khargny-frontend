@@ -86,6 +86,8 @@ const nextConfig: NextConfig = {
   // for the place to be fetched for its title. This was /.*/, which made every visitor wait.
   htmlLimitedBots: CRAWLERS,
   poweredByHeader: false,
+  // a page opened a moment ago is shown at once (its data refreshes quietly): coming back to a tab never waits for the server again
+  experimental: { staleTimes: { dynamic: 30, static: 180 } },
   async rewrites() {
     return {
       beforeFiles: [],
