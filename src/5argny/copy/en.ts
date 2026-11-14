@@ -116,7 +116,7 @@ export const en = {
   settings: {
     title: 'Settings', preferences: 'Preferences', appearance: 'Appearance', light: 'Light', dark: 'Dark', auto: 'Auto', language: 'Language', english: 'English', arabic: 'العربية',
     notify: { near: 'New places near me', saved: 'Updates from my saved places', weekend: 'Weekend picks on Thursday' },
-    help: 'Help', report: 'Report a problem', privacy: 'Privacy policy',
+    help: 'Help', report: 'Report a problem', privacy: 'Privacy policy', privacy: 'Privacy policy',
   },
   report: {
     title: 'Report a problem', whatHappened: 'What happened?',
