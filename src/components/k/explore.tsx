@@ -34,7 +34,7 @@ type Page = { items: unknown[]; total: number; next: Cursors };
  * search route by skip for ?q=, or the places that earned a badge. The first page's total is the count line, and it also
  * answers the Filters sheet's "Show N" for the same filters (no second request).
  */
-function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near: string | null, byDistance: boolean) {
+function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near: string | null, byDistance: boolean, popular: boolean) {
   const { lang } = useK();
   const qc = useQueryClient();
   const L = useListQuery(f);
@@ -42,12 +42,14 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
   const { cityId } = useLocIds();
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
+  // Popular is the dashboard's hype order (owner 2026-11-14): the API orders the list and each card carries only its position
+  const apiSort = byDistance ? 'distance' : popular ? 'hype' : undefined;
   const list = useInfiniteQuery({
-    queryKey: ['explore', ...L.key, near ?? '', byDistance], enabled: !q && !badge && L.ready && !L.none, staleTime: 60_000,
+    queryKey: ['explore', ...L.key, near ?? '', apiSort ?? ''], enabled: !q && !badge && L.ready && !L.none, staleTime: 60_000,
     initialPageParam: Object.fromEntries(L.catIds.map((id) => [id ?? 'all', ''])) as Cursors,
     queryFn: async ({ pageParam }): Promise<Page> => {
       const open = Object.entries(pageParam).filter(([, cur]) => cur !== null);
-      const answers = await Promise.all(open.map(async ([id, cur]) => [id, await apiRequest<{ meta?: { nextCursor?: string | null } }>('GET', '/v1/places', { params: { ...L.params, categoryId: id === 'all' ? undefined : id, near: near ?? undefined, sort: byDistance ? 'distance' : undefined, cursor: cur || undefined, limit: PAGE } })] as const));
+      const answers = await Promise.all(open.map(async ([id, cur]) => [id, await apiRequest<{ meta?: { nextCursor?: string | null } }>('GET', '/v1/places', { params: { ...L.params, categoryId: id === 'all' ? undefined : id, near: near ?? undefined, sort: apiSort, cursor: cur || undefined, limit: PAGE } })] as const));
       const next: Cursors = { ...pageParam };
       for (const [id, raw] of answers) next[id] = raw.meta?.nextCursor || null;
       const pages = answers.map(([, raw]) => normalizePlaceList(raw));
@@ -103,7 +105,7 @@ export function ExploreView() {
   const sort = (['near', 'open'].includes(sp.get('sort') || '') ? sp.get('sort') : 'popular') as Sort;
   const where = usePlaceName();
   const pos = usePosition();
-  const res0 = useResults(f, q, badge, nearParam(pos), sort === 'near' && !!pos); // list cards carry their week of hours, so Open first works on them
+  const res0 = useResults(f, q, badge, nearParam(pos), sort === 'near' && !!pos, sort === 'popular'); // list cards carry their week of hours, so Open first works on them
   // warm what the Filters sheet shows (category counts, price bands, amenities), so it opens complete
   useCounts(''); usePriceBands(); useAmenities();
   // "Nearest" is the person's own choice, so it may ask for the location then; the list then comes nearest first from the API
@@ -111,7 +113,8 @@ export function ExploreView() {
   const here = pos;
   // shortcut: search results (q) carry no distanceKm (the search route takes no near=), so Nearest orders them by the cards' own coordinates
   const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
-  const score = { popular: (p: KPlace) => p.d30?.views ?? 0, near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
+  // hype position first (merged category lists keep one order); search results carry no position and keep their 30-day views
+  const score = { popular: (p: KPlace) => (p.popularRank != null ? 1e9 - p.popularRank : p.d30?.views ?? 0), near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
   // the list route filters by When itself; search does not, so its pages are filtered here (and the count is what is listed)
   const fit = (pg: KPlace[]) => (q && f.when ? pg.filter((p) => matchesWhen(p.hours, f.when as When, now.date)) : pg);
   // shortcut: each page is ordered on its own and appended, so loading more never reshuffles what is on screen

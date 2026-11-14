@@ -21,6 +21,8 @@ export type KPlace = {
   d30: { views: number; saves: number; shares: number } | null;
   /** km from the person, only on cards fetched with near= (GET /v1/places?near=lat,lng); never guessed */
   distanceKm: number | null;
+  /** position in the dashboard's hype order, only on cards fetched with sort=hype (1 = most popular); never shown, never the score */
+  popularRank: number | null;
 };
 export type KCatalog = { cities: CityWithAreas[]; categories: Category[] };
 
@@ -61,6 +63,7 @@ export function toK(raw: Raw, catalog: KCatalog, lang: Lang): KPlace {
     badges: (raw.badges as KBadge[]) ?? [], hours, amen, photos: photosOf(raw),
     promoted: raw.sponsored === true, updatedAt: str(raw.updatedAt) || str(raw.createdAt),
     distanceKm: typeof raw.distanceKm === 'number' && Number.isFinite(raw.distanceKm) ? raw.distanceKm : null,
+    popularRank: typeof raw.popularRank === 'number' && Number.isFinite(raw.popularRank) ? raw.popularRank : null,
     d30: raw.d30 && typeof raw.d30 === 'object' ? { views: num((raw.d30 as Record<string, unknown>).views), saves: num((raw.d30 as Record<string, unknown>).saves), shares: num((raw.d30 as Record<string, unknown>).shares) } : null,
   };
 }
