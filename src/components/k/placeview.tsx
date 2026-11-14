@@ -91,13 +91,13 @@ function Amenities({ p, all }: { p: KPlace; all?: boolean }) {
 }
 
 function Similar({ p }: { p: KPlace }) {
-  const { c, lang } = useK();
+  const { c, lang, setLoc } = useK();
   const { data = [] } = useSimilarPlaces(p.id);
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
   const list = data.filter((x) => x.id !== p.id).slice(0, 8).map((x) => toK(x as never, { cities, categories }, lang));
   if (!list.length) return null;
-  return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`/${lang}/explorer/${p.citySlug}/`}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x) => <Tile key={x.id} p={x} />)}</div></section>;
+  return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`/${lang}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x) => <Tile key={x.id} p={x} />)}</div></section>;
 }
 
 /** The place itself: body (both layouts), foot (5argny! and Call), side (desktop column). */

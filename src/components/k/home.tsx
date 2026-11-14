@@ -70,8 +70,8 @@ function useBlend(pool: KPlace[], city: string | null, area: string | null) {
     const affinity: Record<string, number> = {};
     for (const p of pool) affinity[p.cat] = (affinity[p.cat] ?? 0) + (likeStore.liked(p.id) ? 3 : 0) + (saveStore.saved(p.id) ? 5 : 0);
     const byId = new Map(pool.map((p) => [p.id, p]));
-    // shortcut: popularity uses the all-time counters the list carries; switch to 30-day windows when the list serves them
-    const bp: BlendPlace[] = pool.map((p) => ({ id: p.id, cat: p.cat, city: p.citySlug, area: p.region, promoted: p.promoted, views30: p.views, likes30: p.likes, go30: p.dir,
+    // popularity is the card's 30-day views; the tap rate reads loves and 5argny taps, which are all-time by design
+    const bp: BlendPlace[] = pool.map((p) => ({ id: p.id, cat: p.cat, city: p.citySlug, area: p.region, promoted: p.promoted, views30: p.d30?.views ?? 0, likes30: p.likes, go30: p.dir,
       photos: p.photos.length, hasHours: p.hours.length > 0, amenities: p.amen.length, badges: p.badges.length,
       freshness: p.updatedAt ? Math.max(0, 1 - (Date.now() - Date.parse(p.updatedAt)) / (90 * DAY)) : 0 }));
     const ctx = { affinity, city, area, seen: adSeen, shownToday: adShown };
@@ -88,16 +88,15 @@ export function HomeView({ data }: { data: HomeData }) {
   const here = useHere(data);
   const pool = here.pool;
   const { stories, social } = useBlend(pool, here.city, here.areaKey);
-  const near = pool.slice(10, 17);
   return (
     <Shell cur="home" right={<><TrendCard list={data.trending} /><MarketCard /></>}>
       <Stories list={stories} />
       <TakeMe data={{ ...data, openByCategory: here.openByCategory, totalByCategory: here.totalByCategory }} pool={pool} />
-      <NearYou list={near.length ? near : pool.slice(0, 7)} />
+      {/* shortcut: "Near you" stays hidden until the person's location is known (no prompt on load); then nearest first with km */}
       <Earned pool={pool} />
       <TeamCollections list={data.collections} />
       <h1 className="t-display page-pad social-h" style={{ margin: '6px 0 10px' }}>{withBrand(c.home.social)}</h1>
-      {social.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 ? <div className="desk-only"><Rail title={c.home.nearYou} list={pool.slice(10, 16)} href={`/${lang}/explorer/`} /></div> : null}</Fragment>)}
+      {social.map((p, i) => <Fragment key={p.id}><Post p={p} /></Fragment>)}
     </Shell>
   );
 }
@@ -112,21 +111,6 @@ function Stories({ list }: { list: KPlace[] }) {
     </Link>))}</div>;
 }
 
-// shortcut: distances need the person's location (no prompt on load); the "x km away" bit stays hidden until there is one
-const Mini = ({ p }: { p: KPlace }) => <Tile p={p} />;
-
-function Rail({ title, list, href }: { title: string; list: KPlace[]; href: string }) {
-  const { c } = useK();
-  return <section className="rail"><div className="rail-head"><h2 className="t-head">{title}</h2><Link className="btn plain press" href={href}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((p) => <Mini key={p.id} p={p} />)}</div></section>;
-}
-
-// Phone: Near you is highlighted right under the intents
-function NearYou({ list }: { list: KPlace[] }) {
-  const { c, lang } = useK();
-  // shortcut: no "Nearest first" line until the person's location is known (no prompt on load); then sort by distance and show it
-  return <section className="near phone-only" aria-label={c.home.nearYou}><div className="rail-head"><h2 className="t-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}><Ic n="near" />{c.home.nearYou}</h2><Link className="btn plain press" href={`/${lang}/explorer/`}>{c.common.seeAll}</Link></div>
-    <div className="rail-row">{list.map((p) => <Mini key={p.id} p={p} />)}</div></section>;
-}
 
 function Earned({ pool }: { pool: KPlace[] }) {
   const { c, lang } = useK();
@@ -225,17 +209,30 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
 const WINDOWS = ['live', '24h', '7d', '30d'] as const;
 type Win = (typeof WINDOWS)[number];
 export function TrendCard({ list }: { list: KPlace[] }) {
-  const { c, lang } = useK();
+  const { c, lang, loc } = useK();
   const where = usePlaceName();
   const [win, setWin] = useState<Win>('24h');
+  // ranked for the chosen window in the chosen place: the trending route for 24 h and 7 days (Live reads the last 24 h),
+  // the cards' 30-day views for 30 days; the Egypt-wide list only while those load
+  const { city, areaKey } = useLocKeys();
+  const { data: cities = [] } = useCities();
+  const { data: categories = [] } = useCategories();
+  const api = win === '30d' ? null : win === '7d' ? '7d' : '24h';
+  const { data: ranked } = useQuery({
+    queryKey: ['places', 'trending', api ?? '', city?.slug ?? '', areaKey ?? ''], enabled: !!api, staleTime: 60_000,
+    queryFn: () => apiRequest<{ places: unknown[] }>('GET', '/v1/places/trending', { params: { window: api, limit: 5, ...(city ? { city: city.slug } : {}), ...(areaKey ? { area: areaKey } : {}) } }).then((r) => r.places).catch(() => null),
+  });
+  const here = list.filter((p) => (!loc.city || p.citySlug === loc.city) && (!loc.area || p.area === loc.area));
+  const base = here.length >= 3 ? here : list;
+  const shown = (api && ranked?.length ? ranked.map((r) => toK(r as never, { cities, categories }, lang)) : win === '30d' ? [...base].sort((a, b) => (b.d30?.views ?? 0) - (a.d30?.views ?? 0)) : base).filter((p) => p.photos.length);
   const [menu, setMenu] = useState(false);
   const rows = useRef<HTMLDivElement>(null);
   useEffect(() => { rows.current?.querySelectorAll('.trend-row').forEach((r, n) => animate(r, { opacity: [0, 1], transform: ['translateY(6px)', 'translateY(0)'] }, { ...spring(0, 0.35), delay: 0.03 * n })); }, [win]);
-  if (!list.length) return null;
+  if (!shown.length) return null;
   return <section className="card rail-card trend-card"><div className="trend-head"><h2 className="t-head"><L n="flame" /> {c.trending.title} <span className="t-small">{fill(c.trending.in, { place: where })}</span></h2>
     <span className="trend-pick"><button className="trend-win press" data-act="trend-win" aria-haspopup="true" aria-expanded={menu} onClick={() => setMenu((x) => !x)}>{win === 'live' ? <i className="live" /> : <L n="clock" />}{c.trending.windows[win]}<L n="chevron-down" /></button>
       {menu ? <TrendMenu win={win} onPick={(w) => { haptic(); setWin(w); setMenu(false); }} /> : null}</span></div>
-    <div ref={rows} style={{ display: 'contents' }}>{list.slice(0, 5).map((p, i) => <TrendRow key={p.id} p={p} i={i} win={win} href={placeHref(p, lang)} />)}</div></section>;
+    <div ref={rows} style={{ display: 'contents' }}>{shown.slice(0, 5).map((p, i) => <TrendRow key={p.id} p={p} i={i} win={win} href={placeHref(p, lang)} />)}</div></section>;
 }
 function TrendMenu({ win, onPick }: { win: Win; onPick: (w: Win) => void }) {
   const { c } = useK();

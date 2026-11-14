@@ -403,7 +403,8 @@ export function regionLabel(
   const stored = value.trim();
   if (!stored) return "";
   const found = findRegion(stored, city);
-  if (found) return locale === "ar" ? found.nameAr : found.value;
+  // Western digits everywhere (owner rule): ٦ أكتوبر reads 6 أكتوبر
+  if (found) return locale === "ar" ? found.nameAr.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660)) : found.value;
   const letters = stored.match(/\p{Letter}/gu) ?? [];
   const script = locale === "ar" ? /\p{Script=Arabic}/u : /\p{Script=Latin}/u;
   if (letters.length > 0 && letters.every((letter) => script.test(letter))) return stored;

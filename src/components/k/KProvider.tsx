@@ -18,7 +18,11 @@ type Ctx = {
   loc: { city: string | null; area: string | null }; setLoc: (l: { city: string | null; area: string | null }) => void;
   toast: (msg: string) => void;
   sheets: SheetEntry[]; openSheet: (label: string, body: ReactNode, foot?: ReactNode) => void; closeTop: (velocity?: number) => void;
-  removeSheet: (id: number) => void; dismissAll: () => void;
+  removeSheet: (id: number) => void;
+  /** close every sheet, the content sheet's history steps included (proto closeContent), then run `then` on the page underneath */
+  dismissAll: (then?: () => void) => void;
+  /** close the action sheets only, leaving a content sheet open (proto report-send) */
+  dismissActions: () => void;
   content: Content;
   /** open a site link: a place on a phone becomes a sheet over this page, anything else navigates */
   go: (href: string) => void;
@@ -76,7 +80,16 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     if (cur?.landed) { if (n > 1) { homeOnPop.current = true; history.go(-(n - 1)); } else closeLanded(velocity); return; }
     history.go(-n); // closing removes every step the sheet pushed (proto history.go(-n))
   }, [dismiss, closeLanded]);
-  const dismissAll = useCallback(() => setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: 0.0001 }))), []);
+  const closeAll = useCallback(() => setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: 0.0001 }))), []);
+  const afterPop = useRef<(() => void) | null>(null);
+  const dismissAll = useCallback((then?: () => void) => {
+    const cur = contentRef.current;
+    if (!cur) { closeAll(); then?.(); return; }
+    // the content sheet pushed steps: take them back first, so the next place opens as a sheet again and Back stays honest
+    if (cur.landed) { if (cur.keys.length > 1) { homeOnPop.current = true; afterPop.current = then ?? null; history.go(-(cur.keys.length - 1)); } else { closeLanded(); then?.(); } return; }
+    afterPop.current = then ?? null; history.go(-cur.keys.length);
+  }, [closeAll, closeLanded]);
+  const dismissActions = useCallback(() => setSheets((s) => s.map((x) => (x.closing || x.kind === 'content' ? x : { ...x, closing: 0.0001 }))), []);
 
   const router = useRouter();
   const openLanded = useCallback((path: string) => {
@@ -96,7 +109,12 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
   }, []);
   const go = useCallback((href: string) => {
     const url = new URL(href, location.href);
-    if (!desk() && isSheetPath(url.pathname)) { if (url.pathname !== location.pathname) { history.pushState({ kSheet: true }, '', url.pathname + url.search); openContent(url.pathname); } return; }
+    if (!desk() && isSheetPath(url.pathname)) {
+      const at = contentRef.current?.keys.indexOf(url.pathname) ?? -1, depth = contentRef.current?.keys.length ?? 0;
+      if (at >= 0 && at < depth - 1) { history.go(-(depth - 1 - at)); return; } // already in the stack: step back to it, no new step
+      if (url.pathname !== location.pathname) { history.pushState({ ...history.state, kSheet: true }, '', url.pathname + url.search); openContent(url.pathname); }
+      return;
+    }
     router.push(url.pathname + url.search);
   }, [openContent, router]);
 
@@ -110,11 +128,12 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     };
     const onPop = () => {
       const cur = contentRef.current; if (!cur) return;
-      if (homeOnPop.current) { homeOnPop.current = false; closeLanded(); return; }
+      // what was asked after the sheet closes runs once the router has settled on the page underneath (it handles this popstate too)
+      const next = afterPop.current; afterPop.current = null; const then = next ? () => setTimeout(next, 60) : null;
+      if (homeOnPop.current) { homeOnPop.current = false; closeLanded(); then?.(); return; }
       const path = location.pathname;
       if (isSheetPath(path) && cur.keys.includes(path)) { const at = cur.keys.indexOf(path); setContent({ ...cur, keys: cur.keys.slice(0, at + 1), dir: -1 }); return; }
-      setContent(null);
-      setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: 0.0001 })));
+      setContent(null); contentRef.current = null; closeAll(); then?.();
     };
     document.addEventListener('click', onClick, true);
     addEventListener('popstate', onPop);
@@ -166,9 +185,12 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     return () => { removeEventListener('scroll', onScroll); clearTimeout(settleT); a?.stop(); };
   }, []);
   useEffect(() => {
+    const cur = contentRef.current;
+    if (cur && !cur.keys.includes(pathname) && !cur.keys.includes(pathname + '/') && !isSheetPath(pathname)) { setContent(null); contentRef.current = null; closeAll(); }
+    if (!desk() && isSheetPath(pathname)) return; // a sheet came up over the page: the page and its bars stay as they were
     fold.current = 0; const c = document.querySelector('.chrome-top'); c?.classList.remove('compact');
     const lb = c?.querySelector<HTMLElement>('.locbar-wrap'); if (lb) Object.assign(lb.style, { transform: '', opacity: '', pointerEvents: '' });
-  }, [pathname]);
+  }, [pathname, closeAll]);
 
   // Auto follows the system while the page is open (Light/Dark are set in Settings; the first paint is set by the head script)
   useEffect(() => {
@@ -177,7 +199,7 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     mq.addEventListener('change', apply); return () => mq.removeEventListener('change', apply);
   }, []);
 
-  const value = useMemo<Ctx>(() => ({ lang, c: copy[lang] as (typeof copy)['en'], now, time, tab, setTab, loc, setLoc, toast, sheets, openSheet, closeTop, removeSheet, dismissAll, content, go, openLanded }),
-    [lang, now, time, tab, loc, toast, sheets, openSheet, closeTop, removeSheet, dismissAll, content, go, openLanded]);
+  const value = useMemo<Ctx>(() => ({ lang, c: copy[lang] as (typeof copy)['en'], now, time, tab, setTab, loc, setLoc, toast, sheets, openSheet, closeTop, removeSheet, dismissAll, dismissActions, content, go, openLanded }),
+    [lang, now, time, tab, loc, toast, sheets, openSheet, closeTop, removeSheet, dismissAll, dismissActions, content, go, openLanded]);
   return <K.Provider value={value}>{children}</K.Provider>;
 }

@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(SITE_URL),
     ...base,
-    title: { default: home, template: isAr ? '%s · خرجني' : '%s · Khargny' },
+    title: { default: home, template: isAr ? '%s | خرجني' : '%s | 5argny' },
     openGraph: { ...base.openGraph, title: home },
     twitter: { ...base.twitter, title: home },
     applicationName: "Khargny",

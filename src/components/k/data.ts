@@ -16,6 +16,8 @@ export type KPlace = {
   badges: KBadge[]; hours: KHour[]; amen: string[]; photos: { s: string; m: string }[];
   /** the API marks a paid card `sponsored`; never labelled on cards, disclosed on the place and in its ··· */
   promoted: boolean; updatedAt: string | null;
+  /** the last 30 days, carried by every public card (views, saves, shares); loves and 5argny taps stay all-time */
+  d30: { views: number; saves: number; shares: number } | null;
 };
 export type KCatalog = { cities: CityWithAreas[]; categories: Category[] };
 
@@ -55,6 +57,7 @@ export function toK(raw: Raw, catalog: KCatalog, lang: Lang): KPlace {
     likes: num(raw.likeCount), saves: num(raw.saveCount), views: num(raw.viewCount), dir: num(raw.directionsCount),
     badges: (raw.badges as KBadge[]) ?? [], hours, amen, photos: photosOf(raw),
     promoted: raw.sponsored === true, updatedAt: str(raw.updatedAt) || str(raw.createdAt),
+    d30: raw.d30 && typeof raw.d30 === 'object' ? { views: num((raw.d30 as Record<string, unknown>).views), saves: num((raw.d30 as Record<string, unknown>).saves), shares: num((raw.d30 as Record<string, unknown>).shares) } : null,
   };
 }
 

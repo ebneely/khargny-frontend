@@ -4,7 +4,7 @@
 import { useEffect, useRef } from 'react';
 import { animate } from 'motion';
 import { useK, haptic, reduce, spring } from './KProvider';
-import { useShare, markLove, lastLoveAt, markPress } from './place';
+import { useShare, markLove, lastLoveAt, markPress, bumpShare } from './place';
 import { strokePaths } from '@5argny/core/icons';
 
 const svg = (n: keyof typeof strokePaths) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${strokePaths[n]}"/></svg>`;
@@ -69,7 +69,7 @@ export function Gestures() {
         Object.assign(ring.style, { left: hold.x + 'px', top: Math.max(40, hold.y - hold.lift) + 'px' }); fx().append(ring); hold.ring = ring; }, 250);
       hold.t2 = setTimeout(() => { if (!hold) return; const ring = hold.ring; hold.ring = null; stopHold(); markLove(); haptic();
         if (ring) animate(ring, { transform: ['translate(-50%,-50%) scale(1)', 'translate(-50%,-50%) scale(1.3)'], opacity: [1, 0] }, { duration: 0.25 }).finished.then(() => ring.remove());
-        live.current.share({ id: btn.dataset.id, href: btn.dataset.href || location.pathname }); }, 2000);
+        const id = btn.dataset.id; live.current.share({ id, href: btn.dataset.href || location.pathname }, () => { if (id) bumpShare(id); }); }, 2000);
     };
     const onMove = (e: PointerEvent) => { if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 10) stopHold(); };
     const onScroll = () => { if (hold && Math.abs(scrollY - hold.sy) > 10) stopHold(); };

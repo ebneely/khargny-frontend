@@ -3,12 +3,11 @@
 // the sort, then the results grid. Everything comes from the URL, so the query is kept.
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
 import { matchesWhen } from '@5argny/core/rules';
 import { apiRequest } from '@/lib/api/client';
-import { normalizePlaceFlags } from '@/lib/api/normalize-place';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
@@ -44,38 +43,30 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean) {
   const raw = (q ? search.data?.items : list.data?.items) ?? [];
   let places: KPlace[] = raw.map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length);
   if (badge) places = places.filter((p) => p.badges.length);
-  // shortcut: the grid shows the first LIMIT per category (no paging yet); the count is the real total when nothing is filtered here
-  const total = q ? search.data?.total : list.data?.total;
-  return { places, total: badge ? places.length : total ?? places.length, loading: q ? search.isLoading : list.isLoading };
-}
-
-/** Hours are only on a place's own page: read them for the results when a When or "Open first" needs them. */
-function useWithHours(places: KPlace[], need: boolean) {
-  const { lang } = useK();
-  const { data: cities = [] } = useCities();
-  const { data: categories = [] } = useCategories();
-  const res = useQueries({ queries: places.map((p) => ({ queryKey: ['places', 'detail', p.slug], enabled: need, staleTime: 5 * 60_000, queryFn: async () => normalizePlaceFlags(await apiRequest('GET', `/v1/places/${p.slug}`)) })) });
-  if (!need) return { places, ready: true };
-  return { places: places.map((p, i) => (res[i]?.data ? toK(res[i].data as never, { cities, categories }, lang) : p)), ready: res.every((r) => !r.isLoading) };
+  // shortcut: the grid shows the first LIMIT per category (no paging yet), and the count says what is listed
+  return { places, loading: q ? search.isLoading : list.isLoading };
 }
 
 export function ExploreView() {
-  const { c, lang, now, loc } = useK();
-  const sp = useSearchParams();
+  const { c, lang, now, loc, content } = useK();
+  // a sheet over Explore changes the address; the page underneath keeps the query it was showing (no refetch, no reset)
+  const live = useSearchParams();
+  const kept = useRef(live);
+  if (!content) kept.current = live;
+  const sp = kept.current;
   const f = readF(sp);
   const q = (sp.get('q') || '').trim(), badge = sp.get('badge') === '1';
   const sort = (['near', 'open'].includes(sp.get('sort') || '') ? sp.get('sort') : 'popular') as Sort;
   const where = usePlaceName();
-  const { places: found, total, loading } = useResults(f, q, badge);
-  const { places, ready } = useWithHours(found, !!f.when || sort === 'open');
+  const { places, loading } = useResults(f, q, badge); // list cards carry their week of hours, so When and Open first work on them
   // warm what the Filters sheet shows, so it opens complete
   useCounts(''); usePriceBands(); useAmenities(); useResultCount(f, q, badge);
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
   useEffect(() => { if (sort !== 'near' || here) return; navigator.geolocation?.getCurrentPosition((p) => setHere({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}); }, [sort, here]);
   const km = (p: KPlace) => (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
   let res = f.when ? places.filter((p) => matchesWhen(p.hours, f.when as When, now.date)) : places;
-  const score = { popular: (p: KPlace) => p.views, near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
-  res = [...res].sort((a, b) => score(b) - score(a));
+  const score = { popular: (p: KPlace) => p.d30?.views ?? 0, near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
+  res = [...res].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a)); // paid places first inside a match, looking like any other
   const intent = INTENTS.find((x) => x.key === f.intent);
   const { data: categories = [] } = useCategories();
   const catLabel = f.cat ? (categories.find((x) => (x.nameEn || x.nameAr) === f.cat || x.slug === f.cat)?.[lang === 'ar' ? 'nameAr' : 'nameEn'] || f.cat) : '';
@@ -83,11 +74,11 @@ export function ExploreView() {
   const headText = badge ? fill(c.explore.earned, { brand: c.brand }) : String(head);
   const whenText = f.when ? c.explore.when[f.when] : '';
   const setSort = (v: Sort) => { const n = new URLSearchParams(sp); if (v === 'popular') n.delete('sort'); else n.set('sort', v); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
-  const busy = loading || !ready;
+  const busy = loading;
   return (
     <Shell cur="explore" wide withFilters>
       <h1 className="t-display page-pad" style={{ margin: '2px 0 10px' }}>{head} <span style={{ color: 'var(--ink3)', fontWeight: 800 }}>{c.explore.in} <PlaceWord word={where} key={loc.city + '|' + loc.area} /></span></h1>
-      <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{busy ? null : <><b style={{ color: 'var(--ink)' }}>{f.when ? res.length : total}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
+      <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{busy ? null : <><b style={{ color: 'var(--ink)' }}>{res.length}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
         <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open]] as [Sort, string][]} val={sort} onPick={setSort} /></div>
       {busy ? null : res.length ? <div className="grid">{res.map((p) => <Tile key={p.id} p={p} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}</div>
         : <div className="group empty"><Ic n="search" /><p className="t-head">{fill(c.explore.empty, { what: headText.toLowerCase(), when: whenText.toLowerCase(), place: where }).replace(/\s+/g, ' ')}</p></div>}

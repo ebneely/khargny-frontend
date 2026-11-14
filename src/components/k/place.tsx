@@ -23,11 +23,11 @@ import { useK, haptic, reduce, spring, desk } from './KProvider';
 import { useOpenCorrection } from './settings';
 
 /** 30-day windows from GET /v1/places/:id/stats; null until that route answers (counts stay hidden). */
-export function usePlaceStats(id: string) {
+export function usePlaceStats(id: string, enabled = true) {
   return useQuery({
     queryKey: ['places', 'stats', id],
     queryFn: async () => { try { return await apiRequest<KStats>('GET', `/v1/places/${id}/stats`); } catch { return null; } },
-    staleTime: 5 * 60 * 1000, retry: false,
+    staleTime: 5 * 60 * 1000, retry: false, enabled,
   }).data ?? null;
 }
 
@@ -37,6 +37,10 @@ const myViews = new Map<string, number>(), viewSubs = new Set<() => void>();
 export function bumpView(id: string) { trackPlaceView(id); myViews.set(id, (myViews.get(id) ?? 0) + 1); viewSubs.forEach((f) => f()); }
 const subViews = (f: () => void) => { viewSubs.add(f); return () => { viewSubs.delete(f); }; };
 export const useMyViews = (id: string) => useSyncExternalStore(subViews, () => myViews.get(id) ?? 0, serverSnap);
+// this session's own shares, from the button or the double-tap-and-hold, added to the share count at once
+const myShares = new Map<string, number>();
+export function bumpShare(id: string) { myShares.set(id, (myShares.get(id) ?? 0) + 1); viewSubs.forEach((f) => f()); }
+export const useMyShares = (id: string) => useSyncExternalStore(subViews, () => myShares.get(id) ?? 0, serverSnap);
 export function useLove(p: KPlace) {
   useSyncExternalStore(likeStore.subscribe, likeStore.snapshot, serverSnap);
   const [local, setLocal] = useState<boolean | null>(null);
@@ -119,7 +123,7 @@ function useSwap() {
       const city0 = cities.find((x) => x.id === p.cityId);
       // the swap lands on Explore with that half changed: the place's city, the area (if any), the category
       const href = (catId: string, region: string | null) => { const cat = categories.find((x) => x.id === catId); return { to: `/${lang}/explorer/?cat=${encodeURIComponent(cat?.nameEn || cat?.nameAr || '')}`, loc: { city: p.citySlug, area: region ? regionLabel(region, lang, city0?.nameEn || city0?.name) || region : null } }; };
-      const row = (key: string, label: string, icon: string, { to, loc }: { to: string; loc: { city: string; area: string | null } }, on: boolean) => <button key={key} className="option press" role="radio" aria-checked={on} data-act="meta-pick" onClick={(e) => { haptic(); e.currentTarget.closest('.sheet')?.querySelectorAll('[role="radio"]').forEach((o) => o.setAttribute('aria-checked', String(o === e.currentTarget))); setTimeout(() => { dismissAll(); setLoc(loc); go(to); }, 220); }}><L n={icon} /><span className="grow">{label}</span><Ic n="check" cls="check" /></button>;
+      const row = (key: string, label: string, icon: string, { to, loc }: { to: string; loc: { city: string; area: string | null } }, on: boolean) => <button key={key} className="option press" role="radio" aria-checked={on} data-act="meta-pick" onClick={(e) => { haptic(); e.currentTarget.closest('.sheet')?.querySelectorAll('[role="radio"]').forEach((o) => o.setAttribute('aria-checked', String(o === e.currentTarget))); setTimeout(() => dismissAll(() => { setLoc(loc); go(to); }), 220); }}><L n={icon} /><span className="grow">{label}</span><Ic n="check" cls="check" /></button>;
       if (kind === 'cat') openSheet(fill(c.place.swap.what, { area }), categories.map((x) => { const en = x.nameEn || x.nameAr; return row(x.id, (lang === 'ar' ? x.nameAr : en) || en, catIcon(en), href(x.id, p.region), x.id === p.catId); }));
       else {
         const city = cities.find((x) => x.id === p.cityId);
@@ -206,27 +210,29 @@ function ActBtn({ icon, label, act, p, base, on, onClick, lang }: { lang: 'en' |
 /** Love, save and share with counts under the icons, plus views. Loves are a total; the rest are the last 30 days. */
 export function Actions({ p, end }: { p: KPlace; end?: ReactNode }) {
   const { c, toast, lang } = useK();
-  const s = usePlaceStats(p.id);
+  const s = usePlaceStats(p.id, !p.d30);
   const love = useLove(p), save = useSave(p), share = useShare();
-  const [shares, setShares] = useState(0);
+  const shares = useMyShares(p.id);
+  const d = s?.d30 ?? p.d30; // the card's 30-day numbers when the stats route is not loaded
   const mine = useMyViews(p.id);
   const pop = (e: MouseEvent<HTMLButtonElement>, kf: string[], sp: ReturnType<typeof spring>) => { const svg = e.currentTarget.querySelector('svg'); if (svg) animate(svg, { transform: kf }, sp); };
   return <>
     <ActBtn lang={lang} icon="heart" label={c.common.love} act="like" p={p} base={love.count} on={love.on} onClick={(e) => { e.preventDefault(); haptic(); love.toggle(); pop(e, ['scale(.6)', 'scale(1)'], spring(0.5, 0.45)); }} />
-    <ActBtn lang={lang} icon="saved" label={c.common.save} act="save" p={p} base={s?.d30 ? s.d30.saves + save.delta : null} on={save.on} onClick={(e) => { e.preventDefault(); haptic(); save.toggle(); pop(e, ['scale(.75)', 'scale(1)'], spring(0, 0.35)); toast(save.on ? c.saved.removed : c.saved.added); }} />
-    <ActBtn lang={lang} icon="share" label={c.common.share} act="share" p={p} base={s?.d30 ? s.d30.shares + shares : null} on={false} onClick={(e) => { e.preventDefault(); share({ id: p.id, href: placeHref(p, lang) }, () => setShares((n) => n + 1)); }} />
-    <span className="act-views" title={c.stats.opened30}><Ic n="eye" /><Cnt base={s?.d30 ? s.d30.views + mine : null} /></span>
+    <ActBtn lang={lang} icon="saved" label={c.common.save} act="save" p={p} base={d ? d.saves + save.delta : null} on={save.on} onClick={(e) => { e.preventDefault(); haptic(); save.toggle(); pop(e, ['scale(.75)', 'scale(1)'], spring(0, 0.35)); toast(save.on ? c.saved.removed : c.saved.added); }} />
+    <ActBtn lang={lang} icon="share" label={c.common.share} act="share" p={p} base={d ? d.shares + shares : null} on={false} onClick={(e) => { e.preventDefault(); share({ id: p.id, href: placeHref(p, lang) }, () => bumpShare(p.id)); }} />
+    <span className="act-views" title={c.stats.opened30}><Ic n="eye" /><Cnt base={d ? d.views + mine : null} /></span>
     <span className="grow" />{end}
   </>;
 }
 
 export function Stats({ p }: { p: KPlace }) {
   const { c } = useK();
-  const s = usePlaceStats(p.id);
-  const love = useLove(p), save = useSave(p), mine = useMyViews(p.id);
+  const s = usePlaceStats(p.id, !p.d30); // a card carries its own 30-day numbers: no request per card
+  const love = useLove(p), save = useSave(p), mine = useMyViews(p.id), shared = useMyShares(p.id);
+  const d = s?.d30 ?? p.d30; // the card's 30-day numbers when the stats route is not loaded
   const st = (icon: 'eye' | 'heart' | 'saved' | 'share' | 'go', title: string, base: number | null) => base == null ? null : <span className="views" title={title}><Ic n={icon} /><Cnt base={base} /></span>;
   return <span className="stats">
-    {st('eye', c.stats.views30, s?.d30 ? s.d30.views + mine : null)}{st('heart', c.stats.loves, love.count)}{st('saved', c.stats.saves30, s?.d30 ? s.d30.saves + save.delta : null)}{st('share', c.stats.shares30, s?.d30?.shares ?? null)}{st('go', c.stats.goTotal, p.dir)}
+    {st('eye', c.stats.views30, d ? d.views + mine : null)}{st('heart', c.stats.loves, love.count)}{st('saved', c.stats.saves30, d ? d.saves + save.delta : null)}{st('share', c.stats.shares30, d ? d.shares + shared : null)}{st('go', c.stats.goTotal, p.dir)}
   </span>;
 }
 

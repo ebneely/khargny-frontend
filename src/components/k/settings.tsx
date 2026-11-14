@@ -88,8 +88,8 @@ function CorrForm({ p }: { p?: KPlace }) {
       <div className="corr-list" role="radiogroup">{list.map(([k, l, i]) => <button key={k} className="option press" role="radio" aria-checked={pick === k} data-act="corr-pick" data-v={k} onClick={() => { haptic(); setPick(k); }}><L n={i} /><span className="grow">{l}</span><Ic n="check" cls="check" /></button>)}</div></section>
     <section className="group corr-detail" hidden={!pick || done} ref={det}>{!pick ? null : p ? <><h2 className="group-title"><L n="pencil-line" /> {c.correction.rightAnswer}</h2>{field(pick as Kind)}
       <div className="corr-field"><span>{c.correction.howKnow}</span>{seg([['visit', c.correction.visit], ['staff', c.correction.staff], ['online', c.correction.online]], 'visit', 'source')}</div>
-      <PhotoBtn label={c.correction.proof} icon="camera" /></>
-      : <><h2 className="group-title"><L n="pencil-line" /> {c.report.tellMore}</h2><label className="corr-field"><span>{c.report.whatHappened}</span><textarea name="text" rows={3} placeholder={c.report.detail} /></label><PhotoBtn label={c.report.screenshot} icon="image-plus" />
+      </>
+      : <><h2 className="group-title"><L n="pencil-line" /> {c.report.tellMore}</h2><label className="corr-field"><span>{c.report.whatHappened}</span><textarea name="text" rows={3} placeholder={c.report.detail} /></label>
         <p className="t-small" style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center' }}><L n="smartphone" />{c.report.device}</p></>}</section>
     <div className="corr-done" hidden={!done} ref={ok}>{done ? <div className="corr-ok"><span className="corr-check"><L n="check" /></span><h2 className="t-title">{c.correction.doneTitle}</h2><p className="t-small">{c.correction.doneBody}</p></div> : null}</div>
   </>;
@@ -98,11 +98,7 @@ function SegField({ opts, dflt, name }: { opts: [string, string][]; dflt: string
   const [v, set] = useState(dflt);
   return <span data-seg={name} data-v={v} style={{ display: 'contents' }}><Seg opts={opts} val={v} onPick={(x) => { haptic(); set(x); }} /></span>;
 }
-// shortcut: photo proof needs an upload route for anonymous devices (none yet); the button says so instead of pretending
-function PhotoBtn({ label, icon }: { label: string; icon: string }) {
-  const { c, toast } = useK();
-  return <button className="corr-photo press" data-act="corr-photo" onClick={() => toast(c.correction.pickPhoto)}><L n={icon} /><span>{label}</span><em className="t-small">{c.common.optional}</em></button>;
-}
+// shortcut: no photo proof or screenshot button until an upload route for anonymous devices exists (a button that only toasts is a lie)
 
 /** Send: reads the form this button belongs to (its sheet or the page), posts it, shows thanks, then steps back. */
 function useSend(p?: KPlace) {

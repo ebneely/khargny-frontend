@@ -92,12 +92,12 @@ function trimDanglingText(text: string): string {
 
 function titleBase(text: string): string {
   return String(text ?? '').replace(/\s+/g, ' ').trim()
-    .replace(/(?:\s*[·—|]\s*(?:Khargny|خرجني))+$/i, '')
-    .replace(/^(?:Khargny|خرجني)\s*[·—|]\s*/i, '');
+    .replace(/(?:\s*[·—|]\s*(?:Khargny|5argny|خرجني))+$/i, '')
+    .replace(/^(?:Khargny|5argny|خرجني)\s*[·—|]\s*/i, '');
 }
 
 export function fitTitle(text: string, locale: Locale): string {
-  const suffix = locale === 'ar' ? ' · خرجني' : ' · Khargny';
+  const suffix = locale === 'ar' ? ' | خرجني' : ' | 5argny'; // no "·" on screen (owner rule); the brand as written
   const fitted = fitText(titleBase(text), 60 - suffix.length);
   const truncated = fitted.endsWith('…');
   return `${trimDanglingText(fitted.replace(/…$/, ''))}${truncated ? '…' : ''}${suffix}`;
@@ -112,13 +112,13 @@ export function fitPlaceTitle(parts: { name: string; category?: string | null; a
     [name, parts.city],
     [name],
   ].map((candidate) => candidate.filter(Boolean).join(' — '));
-  const suffix = locale === 'ar' ? ' · خرجني' : ' · Khargny';
+  const suffix = locale === 'ar' ? ' | خرجني' : ' | 5argny'; // no "·" on screen (owner rule); the brand as written
   return fitTitle(candidates.find((candidate) => candidate.length + suffix.length <= 60) ?? name, locale);
 }
 
 export function fitCityTitle(base: string, count: number | null, locale: Locale): string {
   const counted = count ? `${base}${locale === 'ar' ? ` (${count} مكان)` : ` — ${count} ${count === 1 ? 'place' : 'places'}`}` : base;
-  const suffix = locale === 'ar' ? ' · خرجني' : ' · Khargny';
+  const suffix = locale === 'ar' ? ' | خرجني' : ' | 5argny'; // no "·" on screen (owner rule); the brand as written
   return fitTitle(titleBase(counted).length + suffix.length <= 60 ? counted : base, locale);
 }
 
