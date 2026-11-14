@@ -1347,3 +1347,5 @@ h1 > .sk,h2 > .sk,h3 > .sk,p > .sk:not(.cat-bubble):not(.live-pill),.ov-skel p >
 .chrome-top .topbar{box-shadow:none;transition:box-shadow .3s var(--chrome-ease)}
 .chrome-top.compact .topbar{box-shadow:var(--chrome-edge)}
 .chrome-top.scrolled .locbar-wrap,.chrome-top.scrolled.compact .topbar{box-shadow:var(--chrome-edge)}
+/* no fade on the location bar: it only slides (owner 2026-11-14) */
+.chrome-top.compact .locbar-wrap{opacity:1}

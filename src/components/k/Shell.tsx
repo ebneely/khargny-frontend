@@ -84,11 +84,10 @@ if (typeof window !== 'undefined') addEventListener('popstate', () => { popped =
  * is the only thing that changes.
  */
 /**
- * The top chrome's one rule (owner 2026-11-14): nothing moves while the page scrolls. Half a second after the scroll rests,
- * the location bar is either shown or hidden, decided once from where the scroll went (down past 120 px: hidden; up, or near
- * the top: shown), and only a change animates. The motion is iOS-like and interruptible: a critically damped spring from the
- * current value (a new decision mid-animation re-targets it), rising and shrinking slightly into the top bar as it leaves and
- * dropping out of it as it returns. Transform and opacity only. A new page always starts with the bar out.
+ * The top chrome (owner 2026-11-14): scrolling down hides the location bar at once, scrolling up brings it back at once.
+ * Each direction change moves it one time (12 px of travel in the new direction decides, so a jitter never replays it).
+ * Pure motion, no fade: it slides up behind the top bar and back down on a critically damped, interruptible spring from
+ * its current place. Transform only. A new page always starts with the bar out.
  */
 function useChromeFold(wrap: React.RefObject<HTMLDivElement | null>) {
   const pathname = usePathname();
@@ -97,22 +96,23 @@ function useChromeFold(wrap: React.RefObject<HTMLDivElement | null>) {
     const el = wrap.current; if (!el || hidden.current === hide) return;
     hidden.current = hide; el.closest('.chrome-top')?.classList.toggle('compact', hide); el.style.pointerEvents = hide ? 'none' : '';
     anim.current?.stop(); anim.current = null;
-    const settled = () => { if (!hidden.current) { el.style.transform = ''; el.style.opacity = ''; } // shown: hand back to CSS (search hides it)
+    const settled = () => { if (!hidden.current) el.style.transform = ''; // shown: hand back to CSS (search hides it)
       const c = el.closest('.chrome-top'), top = c && (hidden.current ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); };
-    const to = hide ? { transform: 'translateY(-100%) scale(0.96)', opacity: 0 } : { transform: 'translateY(0%) scale(1)', opacity: 1 };
-    if (instant || reduce()) { el.style.transform = to.transform; el.style.opacity = String(to.opacity); settled(); return; }
-    const a = animate(el, to, hide ? spring(0, 0.34) : spring(0, 0.42)); anim.current = a; a.finished.then(() => { if (anim.current === a) settled(); });
+    const to = { transform: hide ? 'translateY(-100%)' : 'translateY(0%)' };
+    if (instant || reduce()) { el.style.transform = to.transform; settled(); return; }
+    const a = animate(el, to, spring(0, 0.38)); anim.current = a; a.finished.then(() => { if (anim.current === a) settled(); });
   }, [wrap]);
   useEffect(() => {
-    let anchor = scrollY, rest: ReturnType<typeof setTimeout> | undefined;
-    const settle = () => {
-      const c = wrap.current?.closest('.chrome-top'); if (!c || c.classList.contains('searching') || document.documentElement.classList.contains('sheet-open')) return;
-      const y = scrollY, went = y - anchor; anchor = y;
-      set(y < 60 ? false : went > 24 ? true : went < -24 ? false : hidden.current);
+    let last = scrollY, travel = 0;
+    const onScroll = () => {
+      const root = document.documentElement, c = wrap.current?.closest('.chrome-top');
+      if (root.classList.contains('sheet-open') || c?.classList.contains('searching')) { last = scrollY; return; }
+      const y = scrollY, d = y - last; last = y; if (!d) return;
+      travel = Math.sign(d) === Math.sign(travel) ? travel + d : d; // distance moved in the current direction
+      if (y < 60) set(false); else if (travel > 12) set(true); else if (travel < -12) set(false);
     };
-    const onScroll = () => { if (document.documentElement.classList.contains('sheet-open')) return; clearTimeout(rest); rest = setTimeout(settle, 500); };
     addEventListener('scroll', onScroll, { passive: true });
-    return () => { removeEventListener('scroll', onScroll); clearTimeout(rest); anim.current?.stop(); };
+    return () => { removeEventListener('scroll', onScroll); anim.current?.stop(); };
   }, [set, wrap]);
   useEffect(() => { set(false, true); }, [pathname, set]);
 }
