@@ -1239,3 +1239,5 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
 .tile.skel,.count-skel{animation:skelPulse 1.4s ease-in-out infinite}
 @keyframes skelPulse{50%{opacity:.55}}
 @media (prefers-reduced-motion: reduce){ .tile.skel,.count-skel{animation:none} }
+/* a place name in English inside Arabic (dir=auto) runs and truncates left to right, but keeps the page's right edge */
+[dir=rtl] [dir=auto]{text-align:right}

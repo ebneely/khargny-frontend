@@ -159,7 +159,7 @@ export function SheetHost() {
       const head = <>{(content?.keys.length ?? 0) > 1 ? <IconBtn icon="back" label={c.common.back} cls="filled" onClick={() => history.back()} /> : <span />}<IconBtn icon="x" label={c.common.close} cls="filled" onClick={() => closeTop()} /></>;
       return <SheetView key={entry.id} entry={{ ...entry, label: view.label }} index={index} top={top} head={head} body={view.body} foot={view.foot} />;
     }
-    const head = <><h2 className="t-title">{entry.label}</h2><IconBtn icon="x" label={c.common.close} cls="filled" onClick={() => closeTop()} /></>;
+    const head = <><h2 className="t-title" dir="auto">{entry.label}</h2><IconBtn icon="x" label={c.common.close} cls="filled" onClick={() => closeTop()} /></>;
     return <SheetView key={entry.id} entry={entry} index={index} top={top} head={head} body={entry.body} foot={entry.foot} />;
   }), document.body);
 }

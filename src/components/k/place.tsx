@@ -252,7 +252,7 @@ export function Tile({ p, extra }: { p: KPlace; extra?: ReactNode }) {
     <Link className="card tile press" data-item href={placeHref(p, lang)}>
       
       <span className="tile-media"><img src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
-      <div className="tile-body"><b>{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
+      <div className="tile-body"><b dir="auto">{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
     </Link>
   );
 }
@@ -292,7 +292,7 @@ export function Post({ p }: { p: KPlace }) {
   return (
     <article ref={ref} className="card post press" data-item data-open={p.slug} data-id={p.id} onClick={onClick}>
       
-      <header className="post-head"><img className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b>{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
+      <header className="post-head"><img className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b dir="auto">{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
       <div className="media"><Carousel photos={p.photos.slice(0, 5)} /></div>
       <div className="post-foot">{p.badges.length ? <p className="post-meta"><BadgeTags p={p} /></p> : null}
         <div className="post-actions"><Actions p={p} end={<Go5 p={p} />} /></div></div>
