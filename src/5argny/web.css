@@ -1230,16 +1230,31 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
 .btn:disabled{opacity:.5;pointer-events:none}
 @media (prefers-reduced-motion: reduce){ .proof-bar i{transition:none} }
 
-/* loading placeholders sized like what they stand for (T050): a tile, the count line; a soft pulse, still with reduced motion */
-.tile.skel .sk-img{display:block;width:100%;aspect-ratio:1/1;background:var(--fill)}
-.tile.skel b,.tile.skel .sk-line{display:block;border-radius:6px;background:var(--fill);color:transparent}
-.tile.skel b{width:72%}
-.tile.skel .sk-line{height:12px;width:88%;margin:4px 0 5px}
-.tile.skel .sk-line.short{width:46%;height:auto;margin:0}
-.count-skel{display:inline-block;width:64px;height:12px;border-radius:6px;background:var(--fill);vertical-align:middle}
-.tile.skel,.count-skel{animation:skelPulse 1.4s ease-in-out infinite}
-@keyframes skelPulse{50%{opacity:.55}}
-@media (prefers-reduced-motion: reduce){ .tile.skel,.count-skel{animation:none} }
+/* Loading, empty and failing, one way everywhere (owner 2026-11-14; the timings live in rules/loading.ts, loading.test.ts keeps
+   them equal). A skeleton is the content's own box: blocks sit inside the real elements, so line heights and paddings are the
+   content's. It shows after --sk-delay (a fast answer never flashes one), and one low-contrast sweep in the theme's own tint
+   crosses the whole page: every block shares the viewport-fixed gradient and one clock (KChrome syncs the animations). */
+:root{--sk-delay:150ms;--sk-fade:200ms;--sk-hi:rgba(255,253,249,.72)}
+:root[data-theme=dark]{--sk-hi:rgba(255,255,255,.06)}
+.sk{display:block;border-radius:6px;color:transparent;background-color:var(--fill);background-image:linear-gradient(100deg,transparent 38%,var(--sk-hi) 50%,transparent 62%);
+  background-size:100vw 100%;background-repeat:no-repeat;background-attachment:fixed;animation:skIn var(--sk-fade) var(--sk-delay) both,skSweep 1.4s linear infinite}
+.sk-t{display:inline-block;height:.86em;vertical-align:-.08em;max-width:100%}
+.sk-reveal{animation:skIn var(--sk-fade) ease-out both}
+@keyframes skIn{from{opacity:0}to{opacity:1}}
+@keyframes skSweep{from{background-position:-100vw 0}to{background-position:100vw 0}}
+@media (prefers-reduced-motion: reduce){ .sk{background-image:none;animation:skIn 1ms var(--sk-delay) both} }
+.tile.skel .sk-img{width:100%;aspect-ratio:1/1;border-radius:0}
+.tile.skel .tile-body > *{display:block}
+/* the empty and the failed block: the prototype's .group.empty (icon, one line, one action); compact inside a rail or a list */
+.empty > .lucide,.empty > svg{width:26px;height:26px;color:var(--ink3)}
+.empty .btn{margin-top:4px}
+.empty.compact{padding:16px 14px;gap:6px}
+.empty.compact > .lucide,.empty.compact > svg{width:20px;height:20px}
+.more-fail{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 16px 4px;font-size:12.5px;color:var(--ink2)}
+/* offline: one quiet pill under the top bar; it goes when the connection is back (the queries refetch on their own) */
+.offline-bar{position:fixed;z-index:70;left:50%;top:calc(var(--back-top,56px) + 8px);display:inline-flex;align-items:center;gap:7px;max-width:calc(100vw - 32px);padding:7px 14px;border-radius:999px;
+  background:var(--card);box-shadow:var(--sh1);font-size:12.5px;font-weight:650;color:var(--ink2);transform:translateX(-50%);animation:skIn .25s ease-out both}
+.offline-bar .lucide{width:15px;height:15px;color:var(--ink3)}
 /* a place name in English inside Arabic (dir=auto) runs and truncates left to right, but keeps the page's right edge */
 [dir=rtl] [dir=auto]{text-align:right}
 /* desktop place hero: the content column is 12 px wider than the prototype's (steady columns), so 16:10 alone made it 8 px taller */

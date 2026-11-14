@@ -7,3 +7,4 @@ export * from './collections.ts';
 export * from './metaSwap.ts';
 export * from './proof.ts';
 export * from './near.ts';
+export * from './loading.ts';
