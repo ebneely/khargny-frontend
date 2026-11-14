@@ -1118,8 +1118,8 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 .tm-pick-name .lucide{width:15px;height:15px;color:var(--accent);flex:none}
 .tm-pick-name b{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tm-pick-n{font-size:11.5px;color:var(--ink3);margin-top:-3px;font-variant-numeric:tabular-nums}
-.tm-pick-all .tm-pick-img{color:var(--accent);background:var(--accent-soft)}
-.tm-pick-all .tm-pick-img .lucide{width:24px;height:24px}
+.tm-pick-all .tm-pick-img{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px} /* All: the four busiest kinds, one photo each */
+.tm-pick-all .tm-pick-img img{min-height:0}
 @media (max-width:1023px){ .tm3 .tm-front{padding:14px;border-radius:22px} .tm3 .tm-q{font-size:20px} .tm3 .tm-lead{height:150px} .tm-picks{gap:12px 8px} .tm-pick-name b{font-size:12.5px} }
 .tm3 .tm-time{gap:4px;font-weight:650;color:var(--ink)}
 .tm3 .tm-time .lucide{width:13px;height:13px;color:var(--ink3)}

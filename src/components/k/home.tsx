@@ -46,19 +46,13 @@ function useHere(data: HomeData) {
     queryKey: ['home', 'pool', city?.id ?? '', areaKey ?? ''], enabled: on, staleTime: 60_000, placeholderData: (prev) => prev,
     queryFn: async () => normalizePlaceList(await apiRequest('GET', '/v1/places', { params: { limit: 40, ...scope } })).items,
   });
-  const { data: open } = useQuery({
-    queryKey: ['places', 'counts', 'now', city?.slug ?? '', areaKey ?? ''], enabled: on, staleTime: 60_000,
-    queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now', city: city?.slug, ...(areaKey ? { area: areaKey } : {}) } }).catch(() => null),
-  });
   // places and a photo per category: one shared query with Filters (Egypt-wide it arrives with the page)
   const totals = useCatTotals();
   const byId = (r: Record<string, number | string | null> | undefined) => Object.fromEntries(categories.map((x) => [x.id, r?.[x.slug] ?? null]));
   const counts = { totalByCategory: totals ? byId(totals.n) as Record<string, number | null> : {}, coverByCategory: byId(totals?.cover) as Record<string, string | null> };
-  if (!on) return { pool: data.pool, openByCategory: data.openByCategory, ...counts, areaKey: null, city: null };
-  const bySlug = new Map(categories.map((x) => [x.slug, x.id]));
+  if (!on) return { pool: data.pool, ...counts, areaKey: null, city: null };
   return {
     pool: (pool ?? []).map((raw) => toK(raw as never, { cities, categories }, lang)).filter((p) => p.photos.length),
-    openByCategory: open ? Object.fromEntries(Object.entries(open.byCategory).map(([slug, n]) => [bySlug.get(slug) ?? slug, n])) : null,
     ...counts, areaKey, city: city.slug,
   };
 }
@@ -94,7 +88,7 @@ export function HomeView({ data }: { data: HomeData }) {
   return (
     <Shell cur="home" right={<><TrendCard list={data.trending} /><MarketCard /></>}>
       <Stories list={stories} />
-      <TakeMe data={{ ...data, openByCategory: here.openByCategory }} totalByCategory={here.totalByCategory} coverByCategory={here.coverByCategory} pool={pool} />
+      <TakeMe data={data} totalByCategory={here.totalByCategory} coverByCategory={here.coverByCategory} pool={pool} />
       <NearYou list={near} />
       <Earned />
       <TeamCollections list={data.collections} />
@@ -151,15 +145,11 @@ function TeamCollections({ list }: { list: HomeCollection[] }) {
 
 /* ---------- "Take me out" card: answer first, photo tiles, Surprise me ---------- */
 function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeData; pool: KPlace[]; totalByCategory: Record<string, number | null>; coverByCategory: Record<string, string | null> }) {
-  const { c, lang, now, openSheet } = useK();
-  const where = usePlaceName();
+  const { c, lang, now, openSheet, setLoc } = useK();
   const m = moment(now), lead = m.x, rest = INTENTS.filter((x) => x.key !== lead.key).slice(0, 5);
   const inCats = (x: Intent) => pool.filter((p) => (x.cats as readonly string[]).includes(p.cat));
   const photoFor = (cats: readonly string[], n = 0) => { const list = pool.filter((p) => cats.includes(p.cat)); const pl = list[n % Math.max(1, list.length)] || pool[n % Math.max(1, pool.length)]; return pl?.photos[0]?.m || undefined; };
   const leadPhotos = inCats(lead).slice(0, 4).map((p) => p.photos[0]?.m).filter(Boolean);
-  // counts per category come from GET /v1/places/counts?when=now; without it the count pills stay hidden
-  const openCount = (x: Intent) => (data.openByCategory ? data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).reduce((a, cat) => a + (data.openByCategory![cat.id] ?? 0), 0) : null);
-  const open = openCount(lead);
   const total = (x: Intent) => { const ns = data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).map((cat) => totalByCategory[cat.id]); return ns.some((n) => n == null) ? null : ns.reduce<number>((a, n) => a + (n ?? 0), 0); };
   const card = useRef<HTMLElement>(null);
   const [deal, setDeal] = useState<KPlace | null>(null);
@@ -171,6 +161,16 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
   const pos = usePosition();
   const { data: surprise } = useQuery(surpriseQuery(nearParam(pos)));
   const recent = useRef<string[]>([]);
+  // the lead names the person's real city: the nearest place's city (Near you's position, never asked for here), else Cairo;
+  // its number is that city's open-now count (GET /v1/places/counts?when=now), the same places Explore lists for it
+  const leadCity = cities.find((x) => x.id === nearList?.[0]?.cityId) ?? cities.find((x) => x.slug === 'cairo') ?? null;
+  const leadName = leadCity ? (lang === 'ar' ? leadCity.name : leadCity.nameEn || leadCity.name) : '';
+  const { data: leadNow } = useQuery({
+    queryKey: ['places', 'counts', 'now', leadCity?.slug ?? '', ''], enabled: !!leadCity, staleTime: 60_000,
+    queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now', city: leadCity!.slug } }).catch(() => null),
+  });
+  const open = leadNow ? categories.filter((x) => (lead.cats as readonly string[]).includes(x.nameEn || '')).reduce((a, x) => a + (leadNow.byCategory[x.slug] ?? 0), 0) : null;
+
 
   // the route line runs from "Can't pick?" to Surprise me
   useLayoutEffect(() => {
@@ -210,10 +210,10 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
     else requestAnimationFrame(() => { const d = card.current!.querySelector('.tm-deal'); if (d) animate(d, { opacity: [0, 1], transform: ['scale(.94)', 'scale(1)'] }, spring(0.3, 0.45)); });
   };
   const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)); };
+  // most places first (proto), each with a photo of its own: the pool's, else the one its count request brought
+  const cats = [...data.categories].sort((a, b) => (totalByCategory[b.id] ?? -1) - (totalByCategory[a.id] ?? -1));
+  const photo = (cat: HomeData['categories'][number]) => pool.find((p) => p.cat === cat.en)?.photos[0]?.m || coverByCategory[cat.id] || photoFor([cat.en], 0);
   const allCats = () => {
-    // most places first (proto), each with a photo of its own: the pool's, else the one its count request brought
-    const cats = [...data.categories].sort((a, b) => (totalByCategory[b.id] ?? -1) - (totalByCategory[a.id] ?? -1));
-    const photo = (cat: HomeData['categories'][number]) => pool.find((p) => p.cat === cat.en)?.photos[0]?.m || coverByCategory[cat.id] || photoFor([cat.en], 0);
     openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{cats.map((cat) => <Link key={cat.id} className="tm-tile press" href={`/${lang}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photo(cat)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
     requestAnimationFrame(() => document.querySelectorAll('.sheet .tm-sheet .tm-tile').forEach((tl, n) => animate(tl, { opacity: [0, 1], transform: ['translateY(14px) scale(.96)', 'translateY(0) scale(1)'] }, { ...spring(0, 0.45), delay: 0.04 + n * 0.03 })));
   };
@@ -225,10 +225,10 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
         <div className="tm-head"><div><b className="tm-q">{lang === 'ar' ? 'خرجني فين؟' : c.home.takeMe.question}</b><span className="tm-time" aria-label={`${c.home.takeMe.timeNow} ${t12(now, lang)}`} suppressHydrationWarning><L n="clock" />{t12(now, lang)}<span className="tm-nudge">{c.home.takeMe.cantPick}</span></span></div>
           <svg className="tm-route" aria-hidden="true"><path className="tm-route-base" /><path className="tm-route-line" /><circle className="tm-route-end" r="3" /></svg>
           <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} onClick={shuffle}><L n="dices" /><span>{c.home.takeMe.surprise}</span></button></div>
-        <Link className="tm-lead press" href={`/${lang}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}`}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
-          <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{open ? <span className="tm-sub"><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: where })}</span> : total(lead) != null ? <span className="tm-sub">{fill(c.home.takeMe.leadPlaces, { n: total(lead)!, place: where })}</span> : null}</span>
+        <Link className="tm-lead press" href={`/${lang}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
+          <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{leadCity ? <span className="tm-sub">{open ? <><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: leadName })}</> : <><L n="map-pin" />{leadName}</>}</span> : null}</span>
           <span className="tm-go"><L n="arrow-right" /></span></Link>
-        <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img"><L n="layout-grid" /></span><span className="tm-pick-name"><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>
+        <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img">{cats.slice(0, 4).map((cat) => <img key={cat.id} src={photo(cat)} alt="" loading="lazy" />)}</span><span className="tm-pick-name"><L n="layout-grid" /><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>
       </div><div className="tm-back" aria-live="polite">{deal ? <DealCard p={deal} onShuffle={shuffle} onBack={unflip} /> : null}</div></div>
     </section>
   );
