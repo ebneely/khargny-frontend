@@ -1,7 +1,7 @@
 'use client';
 // The person's position, only after they ask for it (Near you, Explore "Nearest"): never a prompt on load. Kept coarse
 // (3 decimals) for the session, so Home, Explore and Surprise me reuse it. Places near it come from the API with distanceKm.
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fill } from '@5argny/core/copy';
 import { coarse, inEgypt, kmText } from '@5argny/core/rules';
@@ -10,8 +10,9 @@ import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { Bit } from './bits';
+import { L } from './icons';
 import { toK, type KPlace } from './data';
-import { useK } from './KProvider';
+import { useK, haptic } from './KProvider';
 
 type Pos = { lat: number; lng: number };
 const KEY = 'kh.here', listeners = new Set<() => void>();
@@ -24,6 +25,8 @@ const read = (): Pos | null => {
 const subscribe = (f: () => void) => { listeners.add(f); return () => listeners.delete(f); };
 
 export const usePosition = () => useSyncExternalStore(subscribe, read, () => null);
+/** The position right now (after askPosition resolved, before the next render). */
+export const readPosition = read;
 /** "lat,lng" for the API, or null. */
 export const nearParam = (p: Pos | null) => (p ? `${p.lat},${p.lng}` : null);
 
@@ -51,6 +54,32 @@ export function useNearPlaces(limit = 20): KPlace[] | null {
     queryFn: async () => normalizePlaceList(await apiRequest<unknown>('GET', '/v1/places', { params: { near: near!, sort: 'distance', limit } })).items,
   });
   return near && data ? data.map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length) : null;
+}
+
+/**
+ * Surprise me's pool (contracts/api.md): places open now within 10 km, nearest first; fewer than 5 widens to 25, then 50 km.
+ * Fetched when the position is known, so the dice deals at once; Home asks for it through the query client after a first tap.
+ */
+export const surpriseQuery = (near: string | null) => ({
+  queryKey: ['places', 'surprise', near], enabled: !!near, staleTime: 5 * 60_000,
+  queryFn: async () => {
+    let items: unknown[] = [];
+    for (const radiusKm of [10, 25, 50]) {
+      items = normalizePlaceList(await apiRequest<unknown>('GET', '/v1/places', { params: { near: near!, sort: 'distance', when: 'now', radiusKm, limit: 20 } })).items;
+      if (items.length >= 5) break;
+    }
+    return items;
+  },
+});
+
+/** Use my location: the browser asks on this tap, never on load (Near you on phones and desktop). */
+export function NearAsk() {
+  const { c } = useK();
+  const [asking, setAsking] = useState(false);
+  return <>
+    <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearAskBody}</p>
+    <div className="page-pad"><button className="btn secondary press" data-act="near-ask" disabled={asking} onClick={() => { haptic(); setAsking(true); void askPosition().finally(() => setAsking(false)); }}><L n="navigation" />{c.home.nearAsk}</button></div>
+  </>;
 }
 
 /** "N km away" on a card, only when the card came with a real distance. */

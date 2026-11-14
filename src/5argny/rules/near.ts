@@ -12,8 +12,13 @@ export const coarse = (p: { lat: number; lng: number }) => ({ lat: Math.round(p.
 /** The API ranks by distance only from inside Egypt (backend readNear: lat 22-32, lng 24-37); outside, there is no "near you". */
 export const inEgypt = (p: { lat: number; lng: number }) => p.lat >= 22 && p.lat <= 32 && p.lng >= 24 && p.lng <= 37;
 
-/** Surprise me with a position: a random place among the nearest 20 (the list is nearest first), not the last pick again. */
-export function pickNear<T extends { id: string }>(nearestFirst: T[], lastId: string | null, rand: () => number): T | null {
-  const pool = nearestFirst.slice(0, 20), rest = pool.filter((p) => p.id !== lastId), from = rest.length ? rest : pool;
+/**
+ * Surprise me with a position: a random place among the nearest 20 (the list is nearest first), skipping the last 5 picks
+ * (oldest first in `recent`). When every place was picked lately, anything but the very last; one place is picked again.
+ */
+export function pickNear<T extends { id: string }>(nearestFirst: T[], recent: string[], rand: () => number): T | null {
+  const pool = nearestFirst.slice(0, 20), skip = new Set(recent.slice(-5)), last = recent[recent.length - 1];
+  const rest = pool.filter((p) => !skip.has(p.id)), other = pool.filter((p) => p.id !== last);
+  const from = rest.length ? rest : other.length ? other : pool;
   return from.length ? from[Math.floor(rand() * from.length)] : null;
 }
