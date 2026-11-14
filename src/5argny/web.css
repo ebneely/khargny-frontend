@@ -1242,3 +1242,5 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
 @media (prefers-reduced-motion: reduce){ .tile.skel,.count-skel{animation:none} }
 /* a place name in English inside Arabic (dir=auto) runs and truncates left to right, but keeps the page's right edge */
 [dir=rtl] [dir=auto]{text-align:right}
+/* desktop place hero: the content column is 12 px wider than the prototype's (steady columns), so 16:10 alone made it 8 px taller */
+@media (min-width:1024px){ .place-wrap .place-media{max-height:360px} }
