@@ -15,6 +15,7 @@ import { regionLabel } from '@/lib/egypt-regions';
 import { likeStore } from '@/lib/likes';
 import { saveStore } from '@/lib/saves';
 import { trackPlaceAction, trackPlaceView } from '@/lib/analytics/track';
+import { sharePlace } from '@/lib/share-place';
 import { L, Ic } from './icons';
 import { Cnt, Tag, Bit } from './bits';
 import { dur, openState, type OpenState } from './rules';
@@ -148,16 +149,21 @@ export function Carousel({ photos }: { photos: KPlace['photos'] }) {
   </>;
 }
 
-/** Share sheet: the apps, then Copy link. Counts a share (30 days) when one is picked. */
+/**
+ * Share (owner 2026-11-14): the device's own share sheet straight away (lib/share-place sharePlace); where the browser has
+ * none, the link is copied with a toast. The share counts (+1) only when it really went out: shared, or copied.
+ */
 export function useShare() {
-  const { openSheet, c, closeTop, toast } = useK();
-  return (p?: { id?: string; href: string }, onShared?: () => void) => {
-    const url = new URL(p ? p.href : location.href, location.origin).href;
-    const apps: [string, string, string][] = [['WhatsApp', '#25D366', `https://wa.me/?text=${encodeURIComponent(url)}`], ['Facebook', '#1877F2', `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`], ['Messenger', '#0084FF', `fb-messenger://share?link=${encodeURIComponent(url)}`], [c.share.copyLink, '', '']];
-    openSheet(c.share.sheet, apps.map(([n, col, href]) => <button key={n} className="option press" data-act="shared" data-v={n} onClick={() => {
-      closeTop(); if (p?.id) trackPlaceAction('share', p.id); onShared?.();
-      if (href) { window.open(href, '_blank', 'noopener'); toast(fill(c.common.opening, { name: n })); } else { void navigator.clipboard?.writeText(url); toast(c.common.linkCopied); }
-    }}><span style={{ width: 28, height: 28, borderRadius: 8, display: 'grid', placeItems: 'center', background: col || 'var(--fill)', color: '#fff' }}>{col ? n[0] : <Ic n="copy" />}</span><span className="grow">{n}</span></button>));
+  const { c, toast, lang } = useK();
+  return (p?: { id?: string; href: string; name?: string }, onShared?: () => void) => {
+    const path = new URL(p ? p.href : location.href, location.origin).pathname;
+    void sharePlace({ name: p?.name || document.title, path, locale: lang, placeId: p?.id }).then(async (r) => {
+      if (r === 'failed') { // no user activation left (a share after a network wait) or no share sheet: copy instead
+        try { await navigator.clipboard.writeText(new URL(path, location.origin).href); r = 'copied'; if (p?.id) trackPlaceAction('share', p.id); } catch { return; }
+      }
+      if (r === 'copied') toast(c.common.linkCopied);
+      if (r === 'shared' || r === 'copied') onShared?.();
+    });
   };
 }
 
@@ -219,7 +225,7 @@ export function Actions({ p, end }: { p: KPlace; end?: ReactNode }) {
   return <>
     <ActBtn lang={lang} icon="heart" label={c.common.love} act="like" p={p} base={love.count} on={love.on} onClick={(e) => { e.preventDefault(); haptic(); love.toggle(); pop(e, ['scale(.6)', 'scale(1)'], spring(0.5, 0.45)); }} />
     <ActBtn lang={lang} icon="saved" label={c.common.save} act="save" p={p} base={d ? d.saves + save.delta : null} on={save.on} onClick={(e) => { e.preventDefault(); haptic(); save.toggle(); pop(e, ['scale(.75)', 'scale(1)'], spring(0, 0.35)); toast(save.on ? c.saved.removed : c.saved.added); }} />
-    <ActBtn lang={lang} icon="share" label={c.common.share} act="share" p={p} base={d ? d.shares + shares : null} on={false} onClick={(e) => { e.preventDefault(); share({ id: p.id, href: placeHref(p, lang) }, () => bumpShare(p.id)); }} />
+    <ActBtn lang={lang} icon="share" label={c.common.share} act="share" p={p} base={d ? d.shares + shares : null} on={false} onClick={(e) => { e.preventDefault(); share({ id: p.id, href: placeHref(p, lang), name: p.name }, () => bumpShare(p.id)); }} />
     <span className="act-views" title={c.stats.opened30}><Ic n="eye" /><Cnt base={d ? d.views + mine : null} /></span>
     <span className="grow" />{end}
   </>;

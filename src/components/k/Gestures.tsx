@@ -69,7 +69,9 @@ export function Gestures() {
         Object.assign(ring.style, { left: hold.x + 'px', top: Math.max(40, hold.y - hold.lift) + 'px' }); fx().append(ring); hold.ring = ring; }, 250);
       hold.t2 = setTimeout(() => { if (!hold) return; const ring = hold.ring; hold.ring = null; stopHold(); markLove(); haptic();
         if (ring) animate(ring, { transform: ['translate(-50%,-50%) scale(1)', 'translate(-50%,-50%) scale(1.3)'], opacity: [1, 0] }, { duration: 0.25 }).finished.then(() => ring.remove());
-        const id = btn.dataset.id; live.current.share({ id, href: btn.dataset.href || location.pathname }, () => { if (id) bumpShare(id); }); }, 2000);
+        // the native share sheet needs a user activation: a held touch has none until the finger lifts, so then it opens on the lift
+        const id = btn.dataset.id, go = () => live.current.share({ id, href: btn.dataset.href || location.pathname }, () => { if (id) bumpShare(id); });
+        if (navigator.userActivation?.isActive) go(); else { document.addEventListener('pointerup', go, { once: true }); document.addEventListener('pointercancel', () => document.removeEventListener('pointerup', go), { once: true }); } }, 2000);
     };
     const onMove = (e: PointerEvent) => { if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 10) stopHold(); };
     const onScroll = () => { if (hold && Math.abs(scrollY - hold.sy) > 10) stopHold(); };

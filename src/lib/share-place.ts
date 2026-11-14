@@ -17,7 +17,7 @@ export async function sharePlace(place: SharePlace): Promise<ShareResult> {
   const url = urlFor(path, place.locale);
   const text = [place.name, place.category, place.area]
     .filter(Boolean)
-    .join(" · ");
+    .join(", "); // no "·" anywhere a person reads (owner rule)
   let native = false;
   try {
     if (typeof navigator === "undefined") return "failed";
