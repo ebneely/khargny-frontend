@@ -52,8 +52,17 @@ export function PageMotion() {
     const was = last.current; last.current = d;
     if (first.current) { first.current = false; return; }
     if (!g && d === was && !(isSheetPath(pathname) && !desk())) { // same depth: the new page fades in and rises
-      fading = null; const view = document.getElementById('view'); if (!view || reduce()) return;
-      animate(view, { opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0px)'] }, spring(0, 0.35)).finished.then(() => { view.style.transform = ''; });
+      fading = null; if (reduce()) return;
+      const rise = (view: HTMLElement) => animate(view, { opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0px)'] }, spring(0, 0.35)).finished.then(() => { view.style.transform = ''; });
+      const view = document.getElementById('view'); if (!view) return;
+      // a page still loading shows an empty column (aria-busy): keep it hidden and rise the real page when it replaces it,
+      // so the content moves once, not twice (the Explore stutter)
+      if (view.getAttribute('aria-busy') !== 'true') { rise(view); return; }
+      view.style.opacity = '0';
+      const box = view.parentElement; if (!box) return;
+      const mo = new MutationObserver(() => { const v = document.getElementById('view'); if (v && v.getAttribute('aria-busy') !== 'true') { mo.disconnect(); clearTimeout(t); rise(v); } });
+      const t = setTimeout(() => mo.disconnect(), 4000);
+      mo.observe(box, { childList: true });
       return;
     }
     if (!g || d === was || g.from === d) return;
