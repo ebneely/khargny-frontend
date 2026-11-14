@@ -49,6 +49,7 @@ export const en = {
     goTotal: 'people who tapped 5argny! here', opened30: 'people who opened it in the last 30 days', goBefore: 'people who tapped 5argny! here before you',
     viewsGroup: 'views in the last 30 days',
   },
+  marks: { rising: '⬆️ Rising', new: 'New on 5argny' },
   go5: { label: '5argny!', aria: '5argny! Take me there', mapsSheet: 'Which map?', maps: ['Google Maps', 'Apple Maps'] },
   share: { sheet: 'Share', apps: ['WhatsApp', 'Facebook', 'Messenger'], copyLink: 'Copy link' },
   open: {
@@ -85,7 +86,7 @@ export const en = {
   explore: {
     everything: 'Everything', earned: 'Earned on {brand}', in: 'in', results: '{n} places', empty: 'No places for {what} {when} in {place} yet',
     when: { any: 'Any time', now: 'Open now', tonight: 'Tonight', weekend: 'This weekend' },
-    sort: { popular: 'Popular', near: 'Nearest', open: 'Open first' },
+    sort: { popular: 'Popular', near: 'Nearest', open: 'Open first', rising: 'Rising' },
   },
   filters: { title: 'Filters', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places', showPlaces: 'Show places', seeAllCats: 'See all categories', allCats: 'All categories', findCat: 'Find a category', noCat: 'No category called “{q}”' },
   market: {
@@ -115,7 +116,7 @@ export const en = {
   settings: {
     title: 'Settings', preferences: 'Preferences', appearance: 'Appearance', light: 'Light', dark: 'Dark', auto: 'Auto', language: 'Language', english: 'English', arabic: 'العربية',
     notify: { near: 'New places near me', saved: 'Updates from my saved places', weekend: 'Weekend picks on Thursday' },
-    help: 'Help', report: 'Report a problem',
+    help: 'Help', report: 'Report a problem', privacy: 'Privacy policy',
   },
   report: {
     title: 'Report a problem', whatHappened: 'What happened?',

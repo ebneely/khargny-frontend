@@ -135,7 +135,7 @@ function Similar({ p }: { p: KPlace }) {
   const list = data.filter((x) => x.id !== p.id).slice(0, 8).map((x) => toK(x as never, { cities, categories }, lang));
   if (isError) return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2></div><Failed compact error={error} retry={refetch} busy={isFetching} /></section>;
   if (!list.length) return null;
-  return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`${langPrefix(lang)}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x) => <Tile key={x.id} p={x} />)}</div></section>;
+  return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`${langPrefix(lang)}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x, i) => <Tile key={x.id} p={x} surface="similar" position={i + 1} />)}</div></section>;
 }
 
 /** The place itself: body (both layouts), foot (5argny! and Call), side (desktop column). */

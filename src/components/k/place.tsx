@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // Place patterns from proto/app.js, one component each: Meta, StatePill, OpenBar, AllDay, HoursUnknown, Carousel,
 // Actions (ActBtn + Cnt), Go5 (with its flight), Stats, Tile, Post, plus the Share and Which-map sheets they open.
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -15,7 +15,8 @@ import { useCities } from '@/lib/api/hooks/use-cities';
 import { regionLabel } from '@/lib/egypt-regions';
 import { likeStore } from '@/lib/likes';
 import { saveStore } from '@/lib/saves';
-import { trackPlaceAction, trackPlaceView } from '@/lib/analytics/track';
+import { trackPlaceAction, trackPlaceShowing, trackPlaceView, trackSearchTap, type ShowingSurface } from '@/lib/analytics/track';
+import { createShowing } from '@5argny/core/rules';
 import { sharePlace } from '@/lib/share-place';
 import { L, Ic } from './icons';
 import { Cnt, Tag, Bit } from './bits';
@@ -249,13 +250,15 @@ export function Stats({ p }: { p: KPlace }) {
   </span>;
 }
 
-export function Tile({ p, extra }: { p: KPlace; extra?: ReactNode }) {
+export function Tile({ p, extra, surface, position, mark, term }: { p: KPlace; extra?: ReactNode } & CardTrack) {
   const { lang, now } = useK();
   const st = openState(p, now, lang);
+  const ref = useRef<HTMLAnchorElement>(null);
+  useShowing(ref, surface, p.id, position);
   return (
-    <Link className="card tile press" data-item href={placeHref(p, lang)}>
+    <Link ref={ref} className="card tile press" data-item href={placeHref(p, lang)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
       
-      <span className="tile-media"><img src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
+      <span className="tile-media"><img src={p.photos[0]?.s} alt="" loading="lazy" />{mark ? <MarkChip mark={mark} over /> : null}{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
       <div className="tile-body"><b dir="auto">{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
     </Link>
   );
@@ -278,6 +281,34 @@ export function PostSkel() {
   </article>;
 }
 
+/**
+ * Decision 0006. One tracker per screen visit (Shell mounts the scope); a card reports how visible it is and the rule
+ * (rules/showing.ts) decides: half on screen for 1 s, once per card per visit. Only an IntersectionObserver: no per-frame work.
+ */
+const ShowingCtx = createContext<ReturnType<typeof createShowing> | null>(null);
+export function ShowingScope({ children }: { children: ReactNode }) {
+  const [tracker] = useState(createShowing);
+  useEffect(() => () => tracker.stop(), [tracker]);
+  return <ShowingCtx.Provider value={tracker}>{children}</ShowingCtx.Provider>;
+}
+export type CardTrack = { surface?: ShowingSurface; position?: number; mark?: 'rising' | 'new' | null; term?: string };
+export function useShowing(ref: React.RefObject<HTMLElement | null>, surface: ShowingSurface | undefined, id: string, position = 1) {
+  const tracker = useContext(ShowingCtx);
+  const at = useRef(position); at.current = position;
+  useEffect(() => {
+    const el = ref.current; if (!tracker || !surface || !el || !('IntersectionObserver' in window)) return;
+    const key = `${surface}:${id}`, fire = () => trackPlaceShowing(id, surface, at.current);
+    const io = new IntersectionObserver(([en]) => tracker.visible(key, en?.isIntersecting ? en.intersectionRatio : 0, fire), { threshold: 0.5 });
+    io.observe(el); return () => { io.disconnect(); tracker.visible(key, 0, fire); };
+  }, [ref, tracker, surface, id]);
+}
+
+/** "Rising" or "New on 5argny" on a card: the status only, never a number (decision 0006). */
+export function MarkChip({ mark, over }: { mark: 'rising' | 'new'; over?: boolean }) {
+  const { c } = useK();
+  return <span className={over ? 'mark-chip over' : 'mark-chip'}><Tag label={c.marks[mark]} tone={mark === 'rising' ? 'accent' : 'good'} /></span>;
+}
+
 export function BadgeTags({ p }: { p: KPlace }) {
   const label = useBadgeLabel();
   return <>{p.badges.map((b, i) => <Tag key={b.key + i} label={label(b)} tone="good" icon={badgeIcon(b)} />)}</>;
@@ -297,11 +328,12 @@ function useFeedView(ref: React.RefObject<HTMLElement | null>, id: string) {
   }, [ref, id]);
 }
 
-export function Post({ p }: { p: KPlace }) {
+export function Post({ p, surface, position, mark }: { p: KPlace } & CardTrack) {
   const { lang, now, go } = useK();
   const st = openState(p, now, lang);
   const ref = useRef<HTMLElement>(null);
   useFeedView(ref, p.id);
+  useShowing(ref, surface, p.id, position);
   // a tap opens the place after the double-tap window, unless that tap became a love or the second press of a double tap (love or hold to share)
   const onClick = (e: MouseEvent) => { if ((e.target as Element).closest('button,a,[role="button"]')) return; clearTimeout(openT); if (secondPress) { secondPress = false; return; } openT = setTimeout(() => { if (Date.now() - lastLoveAt() > 450) go(placeHref(p, lang)); }, 300); };
   return (
@@ -309,7 +341,7 @@ export function Post({ p }: { p: KPlace }) {
       
       <header className="post-head"><img className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b dir="auto">{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
       <div className="media"><Carousel photos={p.photos.slice(0, 5)} /></div>
-      <div className="post-foot">{p.badges.length ? <p className="post-meta"><BadgeTags p={p} /></p> : null}
+      <div className="post-foot">{p.badges.length || mark ? <p className="post-meta">{mark ? <MarkChip mark={mark} /> : null}<BadgeTags p={p} /></p> : null}
         <div className="post-actions"><Actions p={p} end={<Go5 p={p} />} /></div></div>
     </article>
   );

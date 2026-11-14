@@ -50,6 +50,7 @@ export const ar: Copy = {
     goTotal: 'شخص داس خرجني! هنا', opened30: 'شخص فتحه في آخر 30 يوم', goBefore: 'شخص داس خرجني! هنا قبلك',
     viewsGroup: 'مشاهدة في آخر 30 يوم',
   },
+  marks: { rising: '⬆️ صاعد', new: 'جديد على خرجني' },
   go5: { label: 'خرجني!', aria: 'خرجني! وديني هناك', mapsSheet: 'أنهي خريطة؟', maps: ['Google Maps', 'Apple Maps'] },
   share: { sheet: 'شارك', apps: ['WhatsApp', 'Facebook', 'Messenger'], copyLink: 'انسخ اللينك' },
   open: {
@@ -86,7 +87,7 @@ export const ar: Copy = {
   explore: {
     everything: 'كل حاجة', earned: 'اتكسب على {brand}', in: 'في', results: '{n} مكان', empty: 'لسه مفيش أماكن لـ {what} {when} في {place}',
     when: { any: 'أي وقت', now: 'مفتوح دلوقتي', tonight: 'بالليل', weekend: 'الويك إند ده' },
-    sort: { popular: 'الأشهر', near: 'الأقرب', open: 'المفتوح الأول' },
+    sort: { popular: 'الأشهر', near: 'الأقرب', open: 'المفتوح الأول', rising: 'صاعد' },
   },
   filters: { title: 'فلاتر', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', showPlaces: 'اعرض الأماكن', show: 'اعرض {n} مكان', seeAllCats: 'كل الأنواع', allCats: 'كل الأنواع', findCat: 'دوّر على نوع', noCat: 'مفيش نوع اسمه “{q}”' },
   market: {
@@ -116,7 +117,7 @@ export const ar: Copy = {
   settings: {
     title: 'الإعدادات', preferences: 'التفضيلات', appearance: 'الشكل', light: 'فاتح', dark: 'غامق', auto: 'تلقائي', language: 'اللغة', english: 'English', arabic: 'العربية',
     notify: { near: 'أماكن جديدة قريبة مني', saved: 'جديد الأماكن اللي حفظتها', weekend: 'اقتراحات الويك إند يوم الخميس' },
-    help: 'المساعدة', report: 'بلغ عن مشكلة',
+    help: 'المساعدة', report: 'بلغ عن مشكلة', privacy: 'سياسة الخصوصية',
   },
   report: {
     title: 'بلغ عن مشكلة', whatHappened: 'إيه اللي حصل؟',
