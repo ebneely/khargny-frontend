@@ -91,7 +91,7 @@ export function AllDay() {
 export function HoursUnknown({ p }: { p: KPlace }) {
   const { c, lang } = useK();
   const correct = useOpenCorrection();
-  return <div className="open-tl unknown"><span className="live-pill unknown"><i className="live off" />{c.open.unknown}</span><Link className="hours-ask press" href={`${placeHref(p, lang)}correct/`} onClick={(e) => { if (desk()) return; e.preventDefault(); correct(p); }}><L n="clock-plus" />{c.open.tellUs}</Link></div>;
+  return <div className="open-tl unknown"><span className="live-pill unknown"><i className="live" />{c.open.unknown}</span><Link className="hours-ask press" href={`${placeHref(p, lang)}correct/`} onClick={(e) => { if (desk()) return; e.preventDefault(); correct(p); }}><L n="clock-plus" />{c.open.tellUs}</Link></div>;
 }
 /** The opening piece of a place: one of the four states. */
 export function OpenPiece({ p }: { p: KPlace }) {

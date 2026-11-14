@@ -85,7 +85,7 @@ export const en = {
     when: { any: 'Any time', now: 'Open now', tonight: 'Tonight', weekend: 'This weekend' },
     sort: { popular: 'Popular', near: 'Nearest', open: 'Open first' },
   },
-  filters: { title: 'Filters', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places', showPlaces: 'Show places' },
+  filters: { title: 'Filters', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places', showPlaces: 'Show places', seeAllCats: 'See all categories', allCats: 'All categories', findCat: 'Find a category', noCat: 'No category called “{q}”' },
   market: {
     title: 'Marketplace', all: 'All', verifiedOnly: 'ID verified only', verified: 'ID verified', notVerified: 'Not verified', trips: '{n} trips', seatsLeft: '{n} seats left',
     perPerson: 'per person', hostKinds: { guide: 'Guide', individual: 'Individual', office: 'Travel office' },

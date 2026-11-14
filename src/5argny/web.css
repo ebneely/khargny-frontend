@@ -1161,6 +1161,49 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 /* desktop form pages (Suggest a correction, Report a problem): the send button ends the form and stays in reach */
 .corr-send-desk{position:sticky;bottom:16px;z-index:5;display:flex;max-width:640px;margin:16px 0 24px;padding:8px;border-radius:22px;background:var(--bar);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);box-shadow:var(--sh2)}
 .corr-send-desk .btn{flex:1;height:40px}
+/* owner 2026-11-14: "Hours not listed" is a yellow signal pill with the same two progressive rings as Open, and its
+   rings travel all the way to the pill's far edge (it is twice as wide, so it travels twice as far in more time) */
+.live-pill.unknown{background:rgba(245,165,36,.18);color:#5C3B00;box-shadow:none}
+:root[data-theme=dark] .live-pill.unknown{background:rgba(245,165,36,.22);color:#FFD58A}
+.live-pill.unknown .live{background:#F5A524}
+.live-pill.unknown .live::before,.live-pill.unknown .live::after{display:block;border-color:rgba(245,165,36,.8)}
+.live-pill.unknown .live::before{animation:liveWaveWide 6s cubic-bezier(.2,.6,.35,1) 3s infinite}
+.live-pill.unknown .live::after{animation:liveWaveWide 6s cubic-bezier(.2,.6,.35,1) 0s infinite}
+@keyframes liveWaveWide{0%{inset:-1px;border-width:2px}100%{inset:-170px;border-width:.5px}}
+@media (prefers-reduced-motion: reduce){ .live-pill.unknown .live::before,.live-pill.unknown .live::after{animation:none;display:none} }
 /* sheet page lock: desktop keeps every column in place (overflow only), phones pin the body and keep the sticky top chrome on screen */
 html{scrollbar-gutter:stable}
 html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
+/* owner 2026-11-14: dragging the tab bar moves the orange pill itself; no clear lens grows, refracts or replaces it */
+#glass-tabs .lg-tab-lens.lg-glass{background-color:transparent!important;background-image:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important;transition:scale .22s cubic-bezier(.2,.9,.3,1),opacity .14s}
+#glass-tabs .lg-tab-lens::before{opacity:1!important}
+#glass-tabs .lg-tab-lens .lg-drawn,#glass-tabs .lg-tab-lensed{display:none!important}
+#glass-tabs .lg-tab-bar[data-lensing] .lg-tab-tint{visibility:visible}
+#glass-tabs .lg-tab-bar-glass::before{opacity:0!important}
+@media (prefers-reduced-motion: reduce){ #glass-tabs .lg-tab-lens.lg-glass{transition:opacity .14s} }
+/* the brand mark in the top bar (owner 2026-11-14): the خرجني pin with the 5argny! arrow at its top right, like the app's splash.
+   A mark, not text: the arrow stays top right in Arabic too. */
+.brand-mark{position:relative;display:inline-flex;align-items:center;flex:none;direction:ltr;padding:2px 16px 2px 0;margin-block:-2px}
+.chrome-top .brand-mark{max-width:none;padding-block:2px;margin-block:-2px;padding-inline-end:0;padding-right:16px}
+.brand-mark img{display:block;width:auto;height:34px}
+.brand-mark .mark-go{position:absolute;right:0;top:-1px;display:grid;color:var(--accent)}
+.brand-mark .mark-go .lucide{width:15px;height:15px;stroke-width:2.4}
+@media (max-width:1023px){ .brand-mark img{height:32px} .brand-mark .mark-go .lucide{width:14px;height:14px} }
+.chrome-top.searching .brand-mark{max-width:0;padding:0;opacity:0;overflow:hidden}
+
+/* desktop cards never fill the screen (owner 2026-11-14): photos are 16:10, at most 420 px tall; phones keep the prototype's tall photos */
+@media (min-width:700px){
+  .post .media{width:100%;aspect-ratio:16/10;max-height:420px}
+  .tm-picks{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .place-media{width:100%;max-height:420px}
+}
+
+/* desktop: the sidebar and the right rail sit at the same place on every page (owner 2026-11-14). Both layouts are the same width,
+   so the centred grid starts at the same x, and a page without the location bar keeps its height (.locbar-space). */
+.locbar-space{display:none}
+@media (min-width:1024px){
+  .layout.wide{grid-template-columns:240px minmax(0,932px);max-width:none;margin:0}
+  .locbar-space{display:block;height:52px}
+  .sidebar,.rail-right{top:128px}
+}
+

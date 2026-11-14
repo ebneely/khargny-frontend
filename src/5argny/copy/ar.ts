@@ -86,7 +86,7 @@ export const ar: Copy = {
     when: { any: 'أي وقت', now: 'مفتوح دلوقتي', tonight: 'بالليل', weekend: 'الويك إند ده' },
     sort: { popular: 'الأشهر', near: 'الأقرب', open: 'المفتوح الأول' },
   },
-  filters: { title: 'فلاتر', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', showPlaces: 'اعرض الأماكن', show: 'اعرض {n} مكان' },
+  filters: { title: 'فلاتر', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', showPlaces: 'اعرض الأماكن', show: 'اعرض {n} مكان', seeAllCats: 'كل الأنواع', allCats: 'كل الأنواع', findCat: 'دوّر على نوع', noCat: 'مفيش نوع اسمه “{q}”' },
   market: {
     title: 'السوق', all: 'الكل', verifiedOnly: 'المتأكد من هويتهم بس', verified: 'الهوية متأكدة', notVerified: 'الهوية مش متأكدة', trips: '{n} رحلة', seatsLeft: 'فاضل {n} مكان',
     perPerson: 'للفرد', hostKinds: { guide: 'مرشد', individual: 'فرد', office: 'شركة سياحة' },

@@ -11,7 +11,9 @@ import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { regionLabel } from '@/lib/egypt-regions';
-import { L } from './icons';
+import { L, Ic } from './icons';
+import { catIcon } from './place';
+import { searchNormalize } from '@5argny/core/rules';
 import { Btn, Seg } from './bits';
 import { INTENTS } from './rules';
 import { useK, haptic, spring } from './KProvider';
@@ -58,10 +60,11 @@ export function useCounts(when: When) {
   });
   const totals = useQuery({
     queryKey: ['places', 'totals', cityId ?? '', area ?? '', categories.length], enabled: !when && categories.length > 0, staleTime: 5 * 60_000,
-    queryFn: async () => Object.fromEntries(await Promise.all(categories.map(async (c) => [c.slug, await apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: c.id, cityId: cityId ?? undefined, region: area ?? undefined, limit: 1 } }).then((r) => r.meta?.total ?? 0).catch(() => 0)] as const))),
+    queryFn: async () => Object.fromEntries(await Promise.all(categories.map(async (c) => [c.slug, await apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: c.id, cityId: cityId ?? undefined, region: area ?? undefined, limit: 1 } }).then((r) => r.meta?.total ?? null).catch(() => null)] as const))),
   });
   const by = when ? timed.data : totals.data;
-  return (cats: readonly string[]) => (by ? categories.filter((c) => cats.includes(c.nameEn || '')).reduce((a, c) => a + (by[c.slug] ?? 0), 0) : null);
+  // a count that failed to load stays hidden, never a false 0
+  return (cats: readonly string[]) => { if (!by) return null; const ns = categories.filter((c) => cats.includes(c.nameEn || '')).map((c) => by[c.slug]); return ns.some((n) => n === null) ? null : ns.reduce<number>((a, n) => a + (n ?? 0), 0); };
 }
 
 /** The price bands with western digits in both languages (the API's Arabic labels use Arabic digits). */
@@ -71,8 +74,26 @@ export function usePriceBands() {
   return data.map((b) => ({ level: b.level, label: lang === 'ar' ? b.labelEn.replace('EGP', 'جنيه') : b.labelEn }));
 }
 
-function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
+/** Every category, stacked over Filters: counts for the chosen When (grey dot at 0), a search box when the list is long. */
+function AllCats({ when, cur, onPick }: { when: When; cur: string; onPick: (cat: string) => void }) {
   const { c, lang } = useK();
+  const { data: categories = [] } = useCategories();
+  const count = useCounts(when);
+  const [q, setQ] = useState('');
+  const n = searchNormalize(q);
+  const rows = categories.map((x) => ({ x, key: x.nameEn || x.nameAr, label: (lang === 'ar' ? x.nameAr : x.nameEn || x.nameAr) || x.slug, n: count([x.nameEn || '']) }))
+    .filter((r) => !n || searchNormalize(`${r.x.nameEn ?? ''} ${r.x.nameAr ?? ''}`).includes(n));
+  return <>
+    {categories.length > 8 ? <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--card)', paddingBottom: 8 }}><label className="search"><Ic n="search" /><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={c.filters.findCat} aria-label={c.filters.findCat} autoComplete="off" enterKeyHint="search" /></label></div> : null}
+    {rows.map((r) => <button key={r.x.id} className="option press" role="radio" aria-checked={cur === r.key} data-act="f-cat" onClick={() => onPick(r.key)}><L n={catIcon(r.x.nameEn || '')} /><span className="grow">{r.label}</span>{r.n != null ? <em className="sg-n"><i className={`live ${r.n ? '' : 'off'}`} />{r.n}</em> : null}<Ic n="check" cls="check" /></button>)}
+    {rows.length ? null : <div className="empty" style={{ padding: 18 }}><L n="search-x" /><p className="t-head">{fill(c.filters.noCat, { q: q.trim() })}</p></div>}
+  </>;
+}
+
+function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
+  const { c, lang, openSheet, closeTop } = useK();
+  const { data: categories = [] } = useCategories();
+  const picked = f.cat ? categories.find((x) => (x.nameEn || x.nameAr) === f.cat || x.slug === f.cat || x.id === f.cat) : null;
   const count = useCounts(f.when);
   const bands = usePriceBands();
   const { data: amenities = [] } = useAmenities();
@@ -84,7 +105,10 @@ function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
     <h3 className="group-title"><L n="clock" /> {c.filters.when}</h3>
     <div style={{ marginBottom: 16 }}><Seg opts={WHENS.map((w) => [w, c.explore.when[w || 'any']] as [When, string])} val={f.when} onPick={(w) => onChange({ ...f, when: w })} /></div>
     <h3 className="group-title"><L n="layout-grid" /> {c.filters.category}</h3>
-    <div className="amen" style={{ marginBottom: 16 }}>{INTENTS.map((x) => chip(x.key, f.intent === x.key, c.intents[x.key], x.icon, count(x.cats), () => onChange({ ...f, intent: f.intent === x.key ? '' : x.key, cat: '' })))}</div>
+    <div className="amen" style={{ marginBottom: 16 }}>{INTENTS.map((x) => chip(x.key, f.intent === x.key, c.intents[x.key], x.icon, count(x.cats), () => onChange({ ...f, intent: f.intent === x.key ? '' : x.key, cat: '' })))}
+      {picked ? chip('cat', true, (lang === 'ar' ? picked.nameAr : picked.nameEn || picked.nameAr) || picked.slug, catIcon(picked.nameEn || ''), count([picked.nameEn || '']), () => onChange({ ...f, cat: '' })) : null}
+      {/* every category, in a sheet stacked over Filters; picking one comes back here with it selected (still staged) */}
+      <button className="chip press" data-act="all-cats" onClick={() => openSheet(c.filters.allCats, <AllCats when={f.when} cur={f.cat} onPick={(cat) => { onChange({ ...f, cat, intent: '' }); closeTop(); }} />)}><L n="layout-grid" />{c.filters.seeAllCats}<L n="chevron-right" /></button></div>
     {bands.length ? <><h3 className="group-title"><L n="banknote" /> {c.filters.price}</h3>
       <div className="amen" style={{ marginBottom: 16 }}>{bands.map((b) => chip('b' + b.level, f.filters.has('band:' + b.level), b.label, null, null, () => toggle('band:' + b.level)))}</div></> : null}
     {must.length ? <><h3 className="group-title"><L n="list-checks" /> {c.filters.mustHave}</h3>

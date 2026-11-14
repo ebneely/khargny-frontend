@@ -14,7 +14,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { regionLabel } from '@/lib/egypt-regions';
 import { L, Ic, Gov } from './icons';
-import { Brand, slidePill } from './bits';
+import { slidePill } from './bits';
 import { INTENTS, moment, openState, k } from './rules';
 import { intentFor, highlightRange } from '@5argny/core/rules';
 import { toK, placeHref, type KPlace } from './data';
@@ -31,6 +31,23 @@ const noop = () => () => {};
 function NavItems({ cur }: { cur: Tab }) {
   const { lang, c } = useK();
   return <>{NAV.map(([key, href, icon]) => <Link key={key} className="nav-item press" href={`/${lang}${href === '/' ? '' : href}`} aria-current={cur === key ? 'page' : undefined}><Ic n={icon} /><span>{c.nav[key]}</span></Link>)}</>;
+}
+
+/**
+ * The brand mark (the خرجني pin, as the app's splash draws it) with the 5argny! arrow at its top right. On hover (a mouse)
+ * or keyboard focus the arrow takes a short 5argny! flight and comes home; reduced motion keeps it still.
+ */
+function BrandMark({ href, label }: { href: string; label: string }) {
+  const go = useRef<HTMLSpanElement>(null);
+  const run = useRef<{ stop: () => void } | null>(null);
+  const fly = () => {
+    const el = go.current; if (!el || reduce()) return;
+    run.current?.stop(); // interruptible: a new hover restarts from where the arrow is
+    run.current = animate(el, { transform: ['translate(0px,0px) scale(1)', 'translate(7px,-7px) scale(1.15)', 'translate(-3px,3px) scale(.7)', 'translate(0px,0px) scale(1)'], opacity: [1, 0, 0, 1], offset: [0, 0.45, 0.5, 1] } as never, { duration: 0.45, ease: [0.3, 0.7, 0.2, 1] });
+  };
+  return <Link className="wordmark brand-mark press" href={href} aria-label={label}
+    onPointerEnter={(e) => { if (e.pointerType === 'mouse') fly(); }} onFocus={(e) => { if (e.currentTarget.matches(':focus-visible')) fly(); }}>
+    <img src="/brand/khargny-mark.svg" alt="" width={27} height={34} draggable={false} /><span className="mark-go" ref={go}><L n="navigation" /></span></Link>;
 }
 
 /** placeName(): the area, else the city, else Egypt. */
@@ -53,8 +70,11 @@ export function Shell({ cur, wide, right, noLoc, withFilters, actionbar, childre
   useEffect(() => { setTab(cur); }, [cur, setTab]);
   const chrome = useSyncExternalStore(noop, () => document.getElementById('chrome'), () => null);
   useEffect(() => { window.scrollTo(0, 0); }, []);
+  const showLoc = ['home', 'explore', 'market'].includes(cur) && !noLoc;
   return <>
-    <div className="chrome-top"><TopBar />{['home', 'explore', 'market'].includes(cur) && !noLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={withFilters ?? cur === 'explore'} /></div></div> : null}</div>
+    <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={withFilters ?? cur === 'explore'} /></div></div> : null}</div>
+    {/* desktop: a page without the location bar keeps its height, so the sidebar and the page start at the same place on every page */}
+    {showLoc ? null : <div className="locbar-space" aria-hidden="true" />}
     <div className={`layout ${wide ? 'wide' : ''}`}>
       <Sidebar cur={cur} />
       <main className="page" id="view">{children}</main>
@@ -84,6 +104,43 @@ function Sidebar({ cur }: { cur: Tab }) {
   );
 }
 
+/**
+ * Dragging the glass tab bar (owner 2026-11-14): glisse already carries its selection 1:1 from where it was grabbed and clicks
+ * the tab it settles on. On top of it: a stretch along the movement while the finger moves, and a fling projected to the
+ * tab it is heading for (velocity hand-off, deceleration 0.99) instead of the one under the finger.
+ */
+function useGlassDrag() {
+  useEffect(() => {
+    const host = document.getElementById('glass-tabs'); if (!host) return;
+    type Drag = { x0: number; x: number; t: number; vx: number; moved: boolean };
+    let drag: Drag | null = null, fling: number | null = null;
+    const lens = () => host.querySelector<HTMLElement>('.lg-tab-lens');
+    const tabs = () => [...host.querySelectorAll<HTMLElement>('.lg-tab')];
+    const down = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.lg-tab')) return; drag = { x0: e.clientX, x: e.clientX, t: e.timeStamp, vx: 0, moved: false }; fling = null; };
+    const move = (e: PointerEvent) => {
+      if (!drag) return; const dt = e.timeStamp - drag.t;
+      if (dt > 0) drag.vx = 0.8 * ((e.clientX - drag.x) / dt) + 0.2 * drag.vx; // px/ms, smoothed
+      drag.x = e.clientX; drag.t = e.timeStamp; if (Math.abs(e.clientX - drag.x0) > 6) drag.moved = true;
+      const l = lens(); if (l && drag.moved && !reduce()) { const st = Math.min(0.14, Math.abs(drag.vx) * 0.08); l.style.scale = `${1 + st} ${1 - st * 0.4}`; }
+    };
+    const up = (e: PointerEvent) => {
+      if (!drag) return; const d = drag; drag = null; const l = lens(); if (l) l.style.scale = '';
+      if (!l || !d.moved || e.type !== 'pointerup' || e.timeStamp - d.t > 80 || Math.abs(d.vx) < 0.3) return; // a resting finger hands off no velocity
+      const r = l.getBoundingClientRect(), to = r.left + r.width / 2 + d.vx * 99;
+      const centers = tabs().map((t) => { const b = t.getBoundingClientRect(); return b.left + b.width / 2; });
+      fling = centers.reduce((best, cx, i) => (Math.abs(cx - to) < Math.abs(centers[best] - to) ? i : best), 0);
+    };
+    // glisse clicks the tab under the selection right after pointerup; a fling swaps it for the projected one
+    const click = (e: MouseEvent) => {
+      if (fling == null || e.isTrusted) return; const list = tabs(), at = list.indexOf((e.target as Element).closest('.lg-tab') as HTMLElement), to = fling; fling = null;
+      if (at < 0 || to === at) return; e.preventDefault(); e.stopPropagation(); list[to].click();
+    };
+    host.addEventListener('pointerdown', down, true); addEventListener('pointermove', move, { passive: true });
+    addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true); host.addEventListener('click', click, true);
+    return () => { host.removeEventListener('pointerdown', down, true); removeEventListener('pointermove', move); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); host.removeEventListener('click', click, true); };
+  }, []);
+}
+
 /** The tab bar: glisse's Liquid Glass TabBar on phones, the plain bar if glisse cannot load. Lives in the layout. */
 export function TabNav() {
   const { tab, lang, c } = useK();
@@ -94,7 +151,9 @@ export function TabNav() {
   useEffect(() => { const read = () => setDark(document.documentElement.dataset.theme === 'dark'); read(); const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); return () => mo.disconnect(); }, []);
   const last = useRef(tab);
   useLayoutEffect(() => { if (plain.current) slidePill(plain.current, last.current !== tab, last.current !== tab ? plain.current.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === last.current)] : null); last.current = tab; }, [tab]);
-  const glassStyle = { '--lg-lens-grow-x': '30px', '--lg-lens-grow-y': '20px', '--lg-glass-bend': 1, '--lg-glass-dispersion': 0.4, '--lg-blur': '10px', '--lg-rim-shine': 0.13,
+  useGlassDrag();
+  // the selection never grows into a lens (owner 2026-11-14): the orange pill itself is what moves
+  const glassStyle = { '--lg-lens-grow-x': '0px', '--lg-lens-grow-y': '0px', '--lg-glass-bend': 1, '--lg-glass-dispersion': 0.4, '--lg-blur': '10px', '--lg-rim-shine': 0.13,
     '--lg-glass': dark ? 'rgba(34,27,22,.84)' : 'rgba(251,246,238,.84)', '--lg-glass-active': dark ? 'rgba(46,37,30,.92)' : 'rgba(246,238,228,.92)', '--lg-selection': dark ? 'rgba(232,116,58,.22)' : 'rgba(217,98,42,.16)', '--lg-lens': dark ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)' } as React.CSSProperties;
   return <>
     <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
@@ -127,7 +186,7 @@ function TopBar() {
   useEffect(() => { if (!searching) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); });
   const hints = c.search.hints;
   return <>
-    <header className="topbar"><Link className="wordmark press" href={`/${lang}`} aria-label={c.nav.homeAria}><Brand /></Link>
+    <header className="topbar"><BrandMark href={`/${lang}`} label={c.nav.homeAria} />
       <label className={`search gsearch ${q ? 'has-text' : ''}`}><Ic n="search" /><span className="gs-hint" aria-hidden="true"><span ref={hintEl}>{hints[hint % hints.length]}</span></span>
         <input ref={input} type="search" placeholder={c.search.placeholder} data-act="gsearch" value={q} aria-label={c.search.placeholder} autoComplete="off" enterKeyHint="search"
           onFocus={enter} onChange={(e) => setQ(e.target.value)}
