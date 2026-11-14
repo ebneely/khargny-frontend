@@ -28,7 +28,7 @@ import { hasLocBar, type Frame } from './frame';
 import { useK, haptic, reduce, spring, type Tab } from './KProvider';
 import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export const NAV: [Tab, string, 'home' | 'explore' | 'market' | 'saved' | 'cog'][] = [['home', '/', 'home'], ['explore', '/explorer/', 'explore'], ['market', '/marketplace/', 'market'], ['saved', '/saved/', 'saved'], ['profile', '/settings/', 'cog']];
 let lastNavTab: Tab | null = null;
@@ -83,11 +83,47 @@ if (typeof window !== 'undefined') addEventListener('popstate', () => { popped =
  * never unmount when you change page, so their icons and the sliding pill stay exactly as they are. The page between them
  * is the only thing that changes.
  */
+/**
+ * The top chrome's one rule (owner 2026-11-14): nothing moves while the page scrolls. Half a second after the scroll rests,
+ * the location bar is either shown or hidden, decided once from where the scroll went (down past 120 px: hidden; up, or near
+ * the top: shown), and only a change animates. The motion is iOS-like and interruptible: a critically damped spring from the
+ * current value (a new decision mid-animation re-targets it), rising and shrinking slightly into the top bar as it leaves and
+ * dropping out of it as it returns. Transform and opacity only. A new page always starts with the bar out.
+ */
+function useChromeFold(wrap: React.RefObject<HTMLDivElement | null>) {
+  const pathname = usePathname();
+  const hidden = useRef(false), anim = useRef<{ stop: () => void } | null>(null);
+  const set = useCallback((hide: boolean, instant = false) => {
+    const el = wrap.current; if (!el || hidden.current === hide) return;
+    hidden.current = hide; el.closest('.chrome-top')?.classList.toggle('compact', hide); el.style.pointerEvents = hide ? 'none' : '';
+    anim.current?.stop(); anim.current = null;
+    const settled = () => { if (!hidden.current) { el.style.transform = ''; el.style.opacity = ''; } // shown: hand back to CSS (search hides it)
+      const c = el.closest('.chrome-top'), top = c && (hidden.current ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); };
+    const to = hide ? { transform: 'translateY(-100%) scale(0.96)', opacity: 0 } : { transform: 'translateY(0%) scale(1)', opacity: 1 };
+    if (instant || reduce()) { el.style.transform = to.transform; el.style.opacity = String(to.opacity); settled(); return; }
+    const a = animate(el, to, hide ? spring(0, 0.34) : spring(0, 0.42)); anim.current = a; a.finished.then(() => { if (anim.current === a) settled(); });
+  }, [wrap]);
+  useEffect(() => {
+    let anchor = scrollY, rest: ReturnType<typeof setTimeout> | undefined;
+    const settle = () => {
+      const c = wrap.current?.closest('.chrome-top'); if (!c || c.classList.contains('searching') || document.documentElement.classList.contains('sheet-open')) return;
+      const y = scrollY, went = y - anchor; anchor = y;
+      set(y < 60 ? false : went > 24 ? true : went < -24 ? false : hidden.current);
+    };
+    const onScroll = () => { if (document.documentElement.classList.contains('sheet-open')) return; clearTimeout(rest); rest = setTimeout(settle, 500); };
+    addEventListener('scroll', onScroll, { passive: true });
+    return () => { removeEventListener('scroll', onScroll); clearTimeout(rest); anim.current?.stop(); };
+  }, [set, wrap]);
+  useEffect(() => { set(false, true); }, [pathname, set]);
+}
+
 export function FrameHost({ initial, children }: { initial: Frame; children: ReactNode }) {
   const [frame, setFrame] = useState(initial);
   const { tab } = useK();
   const set = useCallback((f: Frame) => setFrame((was) => (was.wide === f.wide && was.noLoc === f.noLoc && was.withFilters === f.withFilters ? was : f)), []);
   const showLoc = hasLocBar(tab, frame.noLoc);
+  const locWrap = useRef<HTMLDivElement>(null);
+  useChromeFold(locWrap);
   // one CSS variable for the sticky header's full height: every sticky column (sidebar, right rail, place card) sits below it in either scroll direction
   useLayoutEffect(() => {
     const top = document.querySelector('.chrome-top'); if (!top) return;
@@ -96,7 +132,7 @@ export function FrameHost({ initial, children }: { initial: Frame; children: Rea
   }, []);
   // one showing tracker for the frame (search results in the top bar); each page opens its own inside (one visit = one scope)
   return <FrameCtx.Provider value={set}><ShowingScope>
-    <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={frame.withFilters} /></div></div> : null}</div>
+    <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap" ref={locWrap}><div className="locbar-in"><LocBar withFilters={frame.withFilters} /></div></div> : null}</div>
     {/* desktop: a page without the location bar keeps its height, so the sidebar and the page start at the same place on every page */}
     {showLoc ? null : <div className="locbar-space" aria-hidden="true" />}
     <div className={`layout ${frame.wide ? 'wide' : ''}`}>
@@ -187,9 +223,9 @@ export function TabNav() {
   useEffect(() => { const read = () => setDark(document.documentElement.dataset.theme === 'dark'); read(); const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); return () => mo.disconnect(); }, []);
   const last = useRef(tab);
   useLayoutEffect(() => { if (plain.current) slidePill(plain.current, last.current !== tab, last.current !== tab ? plain.current.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === last.current)] : null); last.current = tab; }, [tab]);
-  // owner's glisse settings (2026-11-14): clear bending glass, no frost, strong dispersion and rim
-  const glassStyle = { background: 'none', '--lg-glass-bend': 1, '--lg-glass-dispersion': 2, '--lg-blur': '0px', '--lg-rim-shine': 0.7,
-    '--lg-glass': 'transparent', '--lg-glass-active': dark ? 'rgba(46,37,30,.92)' : 'rgba(246,238,228,.92)', '--lg-selection': dark ? 'rgba(232,116,58,.22)' : 'rgba(217,98,42,.16)', '--lg-lens': dark ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)' } as React.CSSProperties;
+  // glisse glass, tinted (owner 2026-11-14: a clear bar was hard to read); the moving selection is a plain tinted pill (CSS)
+  const glassStyle = { '--lg-glass-bend': 1, '--lg-glass-dispersion': 0.6, '--lg-blur': '10px', '--lg-rim-shine': 0.7,
+    '--lg-glass': dark ? 'rgba(34,27,22,.86)' : 'rgba(251,246,238,.86)', '--lg-glass-active': dark ? 'rgba(46,37,30,.92)' : 'rgba(246,238,228,.92)', '--lg-selection': dark ? 'rgba(232,116,58,.22)' : 'rgba(217,98,42,.16)', '--lg-lens': dark ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)' } as React.CSSProperties;
   return <>
     <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
     {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}

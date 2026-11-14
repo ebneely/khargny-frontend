@@ -171,35 +171,12 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     return () => { document.removeEventListener('pointerdown', on, true); ['pointerup', 'pointercancel', 'scroll', 'dragstart'].forEach((n) => document.removeEventListener(n, off, true)); document.removeEventListener('keydown', key); };
   }, [closeTop]);
 
-  // The top chrome on scroll (owner 2026-11-14): nothing moves while the page is scrolling. Half a second after the scroll
-  // rests, the location bar folds away (scrolled down past 120 px) or comes back (scrolled up, or near the top), once, by
-  // toggling one class: the motion is a CSS transition on transform and opacity, so it never stacks or replays mid-scroll.
-  // The top bar only switches its 'scrolled' material when it crosses 4 px. Frozen while a sheet or the search is open.
+  // the top chrome's scroll behaviour lives in its own component now (Shell.tsx useChromeFold)
   const pathname = usePathname();
-  useEffect(() => {
-    let anchorY = scrollY, rest: ReturnType<typeof setTimeout> | undefined, raf = 0, scrolled = scrollY > 4;
-    const chrome = () => document.querySelector('.chrome-top');
-    const backTop = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const c = chrome(), top = c && (c.classList.contains('compact') ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); }); };
-    chrome()?.classList.toggle('scrolled', scrolled);
-    const settle = () => {
-      const c = chrome(); if (!c || c.classList.contains('searching') || document.documentElement.classList.contains('sheet-open')) return;
-      const y = scrollY, went = y - anchorY; anchorY = y;
-      const fold = y < 60 ? false : went > 24 ? true : went < -24 ? false : c.classList.contains('compact');
-      if (fold !== c.classList.contains('compact')) { c.classList.toggle('compact', fold); backTop(); }
-    };
-    const onScroll = () => {
-      if (document.documentElement.classList.contains('sheet-open')) return; // pinned under a sheet
-      const now = scrollY > 4; if (now !== scrolled) { scrolled = now; chrome()?.classList.toggle('scrolled', now); }
-      clearTimeout(rest); rest = setTimeout(settle, 500);
-    };
-    addEventListener('scroll', onScroll, { passive: true });
-    return () => { removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); clearTimeout(rest); };
-  }, []);
   useEffect(() => {
     const cur = contentRef.current;
     if (cur && !cur.keys.includes(pathname) && !cur.keys.includes(pathname + '/') && !isSheetPath(pathname)) { setContent(null); contentRef.current = null; closeAll(); }
     if (!desk() && isSheetPath(pathname)) return; // a sheet came up over the page: the page and its bars stay as they were
-    document.querySelector('.chrome-top')?.classList.remove('compact'); // a new page starts with its location bar out
   }, [pathname, closeAll]);
 
   // Auto follows the system while the page is open (Light/Dark are set in Settings; the first paint is set by the head script)

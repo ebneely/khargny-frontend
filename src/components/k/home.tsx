@@ -238,15 +238,19 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
       if (card.current?.classList.contains('flipped')) return;
       const head = card.current?.querySelector<HTMLElement>('.tm-head'); if (!head) return;
       const svg = head.querySelector<SVGSVGElement>('.tm-route'), from = head.querySelector('.tm-nudge'), to = head.querySelector('.tm-dice'); if (!svg || !from || !to) return;
-      const H = head.getBoundingClientRect(), a = from.getBoundingClientRect(), b = to.getBoundingClientRect(), rtl = lang === 'ar';
-      const sx = (rtl ? a.left - 8 : a.right + 8) - H.left, sy = a.top + a.height / 2 - H.top, by = b.top + b.height / 2 - H.top;
-      const ex = (rtl ? b.right + 5 : b.left - 5) - H.left, w = ex - sx;
+      // layout boxes relative to the head (offsetLeft/Top ignore transforms, so the turned card can never skew them; iOS)
+      const box = (el: HTMLElement) => { let x = 0, y = 0, n: HTMLElement | null = el; while (n && n !== head) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent as HTMLElement | null; } return { left: x, top: y, right: x + el.offsetWidth, height: el.offsetHeight }; };
+      const a = box(from as HTMLElement), b = box(to as HTMLElement), rtl = lang === 'ar';
+      const sx = rtl ? a.left - 8 : a.right + 8, sy = a.top + a.height / 2, by = b.top + b.height / 2;
+      const ex = rtl ? b.right + 5 : b.left - 5, w = ex - sx;
       const d = `M${sx},${sy} C${sx + w * 0.38},${sy + 7} ${ex - w * 0.38},${by - 7} ${ex},${by}`;
       svg.querySelectorAll('path').forEach((pa) => pa.setAttribute('d', d)); const ci = svg.querySelector('circle')!; ci.setAttribute('cx', String(ex)); ci.setAttribute('cy', String(by));
       svg.style.setProperty('--len', String(svg.querySelector('path')!.getTotalLength()));
     };
     drawRoute.current = draw; draw(); addEventListener('resize', draw); document.fonts?.ready.then(draw);
-    return () => removeEventListener('resize', draw);
+    // any layout change of the head (fonts, the frame settling, the card resizing) redraws it, not only a window resize
+    const head = card.current?.querySelector<HTMLElement>('.tm-head'); const ro = head ? new ResizeObserver(() => draw()) : null; if (head) { ro!.observe(head); head.querySelectorAll<HTMLElement>('.tm-nudge,.tm-dice').forEach((el) => ro!.observe(el)); }
+    return () => { removeEventListener('resize', draw); ro?.disconnect(); };
   }, [lang]);
   // the lead photos cross-fade every 4.5 s
   useEffect(() => {
@@ -270,7 +274,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
     if (!flipped) { setFlipped(true); animate(flip, { transform: ['rotateY(0deg)', 'rotateY(180deg)'] }, spring(0.12, 0.6)); card.current!.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     else requestAnimationFrame(() => { const d = card.current!.querySelector('.tm-deal'); if (d) animate(d, { opacity: [0, 1], transform: ['scale(.94)', 'scale(1)'] }, spring(0.3, 0.45)); });
   };
-  const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)).then(() => drawRoute.current()); };
+  const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)).then(() => { const f = card.current?.querySelector<HTMLElement>('.tm-flip'); if (f) f.style.transform = ''; drawRoute.current(); }); }; // no 3D layer left behind (Safari)
   // most places first (proto), each with a photo of its own: the pool's, else the one its count request brought
   const cats = [...data.categories].sort((a, b) => (totalByCategory[b.id] ?? -1) - (totalByCategory[a.id] ?? -1));
   const photo = (cat: HomeData['categories'][number]) => pool.find((p) => p.cat === cat.en)?.photos[0]?.m || coverByCategory[cat.id] || photoFor([cat.en], 0);
