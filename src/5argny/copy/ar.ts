@@ -24,7 +24,7 @@ export const ar: Copy = {
     aria: 'فين', allEgypt: 'مصر كلها', area: 'المنطقة', allAreas: 'كل المناطق', filters: 'فلاتر', reset: 'امسح المكان والفلاتر',
     citySheet: 'المحافظة', areaSheet: 'منطقة في {city}', cityPicked: '{city}. اختار منطقة عشان تضيق البحث', cleared: 'اتمسح. بنعرض مصر كلها', egypt: 'مصر',
   },
-  sidebar: { shortcuts: 'عايز تعمل إيه؟', collections: 'القوايم' },
+  sidebar: { shortcuts: 'عايز تعمل إيه؟', collections: 'القوايم', privacy: 'سياسة الخصوصية', getTheApp: 'نزّل التطبيق', contact: 'تواصل معانا', follow: 'تابعنا' },
   search: {
     placeholder: 'ابحث عن مكان أو منطقة أو أكل', cancel: 'إلغاء', clear: 'امسح البحث', remove: 'امسح',
     hints: ['جرب “سوشي في الزمالك”', 'جرب “مفتوح دلوقتي”', 'جرب “coffee”', 'جرب “أطفال”', 'جرب “روف توب”', 'جرب “قبل المغرب”'],

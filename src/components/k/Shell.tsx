@@ -22,6 +22,7 @@ import { toK, placeHref, type KPlace } from './data';
 import { Meta, Stats, ShowingScope, useShowing } from './place';
 import { trackSearchResults, trackSearchTap } from '@/lib/analytics/track';
 import { Failed, Sk } from './states';
+import { FootLinks } from './footlinks';
 import { useK, haptic, reduce, spring, type Tab } from './KProvider';
 import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
@@ -103,6 +104,7 @@ function Sidebar({ cur }: { cur: Tab }) {
     <aside className="sidebar"><nav data-slider="nav" ref={nav}><span className="pill" /><NavItems cur={cur} /></nav>
       <div className="side-section"><div className="t-micro">{c.sidebar.shortcuts}</div>{INTENTS.slice(0, 5).map((x) => <Link key={x.key} className="side-link press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><L n={x.icon} />{c.intents[x.key]}</Link>)}</div>
       {cols.length ? <div className="side-section"><div className="t-micro">{c.sidebar.collections}</div>{cols.map((col) => <Link key={col.id} className="side-link press" href={`${langPrefix(lang)}/c/${col.slug}/`}>{col.places[0] ? <img src={col.places[0].photos[0]?.s} alt="" /> : <L n="library" />}{col.title}</Link>)}</div> : null}
+      <div className="side-section side-quiet"><FootLinks cls="side-link press" /></div>
     </aside>
   );
 }

@@ -23,7 +23,7 @@ export const en = {
     aria: 'Where', allEgypt: 'All Egypt', area: 'Area', allAreas: 'All areas', filters: 'Filters', reset: 'Clear location and filters',
     citySheet: 'City', areaSheet: 'Area in {city}', cityPicked: '{city}. Pick an area to narrow it', cleared: 'Cleared. Showing all of Egypt', egypt: 'Egypt',
   },
-  sidebar: { shortcuts: 'Shortcuts', collections: 'Collections' },
+  sidebar: { shortcuts: 'Shortcuts', collections: 'Collections', privacy: 'Privacy policy', getTheApp: 'Get the app', contact: 'Contact', follow: 'Follow us' },
   search: {
     placeholder: 'Search places, areas, food', cancel: 'Cancel', clear: 'Clear search', remove: 'Remove',
     hints: ['Try “sushi in Zamalek”', 'Try “open now”', 'Try “قهوة”', 'Try “kids”', 'Try “rooftop”', 'Try “Golden hour outside”'],

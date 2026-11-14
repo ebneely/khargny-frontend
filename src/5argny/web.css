@@ -199,6 +199,8 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
   .sidebar .side-section{margin-top:18px}
   .sidebar .side-section .t-micro{padding:0 12px 6px}
   .sidebar .side-link{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border-radius:12px;font-size:13.5px;font-weight:600}
+  .sidebar .side-quiet .side-link{height:30px;font-size:12px;font-weight:500;color:var(--ink3)}
+  .sidebar .side-quiet .side-link svg{width:15px;height:15px}
   .sidebar .side-link img{width:26px;height:26px;border-radius:8px;object-fit:cover}
   .rail-right{display:grid;gap:14px;position:sticky;top:76px;align-self:start}
   .page{padding:0}
