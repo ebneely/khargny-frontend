@@ -15,7 +15,7 @@ import { apiRequest } from '@/lib/api/client';
 import { regionLabel } from '@/lib/egypt-regions';
 import { L, Ic, Gov } from './icons';
 import { slidePill } from './bits';
-import { INTENTS, moment, openState, k } from './rules';
+import { INTENTS, moment, k } from './rules';
 import { intentFor, highlightRange } from '@5argny/core/rules';
 import { toK, placeHref, type KPlace } from './data';
 import { Meta, Stats } from './place';
@@ -263,7 +263,7 @@ function useGo(q: string) {
 }
 
 function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
-  const { c, lang, now, setLoc, loc } = useK();
+  const { c, lang, setLoc, loc } = useK();
   const where = usePlaceName();
   const go = useGo(q);
   const comp = go ? ([[fill(c.search.results.intentIn, { intent: c.intents[go.key], place: where }), `/${lang}/explorer/?intent=${go.key}`, go.icon, go.total], [fill(c.search.results.intentOpenNow, { intent: c.intents[go.key] }), `/${lang}/explorer/?intent=${go.key}&when=now`, 'clock', go.open]] as [string, string, string, number | null][]).filter((r) => (r[3] ?? 0) > 0) : [];

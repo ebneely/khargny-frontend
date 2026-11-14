@@ -586,7 +586,6 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 /* open = green spot, top-right of the photo */
 .tile-media{position:relative;display:block}
 .sg-thumb{flex:none}
-.sg-open{position:absolute;top:-2px;right:-2px;box-shadow:0 0 0 2px var(--card)}
 
 /* one live pill (counts and Open): a material, not a fade; it grows out of its dot */
 .tm-count{color:#fff;-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);transform-origin:right center;animation:pillGrow .42s cubic-bezier(.2,.9,.25,1) both}
