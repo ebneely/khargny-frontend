@@ -22,11 +22,12 @@ import { Shell, usePlaceName } from './Shell';
 import { readF, useCatIds, useLocIds, useCounts, usePriceBands, useResultCount, type When } from './filters';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { useK, reduce } from './KProvider';
+import { usePosition, askPosition, nearParam } from './near';
 
 type Sort = 'popular' | 'near' | 'open';
 const LIMIT = 48;
 
-function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean) {
+function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near: string | null, byDistance: boolean) {
   const { lang } = useK();
   const { cityId, area } = useLocIds();
   const cats = useCatIds(f);
@@ -36,8 +37,8 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean) {
   const amen = [...f.filters].filter((x) => !x.startsWith('band:')).join(',');
   const wantCats = !!(f.intent || f.cat);
   const list = useQuery({
-    queryKey: ['explore', cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen], enabled: !q && (!wantCats || cats.length > 0), staleTime: 60_000,
-    queryFn: async () => { const pages = await Promise.all((wantCats ? cats : [null]).map(async (cat) => normalizePlaceList(await apiRequest<unknown>('GET', '/v1/places', { params: { categoryId: cat?.id, cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, limit: LIMIT } }))));
+    queryKey: ['explore', cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, near ?? '', byDistance], enabled: !q && (!wantCats || cats.length > 0), staleTime: 60_000,
+    queryFn: async () => { const pages = await Promise.all((wantCats ? cats : [null]).map(async (cat) => normalizePlaceList(await apiRequest<unknown>('GET', '/v1/places', { params: { categoryId: cat?.id, cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, near: near ?? undefined, sort: byDistance ? 'distance' : undefined, limit: LIMIT } }))));
       return { items: pages.flatMap((x) => x.items), total: pages.reduce((a, x) => a + (x.total ?? x.items.length), 0) }; },
   });
   const search = useSearchPlaces({ q, limit: LIMIT, cityId: cityId ?? undefined, categoryIds: wantCats ? cats.map((x) => x.id) : undefined }, { locale: lang, enabled: !!q });
@@ -68,12 +69,15 @@ export function ExploreView() {
   const q = (sp.get('q') || '').trim(), badge = sp.get('badge') === '1';
   const sort = (['near', 'open'].includes(sp.get('sort') || '') ? sp.get('sort') : 'popular') as Sort;
   const where = usePlaceName();
-  const { places, loading } = useResults(f, q, badge); // list cards carry their week of hours, so When and Open first work on them
+  const pos = usePosition();
+  const { places, loading } = useResults(f, q, badge, nearParam(pos), sort === 'near' && !!pos); // list cards carry their week of hours, so When and Open first work on them
   // warm what the Filters sheet shows, so it opens complete
   useCounts(''); usePriceBands(); useAmenities(); useResultCount(f, q, badge);
-  const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
-  useEffect(() => { if (sort !== 'near' || here) return; navigator.geolocation?.getCurrentPosition((p) => setHere({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}); }, [sort, here]);
-  const km = (p: KPlace) => (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
+  // "Nearest" is the person's own choice, so it may ask for the location then; the list then comes nearest first from the API
+  useEffect(() => { if (sort === 'near' && !pos) void askPosition(); }, [sort, pos]);
+  const here = pos;
+  // shortcut: search results (q) carry no distanceKm (the search route takes no near=), so Nearest orders them by the cards' own coordinates
+  const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
   let res = f.when ? places.filter((p) => matchesWhen(p.hours, f.when as When, now.date)) : places;
   const score = { popular: (p: KPlace) => p.d30?.views ?? 0, near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
   res = [...res].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a)); // paid places first inside a match, looking like any other

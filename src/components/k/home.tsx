@@ -3,7 +3,7 @@
 // Home from proto/app.js Home(): Stories, TakeMe, Near you, Earned, Collections by 5argny, 5argny Social, and the right rail.
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { blend, type BlendPlace } from '@5argny/core/rules';
+import { blend, pickNear, kmText, type BlendPlace } from '@5argny/core/rules';
 import { apiRequest } from '@/lib/api/client';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
@@ -22,6 +22,7 @@ import { Shell, usePlaceName, useLocKeys } from './Shell';
 import { useK, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
 import { MarketCard } from './market';
+import { usePosition, askPosition, useNearPlaces } from './near';
 
 export type HomeCollection = { id: string; slug: string; title: string; places: KPlace[] };
 export type HomeData = { pool: KPlace[]; trending: KPlace[]; collections: HomeCollection[]; categories: { id: string; en: string; label: string }[]; openByCategory: Record<string, number> | null; totalByCategory: Record<string, number | null> };
@@ -88,15 +89,16 @@ export function HomeView({ data }: { data: HomeData }) {
   const here = useHere(data);
   const pool = here.pool;
   const { stories, social } = useBlend(pool, here.city, here.areaKey);
+  const near = useNearPlaces(); // null until the person shares their location (a tap, never on load)
   return (
     <Shell cur="home" right={<><TrendCard list={data.trending} /><MarketCard /></>}>
       <Stories list={stories} />
       <TakeMe data={{ ...data, openByCategory: here.openByCategory, totalByCategory: here.totalByCategory }} pool={pool} />
-      {/* shortcut: "Near you" stays hidden until the person's location is known (no prompt on load); then nearest first with km */}
+      <NearYou list={near} />
       <Earned pool={pool} />
       <TeamCollections list={data.collections} />
       <h1 className="t-display page-pad social-h" style={{ margin: '6px 0 10px' }}>{withBrand(c.home.social)}</h1>
-      {social.map((p, i) => <Fragment key={p.id}><Post p={p} /></Fragment>)}
+      {social.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 && near?.length ? <div className="desk-only"><NearRail list={near.slice(0, 6)} /></div> : null}</Fragment>)}
     </Shell>
   );
 }
@@ -111,6 +113,26 @@ function Stories({ list }: { list: KPlace[] }) {
     </Link>))}</div>;
 }
 
+
+// Phone: Near you right under Take me out (proto NearYou). Until the person shares their location it only offers to use it:
+// the browser asks on that tap, never on load, and no distance is shown that we don't know.
+function NearYou({ list }: { list: KPlace[] | null }) {
+  const { c, lang } = useK();
+  const pos = usePosition();
+  const [asking, setAsking] = useState(false);
+  const head = <h2 className="t-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}><Ic n="near" />{c.home.nearYou}</h2>;
+  if (!pos) return <section className="near phone-only" aria-label={c.home.nearYou}><div className="rail-head">{head}</div>
+    <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearAskBody}</p>
+    <div className="page-pad"><button className="btn secondary press" data-act="near-ask" disabled={asking} onClick={() => { haptic(); setAsking(true); void askPosition().finally(() => setAsking(false)); }}><L n="navigation" />{c.home.nearAsk}</button></div></section>;
+  if (!list?.length) return null;
+  return <section className="near phone-only" aria-label={c.home.nearYou}><div className="rail-head">{head}<Link className="btn plain press" href={`/${lang}/explorer/?sort=near`}>{c.common.seeAll}</Link></div>
+    <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearestFirst}</p><div className="rail-row">{list.slice(0, 7).map((p) => <Tile key={p.id} p={p} />)}</div></section>;
+}
+// Desktop: the same nearest places as a rail inside the feed (proto Rail(nearYou, ..., true)), once the location is known
+function NearRail({ list }: { list: KPlace[] }) {
+  const { c, lang } = useK();
+  return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.home.nearYou}</h2><Link className="btn plain press" href={`/${lang}/explorer/?sort=near`}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((p) => <Tile key={p.id} p={p} />)}</div></section>;
+}
 
 function Earned({ pool }: { pool: KPlace[] }) {
   const { c, lang } = useK();
@@ -142,6 +164,7 @@ function TakeMe({ data, pool }: { data: HomeData; pool: KPlace[] }) {
   const total = (x: Intent) => { const ns = data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).map((cat) => data.totalByCategory[cat.id]); return ns.some((n) => n == null) ? null : ns.reduce<number>((a, n) => a + (n ?? 0), 0); };
   const card = useRef<HTMLElement>(null);
   const [deal, setDeal] = useState<KPlace | null>(null);
+  const nearList = useNearPlaces();
   const [flipped, setFlipped] = useState(false);
 
   // the route line runs from "Can't pick?" to Surprise me
@@ -168,7 +191,8 @@ function TakeMe({ data, pool }: { data: HomeData; pool: KPlace[] }) {
 
   const shuffle = (e: React.MouseEvent<HTMLButtonElement>) => {
     const dice = e.currentTarget.querySelector('.lucide'); if (dice) animate(dice, { transform: ['rotate(0deg)', 'rotate(360deg)'] }, spring(0.2, 0.6));
-    haptic(); setDeal(pool[Math.floor(Math.random() * pool.length)] ?? null);
+    // with the person's location: a random place among the nearest 20, not the same one twice; else the location bar's places
+    haptic(); setDeal((last) => (nearList?.length ? pickNear(nearList, last?.id ?? null, Math.random) : pool[Math.floor(Math.random() * pool.length)] ?? null));
     const flip = card.current!.querySelector<HTMLElement>('.tm-flip')!;
     if (!flipped) { setFlipped(true); animate(flip, { transform: ['rotateY(0deg)', 'rotateY(180deg)'] }, spring(0.12, 0.6)); }
     else requestAnimationFrame(() => { const d = card.current!.querySelector('.tm-deal'); if (d) animate(d, { opacity: [0, 1], transform: ['scale(.94)', 'scale(1)'] }, spring(0.3, 0.45)); });
@@ -201,7 +225,7 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
   const st = openStateOf(p, now, lang);
   return <div className="tm-deal"><img src={p.photos[0]?.m} alt="" /><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
-    <div className="tm-deal-text"><b>{p.name}</b><Meta p={p} extra={st ? <StatePill st={st} /> : null} />
+    <div className="tm-deal-text"><b>{p.name}</b><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="navigation" />{fill(c.units.km, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;
 }
 

@@ -37,7 +37,7 @@ export const ar: Copy = {
       leadOpen: '{n} مفتوح دلوقتي في {place}', leadPlaces: '{n} مكان في {place}', all: 'الكل', kinds: '{n} نوع', yourPick: 'اختيارك', shuffleAgain: 'جرب تاني',
       everythingSheet: 'كل حاجة تتعمل',
     },
-    nearYou: 'قريب منك', nearestFirst: 'الأقرب الأول', nearestFirstIn: 'الأقرب الأول في {place}',
+    nearYou: 'قريب منك', nearestFirst: 'الأقرب الأول', nearestFirstIn: 'الأقرب الأول في {place}', nearAsk: 'استخدم مكاني', nearAskBody: 'شوف أقرب الأماكن ليك، وكل مكان على بعد قد إيه.',
     earned: 'اتكسب على {brand}', earnedAll: 'الـ {n} كلهم', teamCollections: 'قوايم من {brand}', social: 'سوشيال {brand}',
     loveHint: 'دوس مرتين عشان تحبه. دوس مرتين وسيب صباعك عشان تشارك',
   },

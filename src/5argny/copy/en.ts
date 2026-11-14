@@ -36,7 +36,7 @@ export const en = {
       leadOpen: '{n} open now in {place}', leadPlaces: '{n} places in {place}', all: 'All', kinds: '{n} kinds', yourPick: 'Your pick', shuffleAgain: 'Shuffle again',
       everythingSheet: 'Everything to do',
     },
-    nearYou: 'Near you', nearestFirst: 'Nearest first', nearestFirstIn: 'Nearest first in {place}',
+    nearYou: 'Near you', nearestFirst: 'Nearest first', nearestFirstIn: 'Nearest first in {place}', nearAsk: 'Use my location', nearAskBody: 'See the places closest to you, and how far each one is.',
     earned: 'Earned on {brand}', earnedAll: 'All {n}', teamCollections: 'Collections by {brand}', social: '{brand} Social',
     loveHint: 'Double-tap to love. Double-tap and hold to share',
   },

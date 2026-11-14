@@ -22,6 +22,7 @@ import { dur, openState, type OpenState } from './rules';
 import { placeHref, type KPlace, type KStats, type KBadge } from './data';
 import { useK, haptic, reduce, spring, desk } from './KProvider';
 import { useOpenCorrection } from './settings';
+import { KmAway } from './near';
 
 /** 30-day windows from GET /v1/places/:id/stats; null until that route answers (counts stay hidden). */
 export function usePlaceStats(id: string, enabled = true) {
@@ -249,7 +250,7 @@ export function Tile({ p, extra }: { p: KPlace; extra?: ReactNode }) {
     <Link className="card tile press" data-item href={placeHref(p, lang)}>
       
       <span className="tile-media"><img src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
-      <div className="tile-body"><b>{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{extra}</div>
+      <div className="tile-body"><b>{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
     </Link>
   );
 }
