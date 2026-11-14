@@ -20,7 +20,7 @@ type AnalyticsEvent =
   | { type: "search_click"; term: string; placeId: string; position: number; cityId?: string; locale: 'ar' | 'en' }
   | { type: "directions" | "save" | "share"; placeId: string };
 
-type Queued = AnalyticsEvent & { occurredAt: string };
+type Queued = AnalyticsEvent & { occurredAt: string; locale?: "ar" | "en" };
 
 const FLUSH_MS = 5_000;
 const FLUSH_AT = 10;
@@ -80,7 +80,8 @@ function enqueue(event: AnalyticsEvent): void {
     return;
   }
   listen();
-  queue.push({ ...event, occurredAt: new Date().toISOString() });
+  // every event says which language the visit is in (the dashboard Language card); an explicit one wins
+  queue.push({ locale: document.documentElement.lang?.startsWith("ar") ? "ar" : "en", ...event, occurredAt: new Date().toISOString() });
   if (queue.length >= FLUSH_AT) flushAnalytics();
   else if (!timer) timer = setTimeout(() => flushAnalytics(), FLUSH_MS);
 }
