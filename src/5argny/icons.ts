@@ -66,7 +66,7 @@ export const amenityIconFallback = 'check';
 // the amenities offered under Filters > Must have, in order
 export const mustHaveAmenities = ['Free Parking', 'Outdoor Seating', 'Wi-Fi', 'Kid Friendly', 'Credit Cards', 'Accepts Reservations', 'Wheelchair Accessible Entrance', 'Live Music', 'Halal', 'Rooftop Seating'] as const;
 
-export const badgeIcons = { most_viewed: 'trophy', pricing: 'receipt', price_match: 'badge-check', visited: 'footprints' } as const;
+export const badgeIcons = { most_viewed: 'trophy', most_saved: 'saved', most_5argnyd: 'go', pricing: 'receipt', price_match: 'badge-check', visited: 'footprints' } as const;
 export const badgeIconFallback = 'award';
 
 // Suggest a correction (place) and Report a problem (app): issue key -> icon

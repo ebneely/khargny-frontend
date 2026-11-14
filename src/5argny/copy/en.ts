@@ -66,9 +66,11 @@ export const en = {
     swap: { what: 'What in {area}?', where: '{cat} where?' },
   },
   badges: {
-    mostViewed: '#{rank} most viewed in {city}', theCity: 'the city', pricing: 'Prices listed', priceMatch: 'Prices checked by us', visited: 'Visited by our team',
+    mostViewed: '#{rank} most viewed in {city}', mostSaved: '#{rank} most saved in {city}', most5argnyd: '#{rank} most 5argny! in {city}', theCity: 'the city', pricing: 'Prices listed', priceMatch: 'Prices checked by us', visited: 'Visited by our team',
     meaning: {
       most_viewed: 'The place people opened most in its city over the last 30 days.',
+      most_saved: 'The place people saved most in its city over the last 30 days.',
+      most_5argnyd: 'The place people tapped 5argny! on most in its city over the last 30 days.',
       pricing: 'It shows a price list you can read before you go.',
       price_match: 'Our team compared its listed prices with the real ones.',
       visited: 'Someone from 5argny went there and checked it.',

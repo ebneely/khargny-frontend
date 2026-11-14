@@ -60,8 +60,10 @@ export function useSave(p: KPlace) {
 export const catIcon = (cat: string) => categoryIcons[cat] || categoryIconFallback;
 export const badgeIcon = (b: KBadge) => (badgeIcons as Record<string, string>)[b.key] || badgeIconFallback;
 export function useBadgeLabel() {
-  const { c } = useK();
-  return (b: KBadge) => b.key === 'most_viewed' ? fill(c.badges.mostViewed, { rank: b.rank ?? 1, city: b.scope?.city?.nameEn || b.scope?.city?.name || c.badges.theCity })
+  const { c, lang } = useK();
+  const ranked: Record<string, string> = { most_viewed: c.badges.mostViewed, most_saved: c.badges.mostSaved, most_5argnyd: c.badges.most5argnyd };
+  const city = (b: KBadge) => (lang === 'ar' ? b.scope?.city?.name || b.scope?.city?.nameEn : b.scope?.city?.nameEn || b.scope?.city?.name) || c.badges.theCity;
+  return (b: KBadge) => ranked[b.key] ? fill(ranked[b.key], { rank: b.rank ?? 1, city: city(b) })
     : ({ pricing: c.badges.pricing, price_match: c.badges.priceMatch, visited: c.badges.visited } as Record<string, string>)[b.key] || b.key;
 }
 

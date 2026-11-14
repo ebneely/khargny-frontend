@@ -67,9 +67,11 @@ export const ar: Copy = {
     swap: { what: 'إيه في {area}؟', where: '{cat} فين؟' },
   },
   badges: {
-    mostViewed: 'رقم {rank} في المشاهدات في {city}', theCity: 'المدينة', pricing: 'الأسعار موجودة', priceMatch: 'إحنا راجعنا الأسعار', visited: 'فريقنا زاره',
+    mostViewed: 'رقم {rank} في المشاهدات في {city}', mostSaved: 'رقم {rank} في الحفظ في {city}', most5argnyd: 'رقم {rank} في خرجني! في {city}', theCity: 'المدينة', pricing: 'الأسعار موجودة', priceMatch: 'إحنا راجعنا الأسعار', visited: 'فريقنا زاره',
     meaning: {
       most_viewed: 'أكتر مكان الناس فتحته في مدينته في آخر 30 يوم.',
+      most_saved: 'أكتر مكان الناس حفظته في مدينته في آخر 30 يوم.',
+      most_5argnyd: 'أكتر مكان الناس داسوا فيه خرجني! في مدينته في آخر 30 يوم.',
       pricing: 'فيه قايمة أسعار تقدر تقراها قبل ما تروح.',
       price_match: 'فريقنا قارن الأسعار المكتوبة بالأسعار الحقيقية.',
       visited: 'حد من خرجني راح هناك واتأكد بنفسه.',
