@@ -6,10 +6,12 @@ import { installBrowseSession, prepareBrowseQueries } from '@/lib/use-browse-ses
 import { LikeFeedback } from '@/components/ds/LikeButton';
 import { SaveFeedback } from '@/components/ds/SaveFeedback';
 import { saveStore } from '@/lib/saves';
+import { retryQuery } from '@5argny/core/rules';
 
 export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
   const [queryClient] = useState(() => {
-    const client = new QueryClient();
+    // one quiet retry for the network and the server, none for a 4xx that will not change (src/5argny/rules/loading.ts)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: retryQuery } } });
     prepareBrowseQueries(client);
     return client;
   });

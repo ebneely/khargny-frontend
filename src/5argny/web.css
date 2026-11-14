@@ -1231,20 +1231,23 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
 @media (prefers-reduced-motion: reduce){ .proof-bar i{transition:none} }
 
 /* Loading, empty and failing, one way everywhere (owner 2026-11-14; the timings live in rules/loading.ts, loading.test.ts keeps
-   them equal). A skeleton is the content's own box: blocks sit inside the real elements, so line heights and paddings are the
-   content's. It shows after --sk-delay (a fast answer never flashes one), and one low-contrast sweep in the theme's own tint
-   crosses the whole page: every block shares the viewport-fixed gradient and one clock (KChrome syncs the animations). */
+   them equal). A skeleton is the content's own markup with stand-in words: .sk on an inline element draws the pill of its text,
+   on a box (i.sk, a photo) the box, so sizes and line heights are the content's. It shows after --sk-delay (a fast answer never
+   flashes one), and one low-contrast sweep in the theme's own tint crosses the page: every block shares the viewport-fixed
+   gradient and one clock (OfflineBar syncs the animations). */
 :root{--sk-delay:150ms;--sk-fade:200ms;--sk-hi:rgba(255,253,249,.72)}
 :root[data-theme=dark]{--sk-hi:rgba(255,255,255,.06)}
-.sk{display:block;border-radius:6px;color:transparent;background-color:var(--fill);background-image:linear-gradient(100deg,transparent 38%,var(--sk-hi) 50%,transparent 62%);
-  background-size:100vw 100%;background-repeat:no-repeat;background-attachment:fixed;animation:skIn var(--sk-fade) var(--sk-delay) both,skSweep 1.4s linear infinite}
-.sk-t{display:inline-block;height:.86em;vertical-align:-.08em;max-width:100%}
+.sk{border-radius:6px;color:transparent!important;text-shadow:none!important;-webkit-box-decoration-break:clone;box-decoration-break:clone;background-color:var(--fill);
+  background-image:linear-gradient(100deg,transparent 38%,var(--sk-hi) 50%,transparent 62%);background-size:100vw 100%;background-repeat:no-repeat;background-attachment:fixed;
+  animation:skIn var(--sk-fade) var(--sk-delay) both,skSweep 1.4s linear infinite}
+i.sk{display:block}
+.sk svg,.sk img{visibility:hidden}
+.skel{pointer-events:none}
 .sk-reveal{animation:skIn var(--sk-fade) ease-out both}
 @keyframes skIn{from{opacity:0}to{opacity:1}}
 @keyframes skSweep{from{background-position:-100vw 0}to{background-position:100vw 0}}
 @media (prefers-reduced-motion: reduce){ .sk{background-image:none;animation:skIn 1ms var(--sk-delay) both} }
 .tile.skel .sk-img{width:100%;aspect-ratio:1/1;border-radius:0}
-.tile.skel .tile-body > *{display:block}
 /* the empty and the failed block: the prototype's .group.empty (icon, one line, one action); compact inside a rail or a list */
 .empty > .lucide,.empty > svg{width:26px;height:26px;color:var(--ink3)}
 .empty .btn{margin-top:4px}

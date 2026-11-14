@@ -154,6 +154,23 @@ export const en = {
     inOneLine: 'In one line', whereAppeared: 'See where you appeared', homeFeed: 'Home feed', storiesRow: 'Stories row', exploreIn: 'Explore, {intent}',
     weekly: 'Weekly summary', weeklyWhatsApp: 'Send me this every Sunday on WhatsApp', weeklyAria: 'Weekly WhatsApp summary',
   },
+  // loading, empty and failing (owner 2026-11-14): one short line in the 5argny voice, one action
+  states: {
+    retry: 'Try again', offline: "You're offline. We'll pick up when you're back",
+    failed: { offline: "You're offline. This loads when you're back", gone: "This isn't on 5argny any more", slow: 'This is taking too long', server: 'Something broke on our side', network: "We couldn't reach 5argny" },
+    page: { title: "We couldn't open this page", body: 'Check your connection and try again, or start from Home.', home: 'Go to Home' },
+    placeGone: "This place isn't on 5argny any more", placeGoneBody: 'It may have closed or moved. Find another one like it.',
+    moreFailed: "The next places didn't load",
+    near: {
+      denied: 'Location is off for 5argny. Allow it in your browser settings, then try again', unavailable: "We couldn't find where you are. Try again in a moment",
+      outside: "You're outside Egypt, so nothing is near you yet", empty: 'Nothing listed near you yet', emptyBody: 'We add places every week. See all of Egypt for now.', seeEgypt: 'See all of Egypt',
+    },
+    feed: { empty: 'No places in {place} yet', emptyBody: 'We add places every week. Try another area, or all of Egypt.', allEgypt: 'See all of Egypt' },
+    explore: { clear: 'Clear filters', everything: 'See everything' },
+    market: { action: 'Find places instead' },
+    search: { action: 'Browse every place' },
+    surpriseEmpty: 'Nothing to pick here yet. Try all of Egypt',
+  },
 };
 
 export type Copy = typeof en;

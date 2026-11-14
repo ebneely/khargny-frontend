@@ -23,6 +23,7 @@ import { placeHref, type KPlace, type KStats, type KBadge } from './data';
 import { useK, haptic, reduce, spring, desk } from './KProvider';
 import { useOpenCorrection } from './settings';
 import { KmAway } from './near';
+import { Sk } from './states';
 
 /** 30-day windows from GET /v1/places/:id/stats; null until that route answers (counts stay hidden). */
 export const placeStatsQuery = (id: string, enabled = true) => ({
@@ -258,10 +259,10 @@ export function Tile({ p, extra }: { p: KPlace; extra?: ReactNode }) {
   );
 }
 
-/** A Tile's placeholder while results load: the same box, so nothing moves when the places arrive. */
+/** A Tile's skeleton: the Tile's own markup with stand-in words (five counts, as a list card carries), so nothing moves when it lands. */
 export function TileSkel() {
-  return <div className="card tile skel" aria-hidden="true"><span className="tile-media"><i className="sk-img" /></span>
-    <div className="tile-body"><b>&nbsp;</b><span className="sk-line" /><span className="t-small sk-line short">&nbsp;</span></div></div>;
+  return <div className="card tile skel" aria-hidden="true"><span className="tile-media"><Sk cls="sk-img" /></span>
+    <div className="tile-body"><b><span className="sk">Place name here</span></b><span style={{ display: 'block', margin: '3px 0 2px' }}><span className="stats">{['eye', 'heart', 'saved', 'share', 'go'].map((n) => <span key={n} className="views sk"><Ic n={n as 'eye'} /><span className="n">0.0k</span></span>)}</span></span><span className="t-small"><span className="sk">Area, City</span></span></div></div>;
 }
 
 export function BadgeTags({ p }: { p: KPlace }) {

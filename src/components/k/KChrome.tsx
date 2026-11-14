@@ -7,6 +7,7 @@ import { SheetHost } from './Sheet';
 import { TabNav } from './Shell';
 import { Gestures } from './Gestures';
 import { PageMotion } from './PageMotion';
+import { OfflineBar } from './states';
 import type { Lang } from './rules';
 
 export function KChrome({ lang, time, tab, children }: { lang: Lang; time: string | null; tab: Tab; children: ReactNode }) {
@@ -18,6 +19,7 @@ export function KChrome({ lang, time, tab, children }: { lang: Lang; time: strin
       <SheetHost />
       <Gestures />
       <PageMotion />
+      <OfflineBar />
     </KProvider>
   );
 }
