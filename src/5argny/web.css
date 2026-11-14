@@ -1313,3 +1313,24 @@ i.sk{display:block}
 /* a text skeleton is a box of the text's own line height: an inline background paints the font's taller content area and
    overlapped the blocks around it (the place title over the chips, the photo over the title) */
 h1 > .sk,h2 > .sk,h3 > .sk,p > .sk:not(.cat-bubble):not(.live-pill),.ov-skel p > b,.ov-skel p > .t-small{display:inline-block;max-width:100%;vertical-align:top}
+
+/* top chrome v4 (owner 2026-11-14): at the top of a page the bars are clear and sit on the page; once it scrolls, one
+   material layer fades in behind them (opacity only, so the blur is never switched on and off). The location bar folds
+   away and back on one transition, chosen half a second after the scroll rests (KProvider), never during it.
+   Apple-style easing, transform and opacity only, no hard divider: a soft edge shadow under the material. */
+:root{--chrome-bg:rgba(251,246,238,.82);--chrome-edge:0 10px 24px -18px rgba(36,28,22,.45);--chrome-ease:cubic-bezier(.32,.72,0,1)}
+[data-theme=dark]{--chrome-bg:rgba(20,16,13,.82);--chrome-edge:0 10px 24px -18px rgba(0,0,0,.9)}
+.chrome-top .topbar,.chrome-top .locbar-wrap,[data-theme=dark] .chrome-top .topbar,[data-theme=dark] .chrome-top .locbar-wrap{background:none;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
+.chrome-top .topbar::before,.chrome-top .locbar-wrap::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--chrome-bg);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);opacity:0;transition:opacity .3s var(--chrome-ease);pointer-events:none}
+.chrome-top .topbar{isolation:isolate}
+.chrome-top .locbar-wrap{isolation:isolate;transform-origin:50% 0;transition:transform .45s var(--chrome-ease),opacity .3s var(--chrome-ease);will-change:auto}
+.chrome-top.scrolled .topbar::before,.chrome-top.scrolled .locbar-wrap::before,.chrome-top.searching .topbar::before{opacity:1}
+.chrome-top.scrolled .locbar-wrap,.chrome-top.scrolled.compact .topbar{box-shadow:var(--chrome-edge)}
+.chrome-top.compact .locbar-wrap,.chrome-top.searching .locbar-wrap{transform:translateY(-100%) scale(.98);opacity:0;pointer-events:none}
+.chrome-top .brand-mark{transform-origin:0 50%;transition:transform .35s var(--chrome-ease)}
+[dir=rtl] .chrome-top .brand-mark{transform-origin:100% 50%}
+.chrome-top.scrolled .brand-mark{transform:scale(.92)}
+.topbar .gsearch{height:36px;transition:box-shadow .2s var(--chrome-ease)}
+@media (max-width:1023px){ .topbar .gsearch{height:34px} }
+@media (prefers-reduced-motion: reduce){ .chrome-top .locbar-wrap,.chrome-top .brand-mark{transition:opacity .15s} .chrome-top.compact .locbar-wrap{transform:none} .chrome-top.scrolled .brand-mark{transform:none} }
+@media (prefers-reduced-transparency: reduce){ :root,[data-theme=dark]{--chrome-bg:var(--bg)} .chrome-top .topbar::before,.chrome-top .locbar-wrap::before{-webkit-backdrop-filter:none;backdrop-filter:none} }
