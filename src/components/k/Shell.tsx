@@ -2,11 +2,11 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // The shell from proto/app.js shell(): one top chrome (top bar with the search, the location bar folding under it),
 // the sidebar on desktop, the page, the right rail; the tab bar lives in the layout (TabNav) so it persists across pages.
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { TabBar as Glass } from 'glisse';
+import { GlassTabBar } from './GlassTabBar';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
 import { useCities } from '@/lib/api/hooks/use-cities';
@@ -34,8 +34,6 @@ import { usePathname, useSearchParams } from 'next/navigation';
 export const NAV: [Tab, string, 'home' | 'explore' | 'market' | 'saved' | 'cog'][] = [['home', '/', 'home'], ['explore', '/explorer/', 'explore'], ['market', '/marketplace/', 'market'], ['saved', '/saved/', 'saved'], ['profile', '/settings/', 'cog']];
 let lastNavTab: Tab | null = null;
 const noop = () => () => {};
-/** The glass bar's tabs: the same Next link, prefetching its page. */
-const PrefetchLink = (props: React.ComponentProps<typeof Link>) => <Link prefetch {...props} />;
 
 function NavItems({ cur }: { cur: Tab }) {
   const { lang, c, setTab } = useK();
@@ -134,6 +132,8 @@ export function FrameHost({ initial, children }: { initial: Frame; children: Rea
   // one showing tracker for the frame (search results in the top bar); each page opens its own inside (one visit = one scope)
   return <FrameCtx.Provider value={set}><ShowingScope>
     <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap" ref={locWrap}><div className="locbar-in"><LocBar withFilters={frame.withFilters} /></div></div> : null}</div>
+    {/* phones: the top chrome is fixed (it never moves with the scroll); this holds its place in the page */}
+    <div className="chrome-spacer" aria-hidden="true" />
     {/* desktop: a page without the location bar keeps its height, so the sidebar and the page start at the same place on every page */}
     {showLoc ? null : <div className="locbar-space" aria-hidden="true" />}
     <div className={`layout ${frame.wide ? 'wide' : ''}`}>
@@ -191,56 +191,13 @@ function Sidebar({ cur }: { cur: Tab }) {
   );
 }
 
-/**
- * Dragging the glass tab bar (owner 2026-11-14): glisse already carries its selection 1:1 from where it was grabbed and clicks
- * the tab it settles on. On top of it: a stretch along the movement while the finger moves, and a fling projected to the
- * tab it is heading for (velocity hand-off, deceleration 0.99) instead of the one under the finger.
- */
-function useGlassDrag() {
-  useEffect(() => {
-    const host = document.getElementById('glass-tabs'); if (!host) return;
-    type Drag = { x0: number; x: number; t: number; vx: number; moved: boolean };
-    let drag: Drag | null = null, fling: number | null = null;
-    const lens = () => host.querySelector<HTMLElement>('.lg-tab-lens');
-    const tabs = () => [...host.querySelectorAll<HTMLElement>('.lg-tab')];
-    const down = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.lg-tab')) return; drag = { x0: e.clientX, x: e.clientX, t: e.timeStamp, vx: 0, moved: false }; fling = null; };
-    const move = (e: PointerEvent) => {
-      if (!drag) return; const dt = e.timeStamp - drag.t;
-      if (dt > 0) drag.vx = 0.8 * ((e.clientX - drag.x) / dt) + 0.2 * drag.vx; // px/ms, smoothed
-      drag.x = e.clientX; drag.t = e.timeStamp; if (Math.abs(e.clientX - drag.x0) > 6) drag.moved = true;
-      const l = lens(); if (l && drag.moved && !reduce()) { const st = Math.min(0.14, Math.abs(drag.vx) * 0.08); l.style.scale = `${1 + st} ${1 - st * 0.4}`; }
-    };
-    const up = (e: PointerEvent) => {
-      if (!drag) return; const d = drag; drag = null; const l = lens(); if (l) l.style.scale = '';
-      if (!l || !d.moved || e.type !== 'pointerup' || e.timeStamp - d.t > 80 || Math.abs(d.vx) < 0.3) return; // a resting finger hands off no velocity
-      const r = l.getBoundingClientRect(), to = r.left + r.width / 2 + d.vx * 99;
-      const centers = tabs().map((t) => { const b = t.getBoundingClientRect(); return b.left + b.width / 2; });
-      fling = centers.reduce((best, cx, i) => (Math.abs(cx - to) < Math.abs(centers[best] - to) ? i : best), 0);
-    };
-    // glisse clicks the tab under the selection right after pointerup; a fling swaps it for the projected one
-    const click = (e: MouseEvent) => {
-      if (fling == null || e.isTrusted) return; const list = tabs(), at = list.indexOf((e.target as Element).closest('.lg-tab') as HTMLElement), to = fling; fling = null;
-      if (at < 0 || to === at) return; e.preventDefault(); e.stopPropagation(); list[to].click();
-    };
-    host.addEventListener('pointerdown', down, true); addEventListener('pointermove', move, { passive: true });
-    addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true); host.addEventListener('click', click, true);
-    return () => { host.removeEventListener('pointerdown', down, true); removeEventListener('pointermove', move); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); host.removeEventListener('click', click, true); };
-  }, []);
-}
-
-/** The tab bar: glisse's Liquid Glass TabBar is the only bar on phones and tablets (owner 2026-11-14), bundled with the page so it is there at the first paint and never swaps in. Lives in the layout. */
+/** The phone tab bar (GlassTabBar: Liquid Glass, compositor-only motion). It lives in the layout, so it never remounts. */
 export function TabNav() {
-  const { tab, setTab, lang, c } = useK();
-  const plain = useRef<HTMLElement>(null);
-  const [dark, setDark] = useState(false);
-  useEffect(() => { const read = () => setDark(document.documentElement.dataset.theme === 'dark'); read(); const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); return () => mo.disconnect(); }, []);
-  const last = useRef(tab);
-  useLayoutEffect(() => { if (plain.current) slidePill(plain.current, last.current !== tab, last.current !== tab ? plain.current.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === last.current)] : null); last.current = tab; }, [tab]);
+  const { tab, lang, c } = useK();
+  const items = useMemo(() => NAV.map(([key, href, icon]) => ({ key, href: `${langPrefix(lang)}${href}`, label: c.nav[key], icon })), [lang, c]);
   return <>
-    <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
-    {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
-    <div id="glass-tabs" dir="ltr"><Glass aria-label={c.nav.tabsAria} value={tab} onValueChange={(v) => setTab(v as Tab)} link={PrefetchLink}
-      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `${langPrefix(lang)}${href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /></div>
+    <div id="chrome" />
+    <GlassTabBar items={items} current={tab} label={c.nav.tabsAria} dir={lang === 'ar' ? 'rtl' : 'ltr'} />
   </>;
 }
 

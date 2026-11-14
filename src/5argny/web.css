@@ -900,13 +900,7 @@ html,body{overflow-anchor:none}
 .hype-tip{top:-32px}
 
 /* Liquid Glass tab bar (glisse): one floating bar on every screen size; it replaces the plain tab bar and the sidebar's main links */
-#glass-tabs{position:fixed;z-index:45;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:center;pointer-events:none}
-#glass-tabs > *{pointer-events:auto} /* glisse's own TabBar look, unstyled (owner 2026-11-14) */
-#glass-tabs .gl-ic{display:inline-grid;place-items:center}
-#glass-tabs .gl-ic svg{width:22px;height:22px}
 #chrome .tabbar{display:none} /* glisse is the only phone bar (owner 2026-11-14) */
-@media (min-width:1024px){ #glass-tabs{display:none} }
-@media (min-width:1024px){ #glass-tabs{bottom:20px} }
 
 /* dark mode: same warm world at night (owner, 2026-11-13); every surface reads the tokens */
 :root[data-theme=dark]{
@@ -1023,7 +1017,6 @@ html,body{overflow-anchor:none}
 html,body{overflow-x:clip;max-width:100%;overscroll-behavior-x:none}
 #app,#chrome{max-width:100vw}
 /* the glass bar's lens layer is 4 px wider than the bar: keep it inside the screen */
-#glass-tabs{left:16px;right:16px}
 
 /* the Busiest point sends the Open pill's progressive rings: two waves, half a cycle apart, thinning and fading outward */
 .hype-dot.peak::before,.hype-dot.peak::after{content:"";position:absolute;inset:-2px;border-radius:999px;border:2px solid var(--accent);opacity:0;animation:peakWave 3.2s cubic-bezier(.2,.6,.35,1) 1.4s infinite}
@@ -1037,7 +1030,6 @@ html,body{overflow-x:clip;max-width:100%;overscroll-behavior-x:none}
 html,body,#app{overflow-x:clip}
 #fx{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:88;contain:strict}
 #fx > *{pointer-events:none}
-#glass-tabs{left:0;right:0;padding:0 14px;overflow-x:clip;overflow-y:visible}
 
 /* iOS Safari zooms the whole page into any field under 16 px when it gets focus. Every field is 16 px, so the page
    never zooms or shifts: the search panel comes to the person, the page stays put. */
@@ -1051,7 +1043,7 @@ input,textarea,select{font-size:16px}
 .hype,.open-tl,.place-head{max-width:100%;overflow-x:clip}
 
 /* form pages: the send bar owns the bottom of the screen; back is a clear labelled button at the top */
-body.form-page #glass-tabs,body.form-page #chrome .tabbar{display:none}
+body.form-page .gbar{display:none}
 body.form-page #chrome .actionbar{bottom:max(12px,env(safe-area-inset-bottom))}
 .corr .icon-btn[data-act="page-back"]{width:auto;padding:0 12px 0 8px;gap:4px;border-radius:999px}
 .corr .icon-btn[data-act="page-back"]::after{content:attr(aria-label);font-size:13.5px;font-weight:700}
@@ -1345,3 +1337,44 @@ h1 > .sk,h2 > .sk,h3 > .sk,p > .sk:not(.cat-bubble):not(.live-pill),.ov-skel p >
 .chrome-top.scrolled .locbar-wrap,.chrome-top.scrolled.compact .topbar{box-shadow:var(--chrome-edge)}
 /* no fade on the location bar: it only slides (owner 2026-11-14) */
 .chrome-top.compact .locbar-wrap{opacity:1}
+
+/* the phone tab bar (GlassTabBar, owner 2026-11-14): a floating Liquid Glass capsule. The glass is one static layer (bent
+   through #gbar-lens on Chromium, frosted elsewhere); the selection pill moves by transform only. */
+.gbar{--gbar-tint:rgba(251,246,238,.62);--gbar-pill:rgba(217,98,42,.15);--gbar-ink:var(--ink2);--gbar-on:var(--accent);--gbar-rim:rgba(255,255,255,.55);--gbar-shadow:0 12px 32px -14px rgba(36,28,22,.42);
+  position:fixed;z-index:45;left:14px;right:14px;bottom:max(12px,env(safe-area-inset-bottom));height:62px;display:flex;align-items:stretch;padding:4px;border-radius:31px;
+  isolation:isolate;contain:layout style;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+[data-theme=dark] .gbar{--gbar-tint:rgba(30,24,20,.58);--gbar-pill:rgba(232,116,58,.22);--gbar-rim:rgba(255,255,255,.14);--gbar-shadow:0 12px 32px -14px rgba(0,0,0,.85)}
+.gbar-glass{position:absolute;inset:0;z-index:-2;border-radius:inherit;background:var(--gbar-tint);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
+  box-shadow:inset 0 1px 0 var(--gbar-rim),inset 1px 0 0 rgba(255,255,255,.06),inset -1px 0 0 rgba(255,255,255,.06),var(--gbar-shadow)}
+.gbar.lens .gbar-glass{-webkit-backdrop-filter:blur(3px) url(#gbar-lens) blur(9px) saturate(180%);backdrop-filter:blur(3px) url(#gbar-lens) blur(9px) saturate(180%)}
+.gbar-pill{position:absolute;z-index:-1;top:4px;bottom:4px;left:0;border-radius:27px;background:var(--gbar-pill);box-shadow:inset 0 1px 0 rgba(255,255,255,.18);will-change:transform;pointer-events:none}
+.gbar-item{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--gbar-ink);text-decoration:none;border-radius:27px;-webkit-touch-callout:none}
+.gbar-item svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.gbar-item span{font-size:10.5px;font-weight:600;line-height:1;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.gbar-item[aria-current=page]{color:var(--gbar-on)}
+.gbar-item:active svg{transform:scale(.92);transition:transform .1s ease-out}
+.gbar-defs{position:absolute;width:0;height:0;overflow:hidden}
+@media (min-width:1024px){ .gbar{display:none} }
+@media (prefers-reduced-transparency: reduce){ .gbar-glass,.gbar.lens .gbar-glass{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none} }
+
+/* cards inside a sheet sit on the sheet itself (owner 2026-11-14): no drop shadow on a surface of the same colour, a soft
+   raised fill instead, so they blend with what is under them instead of floating on a dark slab */
+.sheet .card{box-shadow:none;background:color-mix(in srgb,var(--ink) 4%,var(--card))}
+[data-theme=dark] .sheet .card{background:color-mix(in srgb,var(--ink) 6%,var(--card))}
+/* phones (owner 2026-11-14): the top chrome is fixed to the top of the screen, so it never moves with the page or rubber-
+   bands with it; the spacer keeps its height in the flow. The material reaches 1 px above the bar and fills the status bar
+   area, so no line of page shows above it while scrolling. */
+.chrome-spacer{display:none}
+@media (max-width:1023px){
+  .chrome-top{position:fixed;top:0;left:0;right:0;padding-top:env(safe-area-inset-top)}
+  .chrome-top::before{content:"";display:block;position:absolute;left:0;right:0;top:-1px;height:calc(env(safe-area-inset-top) + 1px);background:var(--chrome-bg);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);pointer-events:none}
+  .chrome-top .topbar::before{top:-1px}
+  .chrome-spacer{display:block;height:var(--chrome-h,98px)}
+  html.lock-fixed .chrome-top{transform:none}
+}
+
+/* rendering cost without changing the look (owner 2026-11-14, measured: the idle home page spent most of its main thread
+   redrawing). The live rings animate inside their pill: containment keeps each frame inside that small pill. Cards that
+   are off screen skip rendering (rings, photos, layout) until they come near the viewport. */
+.live-pill,.tm-count{contain:layout paint}
+.tile,.post,.rail-row > *{content-visibility:auto;contain-intrinsic-size:auto 280px}

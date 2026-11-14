@@ -1,6 +1,6 @@
 'use client';
 // The page frame of proto/index.html: #app (the page, which recedes under a sheet), #chrome (tab bar, action bar),
-// #glass-tabs, #fx (effects), plus the sheet stack and the love/share gestures.
+// the phone tab bar (GlassTabBar), #fx (effects), plus the sheet stack and the love/share gestures.
 import type { ReactNode } from 'react';
 import { KProvider, type Tab } from './KProvider';
 import { SheetHost } from './Sheet';
