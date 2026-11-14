@@ -158,7 +158,7 @@ export function TabNav() {
   return <>
     <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
     {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
-    <div id="glass-tabs" dir="ltr">{Glass ? <Glass aria-label="Main" value={tab} style={glassStyle} link={Link}
+    <div id="glass-tabs" dir="ltr">{Glass ? <Glass aria-label={c.nav.tabsAria} value={tab} style={glassStyle} link={Link}
       items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `/${lang}${href === '/' ? '' : href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /> : null}</div>
   </>;
 }
@@ -225,6 +225,12 @@ function SearchPanel({ q, onCancel, onGo }: { q: string; onCancel: () => void; o
   const [top] = useState(() => document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0);
   const [recent, setRecent] = useState(() => getL<string>(RECENT_KEY));
   const [opened] = useState(() => getL<Opened>(OPENED_KEY).slice(0, 6));
+  const where = usePlaceName();
+  const { city } = useLocKeys(); // terms are recorded per city: an area reads its city's terms
+  const { data: trending = [] } = useQuery({
+    queryKey: ['search', 'trending', city?.id ?? ''], staleTime: 5 * 60_000,
+    queryFn: () => apiRequest<{ terms: { term: string; searches: number }[] }>('GET', '/v1/search/trending', { params: { limit: 5, ...(city ? { cityId: city.id } : {}) } }).then((r) => r.terms).catch(() => []),
+  });
   useEffect(() => {
     const p = panel.current; if (!p) return;
     animate(p, { opacity: [0, 1], transform: ['translateY(-8px) scale(.985)', 'translateY(0) scale(1)'] }, spring(0, 0.32));
@@ -236,7 +242,7 @@ function SearchPanel({ q, onCancel, onGo }: { q: string; onCancel: () => void; o
     <div className="sg-sec"><L n="sparkles" /> {c.search.zero.rightNow}</div>
     <div className="sg-chips">{chips.map(([l, h, i]) => <Link key={l} className="chip press" href={h} data-act="sg-go" onClick={() => onGo(l)}><L n={i} />{l}</Link>)}<button className="chip press" data-act="shuffle-search" onClick={() => { onGo(''); go(`/${lang}`); setTimeout(() => document.querySelector<HTMLElement>('[data-act="shuffle"]')?.click(), 450); }}><L n="dices" />{c.search.zero.surprise}</button></div>
     {recent.length ? <><div className="sg-sec"><L n="history" /> {c.search.zero.recent}</div>{recent.map((r) => <div key={r} className="sg-row"><Link className="grow press" href={`/${lang}/explorer/?q=${encodeURIComponent(r)}`} data-act="sg-go" onClick={() => onGo(r)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}><L n="clock" /><b>{r}</b></Link><button className="icon-btn press" aria-label={c.search.remove} data-act="sg-forget" onClick={(e) => { const row = e.currentTarget.closest('.sg-row') as HTMLElement; localStorage.setItem(RECENT_KEY, JSON.stringify(getL<string>(RECENT_KEY).filter((x) => x !== r))); animate(row, { opacity: 0, transform: 'translateX(-12px)' }, spring(0, 0.25)).finished.then(() => setRecent((l) => l.filter((x) => x !== r))); }}><L n="x" /></button></div>)}</> : null}
-    {/* TODO: "Trending in <place>" needs real search terms from the backend (search insights); hidden until then */}
+    {trending.length ? <><div className="sg-sec"><L n="flame" /> {fill(c.search.zero.trendingIn, { place: where })}</div>{trending.map((x, n) => <Link key={x.term} className="sg-row press" href={`/${lang}/explorer/?q=${encodeURIComponent(x.term)}`} data-act="sg-go" onClick={() => onGo(x.term)}><span className="sg-rank">{n + 1}</span><b className="grow" dir="auto">{x.term}</b><em className="sg-n">{fill(x.searches === 1 ? c.search.zero.oneSearch : c.search.zero.searches, { n: x.searches })}</em></Link>)}</> : null}
     {opened.length ? <><div className="sg-sec"><L n="eye" /> {c.search.zero.youOpened}</div><div className="sg-opened">{opened.map((p) => <Link key={p.slug} className="press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo('')}><img src={p.s} alt="" /><b dir="auto">{p.name}</b></Link>)}</div></> : null}
   </>;
   return createPortal(<>

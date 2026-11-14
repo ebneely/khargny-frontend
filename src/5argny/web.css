@@ -1039,7 +1039,7 @@ input,textarea,select{font-size:16px}
 body.form-page #glass-tabs,body.form-page #chrome .tabbar{display:none}
 body.form-page #chrome .actionbar{bottom:max(12px,env(safe-area-inset-bottom))}
 .corr .icon-btn[data-act="page-back"]{width:auto;padding:0 12px 0 8px;gap:4px;border-radius:999px}
-.corr .icon-btn[data-act="page-back"]::after{content:"Back";font-size:13.5px;font-weight:700}
+.corr .icon-btn[data-act="page-back"]::after{content:attr(aria-label);font-size:13.5px;font-weight:700}
 .sheet-body{overscroll-behavior-y:contain}
 .hype{overflow-x:visible}
 

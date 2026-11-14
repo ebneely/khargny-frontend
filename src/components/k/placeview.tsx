@@ -69,7 +69,7 @@ function Overview({ s, id }: { s: KStats; id: string }) {
   if (!s.d30 || !s.all) return null;
   const row = (icon: 'eye' | 'heart' | 'saved' | 'share' | 'go', l: string, a: number, b: number) => <div className="row"><span className="grow"><Ic n={icon} /> {l}</span><b style={{ minWidth: 64, textAlign: 'end' }}>{k(a)}</b><span className="t-small" style={{ minWidth: 64, textAlign: 'end' }}>{k(b)}</span></div>;
   return (
-    <section className="group" aria-label="On khargny"><div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}><h2 className="group-title" style={{ margin: 0 }}>{withBrand(c.overview.title)}</h2></div>
+    <section className="group" aria-label={fill(c.overview.title, { brand: c.brand })}><div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}><h2 className="group-title" style={{ margin: 0 }}>{withBrand(c.overview.title)}</h2></div>
       <p style={{ margin: '8px 0 2px' }}><b style={{ font: '900 24px/1 var(--display)' }}>{k(s.d30.views + mine)}</b> <span className="t-small">{c.overview.viewed}</span></p>{s.d30.days?.length === 30 ? <HypeLine days={s.d30.days} /> : null}
       <div className="row t-micro"><span className="grow" /><span style={{ minWidth: 64, textAlign: 'end' }}>{c.overview.days30}</span><span style={{ minWidth: 64, textAlign: 'end' }}>{c.overview.allTime}</span></div>
       {row('eye', c.overview.rows.views, s.d30.views + mine, s.all.views + mine)}{row('heart', c.overview.rows.likes, s.d30.likes, s.all.likes)}{row('saved', c.overview.rows.saves, s.d30.saves, s.all.saves)}{row('share', c.overview.rows.shares, s.d30.shares, s.all.shares)}{row('go', c.overview.rows.go, s.d30.goes, s.all.goes)}</section>
@@ -89,7 +89,7 @@ function Badges({ p }: { p: KPlace }) {
   const { c } = useK();
   const label = useBadgeLabel();
   if (!p.badges.length) return null;
-  return <section className="group" aria-label="Earned on 5argny"><h2 className="group-title"><L n="award" /> {withBrand(c.home.earned)}</h2>{p.badges.map((b, i) => <div key={b.key + i} className="badge-row"><span className="badge-ic"><L n={badgeIcon(b)} /></span><span className="grow"><b>{label(b)}</b><span className="t-small">{(c.badges.meaning as Record<string, string>)[b.key] || ''}</span></span></div>)}</section>;
+  return <section className="group" aria-label={fill(c.home.earned, { brand: c.brand })}><h2 className="group-title"><L n="award" /> {withBrand(c.home.earned)}</h2>{p.badges.map((b, i) => <div key={b.key + i} className="badge-row"><span className="badge-ic"><L n={badgeIcon(b)} /></span><span className="grow"><b>{label(b)}</b><span className="t-small">{(c.badges.meaning as Record<string, string>)[b.key] || ''}</span></span></div>)}</section>;
 }
 
 // amenities: an icon grid with the dashboard's own icons; first 8, then the rest in a bottom sheet
