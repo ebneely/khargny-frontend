@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { PageFallback } from '@/components/k/PageFallback';
 import type { Metadata } from 'next';
 import { currentLocale, pageMetadata } from '@/lib/seo';
 import { ExploreView } from '@/components/k/explore';
@@ -12,5 +13,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function ExplorePage() {
-  return <Suspense><ExploreView /></Suspense>;
+  return <Suspense fallback={<PageFallback />}><ExploreView /></Suspense>;
 }

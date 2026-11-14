@@ -1,6 +1,9 @@
 'use client';
 // Page push/pop (proto renderBase): a deeper page slides in from the trailing edge over the old one, which slides a quarter
-// under and dims; back is the exact reverse. Tabs do not move. Desktop only: on a phone a place is a sheet, not a page.
+// under and dims; back is the exact reverse (desktop only: on a phone a place is a sheet, not a page).
+// Pages at the same depth (the tabs, Explore to Saved...) cross over like an app (owner 2026-11-14): the old content fades
+// out the moment you tap, the new one fades in and rises 12 px on a critically damped spring. Only the page column moves;
+// the frame (top bar, sidebar, tab bar) is mounted once and never animates. Opacity and transform only.
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { animate } from 'motion';
@@ -10,11 +13,14 @@ import { desk, reduce, spring } from './KProvider';
 // proto renderBase depths: a place, collection, listing or host and Report a problem are 1; a correction is 2
 const depthOf = (path: string) => (/\/correct\/?$/.test(path) ? 2 : isSheetPath(path) || /\/settings\/report\/?$/.test(path) ? 1 : 0);
 type Ghost = { clip: HTMLDivElement; ghost: HTMLElement; width: number; from: number };
+let fading: Animation | null = null; // the old page's fade-out, waiting for the new page
+const crossable = (to: string) => to !== location.pathname && depthOf(to) === depthOf(location.pathname) && !(isSheetPath(to) && !desk());
 
 export function PageMotion() {
   const pathname = usePathname();
   const pending = useRef<Ghost | null>(null);
   const last = useRef(depthOf(pathname));
+  const first = useRef(true); // the first paint of the site does not animate
   useEffect(() => {
     // keep a picture of the page that is about to go
     const capture = () => {
@@ -30,7 +36,13 @@ export function PageMotion() {
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
       const a = (e.target as Element).closest?.('a[href]') as HTMLAnchorElement | null; if (!a || a.target) return;
-      const url = new URL(a.href, location.href); if (url.origin === location.origin && depthOf(url.pathname) !== depthOf(location.pathname)) capture();
+      const url = new URL(a.href, location.href); if (url.origin !== location.origin) return;
+      if (depthOf(url.pathname) !== depthOf(location.pathname)) capture();
+      else if (crossable(url.pathname) && !reduce() && !document.documentElement.classList.contains('sheet-open')) {
+        const view = document.getElementById('view'); if (!view) return;
+        fading?.cancel(); fading = view.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out', fill: 'forwards' });
+        const mine = fading; setTimeout(() => { if (fading === mine && document.contains(view)) { mine.cancel(); fading = null; } }, 1500); // the page never came: show the old one again
+      }
     };
     document.addEventListener('click', onClick); addEventListener('popstate', capture);
     return () => { document.removeEventListener('click', onClick); removeEventListener('popstate', capture); };
@@ -38,6 +50,12 @@ export function PageMotion() {
   useLayoutEffect(() => {
     const d = depthOf(pathname), g = pending.current; pending.current = null;
     const was = last.current; last.current = d;
+    if (first.current) { first.current = false; return; }
+    if (!g && d === was && !(isSheetPath(pathname) && !desk())) { // same depth: the new page fades in and rises
+      fading = null; const view = document.getElementById('view'); if (!view || reduce()) return;
+      animate(view, { opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0px)'] }, spring(0, 0.35)).finished.then(() => { view.style.transform = ''; });
+      return;
+    }
     if (!g || d === was || g.from === d) return;
     const view = document.getElementById('view'); if (!view) return;
     const dir = document.documentElement.dir === 'rtl' ? -1 : 1, W = g.width, sp = spring(0, 0.45);
