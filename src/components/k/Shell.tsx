@@ -25,6 +25,7 @@ import { trackSearchResults, trackSearchTap } from '@/lib/analytics/track';
 import { Failed, Sk } from './states';
 import { FootLinks } from './footlinks';
 import { hasLocBar, type Frame } from './frame';
+import { usePosition } from './near';
 import { useK, haptic, reduce, spring, type Tab } from './KProvider';
 import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
@@ -164,6 +165,18 @@ function Sidebar({ cur }: { cur: Tab }) {
   const { data: saved = [] } = useSavedSections();
   const cols = useCollections([...mine.map((m) => m.slug), ...saved.map((x) => x.key)]);
   const nav = useRef<HTMLElement>(null);
+  // 5 random shortcuts per visit: the same first 5 render on the server, the pick is made after mount and kept in sessionStorage
+  const [picked, setPicked] = useState<string[] | null>(null);
+  useEffect(() => {
+    let keys: string[] | null = null;
+    try { keys = JSON.parse(sessionStorage.getItem('k-shortcuts') || 'null'); } catch { /* storage blocked: pick without keeping */ }
+    if (!Array.isArray(keys) || keys.length !== 5 || !keys.every((x) => INTENTS.some((i) => i.key === x))) {
+      keys = INTENTS.map((x) => x.key).sort(() => Math.random() - 0.5).slice(0, 5);
+      try { sessionStorage.setItem('k-shortcuts', JSON.stringify(keys)); } catch { /* ignore */ }
+    }
+    setPicked(keys);
+  }, []);
+  const shortcuts = picked ? picked.map((key) => INTENTS.find((i) => i.key === key)!) : INTENTS.slice(0, 5);
   useLayoutEffect(() => {
     const el = nav.current; if (!el) return;
     const from = lastNavTab && lastNavTab !== cur ? el.querySelectorAll('.nav-item')[NAV.findIndex((n) => n[0] === lastNavTab)] : null;
@@ -171,7 +184,7 @@ function Sidebar({ cur }: { cur: Tab }) {
   }, [cur]);
   return (
     <aside className="sidebar"><nav data-slider="nav" ref={nav}><span className="pill" /><NavItems cur={cur} /></nav>
-      <div className="side-section"><div className="t-micro">{c.sidebar.shortcuts}</div>{INTENTS.slice(0, 5).map((x) => <Link key={x.key} className="side-link press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><L n={x.icon} />{c.intents[x.key]}</Link>)}</div>
+      <div className="side-section"><div className="t-micro">{c.sidebar.shortcuts}</div>{shortcuts.map((x) => <Link key={x.key} className="side-link press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><L n={x.icon} />{c.intents[x.key]}</Link>)}</div>
       {cols.length ? <div className="side-section"><div className="t-micro">{c.sidebar.collections}</div>{cols.map((col) => <Link key={col.id} className="side-link press" href={`${langPrefix(lang)}/c/${col.slug}/`}>{col.places[0] ? <img decoding="async" src={col.places[0].photos[0]?.s} alt="" /> : <L n="library" />}{col.title}</Link>)}</div> : null}
       <div className="side-section side-quiet"><FootLinks cls="side-link press" /></div>
     </aside>
@@ -236,6 +249,8 @@ export function TabNav() {
 
 // the searched word stays in the bar across pages until it is cleared (proto S.q); Explore's ?q= is the truth there
 let barQ = '';
+// the page the search was opened from: the × on the search field returns there (no origin, e.g. a direct link: Home)
+let searchOrigin: string | null = null;
 const onExplore = () => /^(\/ar)?\/explorer\/?$/.test(location.pathname);
 
 function TopBar() {
@@ -243,7 +258,7 @@ function TopBar() {
   const urlQ = useSearchParams().get('q');
   const [q, setQ] = useState(() => barQ);
   // an Explore deep link (or a new ?q= on it) puts its word in the bar; the server render starts empty, so no mismatch
-  useEffect(() => { if (onExplore()) { barQ = (urlQ ?? '').trim(); setQ(barQ); } else setQ(barQ); }, [urlQ]);
+  useEffect(() => { if (onExplore()) { barQ = (urlQ ?? '').trim(); setQ(barQ); } else { setQ(barQ); searchOrigin = null; } }, [urlQ]);
   const commit = (v: string) => { barQ = v.trim(); setQ(barQ); };
   const [searching, setSearching] = useState(false);
   const [hint, setHint] = useState(0);
@@ -258,14 +273,15 @@ function TopBar() {
     }, 3200);
     return () => clearInterval(id);
   }, [q]);
-  const enter = () => { if (searching) return; from.current = { path: location.pathname + location.search, y: scrollY }; setSearching(true); document.querySelector('.chrome-top')?.classList.remove('compact'); };
+  const enter = () => { if (searching) return; from.current = { path: location.pathname + location.search, y: scrollY }; if (!(onExplore() && urlQ)) searchOrigin = from.current.path; setSearching(true); document.querySelector('.chrome-top')?.classList.remove('compact'); };
   const exit = () => { setSearching(false); input.current?.blur(); };
-  const cancel = () => { const back = from.current; exit(); setQ(barQ); if (back) requestAnimationFrame(() => scrollTo({ top: back.y, behavior: 'instant' })); };
-  // one × clears the word; on Explore it also drops ?q= from the results
+  const cancel = () => { const back = from.current; if (!(onExplore() && urlQ)) searchOrigin = null; exit(); setQ(barQ); if (back) requestAnimationFrame(() => scrollTo({ top: back.y, behavior: 'instant' })); };
+  // the × clears the word and takes the person back to the page they started the search from (Home when there is none)
   const clear = () => {
     barQ = ''; setQ(''); haptic();
-    if (searching) { input.current?.focus(); return; }
-    if (onExplore() && urlQ != null) { const n = new URLSearchParams(location.search); n.delete('q'); go(`${location.pathname}${n.toString() ? '?' + n : ''}`); }
+    const target = searchOrigin;
+    if (searching && (!target || target === location.pathname + location.search)) { cancel(); return; }
+    if (searching || (onExplore() && urlQ != null)) { searchOrigin = null; exit(); go(target ?? `${langPrefix(lang)}/`); }
   };
   useEffect(() => { document.querySelector('.chrome-top')?.classList.toggle('searching', searching); }, [searching]);
   useEffect(() => { if (!searching) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); });
@@ -323,14 +339,35 @@ function SearchPanel({ q, onCancel, onGo }: { q: string; onCancel: () => void; o
 }
 
 // "Go": the intent a query names, in the chosen place and open now, with real counts (rows at 0 are left out)
-function useGo(q: string) {
+/** The dashboard's search settings (Search tab); the built-in values apply until it answers or when it fails. */
+const SEARCH_DEFAULTS = { defaultCitySlug: 'cairo', suggestInCity: true, suggestOpenNow: true, suggestPlaces: true };
+function useSearchSettings() {
+  const { data } = useQuery({ queryKey: ['settings', 'search'], staleTime: 5 * 60_000, retry: false,
+    queryFn: () => apiRequest<Partial<typeof SEARCH_DEFAULTS>>('GET', '/v1/settings/search').catch(() => ({})) });
+  return { ...SEARCH_DEFAULTS, ...data };
+}
+
+/** The city suggestions speak about: the one chosen in the location bar, else the nearest to the person, else the default city. Never Egypt. */
+function useSuggestionCity() {
   const { loc } = useK();
+  const { data: cities = [] } = useCities();
+  const pos = usePosition();
+  const s = useSearchSettings();
+  const chosen = cities.find((x) => x.slug === loc.city);
+  if (chosen) return chosen;
+  const km = (x: (typeof cities)[number]) => (x.lat != null && x.lng != null && pos ? Math.hypot((x.lat - pos.lat) * 111, (x.lng - pos.lng) * 111 * Math.cos((pos.lat * Math.PI) / 180)) : Infinity);
+  const near = pos ? [...cities].sort((a, b) => km(a) - km(b))[0] : null;
+  return (near && km(near) < Infinity ? near : null) ?? cities.find((x) => x.slug === s.defaultCitySlug) ?? cities.find((x) => x.slug === 'cairo') ?? null;
+}
+
+function useGo(q: string) {
+  const city = useSuggestionCity();
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
   const it = intentFor(q);
   const cats = it ? categories.filter((cat) => (it.cats as readonly string[]).includes(cat.nameEn || cat.nameAr)) : [];
-  const cityId = cities.find((x) => x.slug === loc.city)?.id;
-  const { data: open } = useQuery({ queryKey: ['places', 'counts', 'now'], queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now' } }).catch(() => null), enabled: !!it, staleTime: 60_000 });
+  const cityId = city?.id;
+  const { data: open } = useQuery({ queryKey: ['places', 'counts', 'now', city?.slug ?? ''], queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now', city: city?.slug } }).catch(() => null), enabled: !!it, staleTime: 60_000 });
   const { data: total } = useQuery({
     queryKey: ['places', 'total', cats.map((x) => x.id).join(','), cityId ?? ''], enabled: cats.length > 0, staleTime: 5 * 60_000,
     queryFn: async () => (await Promise.all(cats.map((cat) => apiRequest<{ meta?: { total?: number } }>('GET', '/v1/places', { params: { categoryId: cat.id, limit: 1, cityId } }).then((r) => r.meta?.total ?? 0).catch(() => 0)))).reduce((a, n) => a + n, 0),
@@ -348,9 +385,10 @@ function SearchRow({ p, q, position, onGo, hl }: { p: KPlace; q: string; positio
 
 function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   const { c, lang, setLoc, loc } = useK();
-  const where = usePlaceName();
+  const sug = useSearchSettings(), sugCity = useSuggestionCity();
   const go = useGo(q);
-  const comp = go ? ([[fill(c.search.results.intentIn, { intent: c.intents[go.key], place: where }), `${langPrefix(lang)}/explorer/?intent=${go.key}`, go.icon, go.total], [fill(c.search.results.intentOpenNow, { intent: c.intents[go.key] }), `${langPrefix(lang)}/explorer/?intent=${go.key}&when=now`, 'clock', go.open]] as [string, string, string, number | null][]).filter((r) => (r[3] ?? 0) > 0) : [];
+  const cityName = sugCity ? (lang === 'ar' ? sugCity.name : sugCity.nameEn || sugCity.name) : '';
+  const comp = go && sugCity ? ([[fill(c.search.results.intentIn, { intent: c.intents[go.key], place: cityName }), `${langPrefix(lang)}/explorer/?intent=${go.key}`, go.icon, go.total, sug.suggestInCity], [fill(c.search.results.intentOpenNow, { intent: c.intents[go.key] }), `${langPrefix(lang)}/explorer/?intent=${go.key}&when=now`, 'clock', go.open, sug.suggestOpenNow]] as [string, string, string, number | null, boolean][]).filter((r) => r[4] && (r[3] ?? 0) > 0) : [];
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
   const { data, isFetching, isPlaceholderData, isError, error, refetch } = useSearchPlaces({ q, limit: 20 }, { locale: lang });
@@ -369,8 +407,8 @@ function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   if (!data && isFetching) return <><div className="sg-sec skel" aria-hidden="true"><span className="sk">{c.search.results.places}</span></div>{[0, 1, 2].map((i) => <div key={i} className="sg-row skel" aria-hidden="true"><span className="tile-media sg-thumb"><Sk w={36} h={36} r={9} /></span><span className="grow"><b><span className="sk">Place name here</span></b><span className="meta"><span className="cat-bubble sk">Restaurants</span><span className="cat-bubble sk">Area name here</span></span></span><span className="stats">{(['eye', 'heart', 'saved'] as const).map((n) => <span key={n} className="views sk"><Ic n={n} /><span className="n">00</span></span>)}</span></div>)}</>;
   if (!data && isError) return <Failed compact error={error} retry={refetch} />;
   return <>
-    {comp.length ? <><div className="sg-sec"><L n="navigation" /> {c.search.results.go}</div>{comp.map(([l, h, i, n]) => <Link key={h} className="sg-row sg-comp press" href={h} data-act="sg-go" onClick={() => onGo(q)}><span className="sg-ic"><L n={i} /></span><b className="grow">{l}</b><em className="sg-n"><i className="live" />{n}</em></Link>)}</> : null}
-    {places.length ? <><div className="sg-sec"><L n="map-pin" /> {c.search.results.places}</div>{places.map((p, i) => <SearchRow key={p.id} p={p} q={q} position={i + 1} onGo={onGo} hl={hl} />)}</> : null}
+    {comp.length ? <><div className="sg-sec"><L n="navigation" /> {c.search.results.go}</div>{comp.map(([l, h, i, n]) => <Link key={h} className="sg-row sg-comp press" href={h} data-act="sg-go" onClick={() => { onGo(q); if (sugCity && loc.city !== sugCity.slug) setLoc({ city: sugCity.slug, area: null }); }}><span className="sg-ic"><L n={i} /></span><b className="grow">{l}</b><em className="sg-n"><i className="live" />{n}</em></Link>)}</> : null}
+    {places.length && sug.suggestPlaces ? <><div className="sg-sec"><L n="map-pin" /> {c.search.results.places}</div>{places.map((p, i) => <SearchRow key={p.id} p={p} q={q} position={i + 1} onGo={onGo} hl={hl} />)}</> : null}
     {areas.length ? <><div className="sg-sec"><L n="map" /> {c.search.results.areas}</div>{areas.map((a) => <Link key={a.city.id + a.key} className="sg-row press" href={`${langPrefix(lang)}/explorer/`} data-act="sg-area" onClick={() => { onGo(a.n); setLoc({ city: a.city.slug, area: a.n }); }}><span className="sg-ic"><Gov name={a.city.slug} fallback={<L n="map-pin" />} /></span><span className="grow"><b>{hl(a.n)}</b><span className="t-small">{lang === 'ar' ? a.city.name : a.city.nameEn || a.city.name}</span></span></Link>)}</> : null}
     {places.length || areas.length || comp.length
       ? <Link className="sg-row sg-all press" href={`${langPrefix(lang)}/explorer/?q=${encodeURIComponent(q.trim())}`} data-act="sg-go" onClick={() => onGo(q)}><L n="search" /><span className="grow">{fill(c.search.results.seeEverything, { q: q.trim() })}</span><L n="arrow-right" /></Link>
@@ -393,9 +431,40 @@ function LocNums({ views, count }: { views?: { kind: 'city' | 'area'; ids: strin
   return <>{v != null ? <span className="gv" title={c.stats.viewsGroup}><Ic n="eye" />{k(v)}</span> : null}{count != null ? <span className="t-small">{count}</span> : null}</>;
 }
 
+/**
+ * The city and area dropdowns (owner 2026-11-14): scale and fade out of the pill that opened them on a critically damped spring,
+ * closing on the same path; transform and opacity only. A new animation starts from the value on screen, so a second tap
+ * mid-motion reverses it. Reduced motion: a short fade.
+ */
+function LocMenu({ open, anchor, onClose, children }: { open: boolean; anchor: React.RefObject<HTMLElement | null>; onClose: () => void; children: ReactNode }) {
+  const [shown, setShown] = useState(open);
+  if (open && !shown) setShown(true);
+  const el = useRef<HTMLDivElement>(null);
+  const openNow = useRef(open); openNow.current = open;
+  useLayoutEffect(() => {
+    const m = el.current, a = anchor.current; if (!m) return;
+    if (open && a) { // place under the pill, origin at the pill
+      const r = a.getBoundingClientRect(), w = Math.min(340, innerWidth - 24), rtl = getComputedStyle(a).direction === 'rtl';
+      const left = Math.max(12, Math.min(rtl ? r.right - w : r.left, innerWidth - w - 12));
+      Object.assign(m.style, { top: r.bottom + 6 + 'px', left: left + 'px', width: w + 'px', maxHeight: `calc(100dvh - ${r.bottom + 22}px)` });
+      m.style.transformOrigin = `${r.left + r.width / 2 - left}px 0px`;
+    }
+    const calm = reduce();
+    const to = open ? { opacity: 1, transform: 'scale(1)' } : { opacity: 0, transform: calm ? 'scale(1)' : 'scale(.92)' };
+    const run = animate(m, to, calm ? { duration: 0.15 } : spring(0, 0.32));
+    run.finished.then(() => { if (!openNow.current) setShown(false); }, () => {});
+  }, [open, shown]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); }, [open, onClose]);
+  if (!shown) return null;
+  return createPortal(<>
+    <div className="loc-menu-scrim" onPointerDown={onClose} />
+    <div className="loc-menu" role="radiogroup" ref={el} style={{ opacity: 0, transform: reduce() ? 'none' : 'scale(.92)' }}>{children}</div>
+  </>, document.body);
+}
+
 /** ONE location bar, pinned under the top bar on Home, Explore and Marketplace; Filters joins it on Explore only. */
 function LocBar({ withFilters }: { withFilters: boolean }) {
-  const { loc, setLoc, c, lang, openSheet, closeTop, toast, go } = useK();
+  const { loc, setLoc, c, lang, toast, go } = useK();
   const { data: cities = [] } = useCities();
   const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
   // the city sheet lists cities by most places, as the prototype does: the cities carry their counts, so the order never changes
@@ -405,26 +474,34 @@ function LocBar({ withFilters }: { withFilters: boolean }) {
   const areaCounts = useAreaCounts(city?.id);
   const areaKeys = [...(city?.areaKeys ?? [])].sort((a, b) => (areaCounts?.[b] ?? -1) - (areaCounts?.[a] ?? -1));
   const cityName = city ? (lang === 'ar' ? city.name : city.nameEn || city.name) : null;
-  const pick = (el: HTMLElement, after: () => void) => { haptic(); el.closest('.sheet')?.querySelectorAll('.option').forEach((o) => o.setAttribute('aria-checked', String(o === el))); setTimeout(() => { closeTop(); after(); }, 170); };
+  // the dropdown closes at once with its exit motion; a city pick then opens that city's areas (owner 2026-11-14)
+  const [menu, setMenu] = useState<'city' | 'area' | null>(null);
+  const cityPill = useRef<HTMLButtonElement>(null), areaPill = useRef<HTMLButtonElement>(null);
+  const pick = (_el: HTMLElement, after: () => void) => { haptic(); setMenu(null); after(); };
   const opt = (key: string, on: boolean, icon: ReactNode, label: string, act: string, then: () => void, nums?: ReactNode) => <button key={key} className="option press" role="radio" aria-checked={on} data-act={act} onClick={(e) => pick(e.currentTarget, then)}>{icon}<span className="grow">{label}</span>{nums}<Ic n="check" cls="check" /></button>;
   const cityIds = cities.map((x) => x.id), areaIds = city?.areaKeys ?? [];
   useGroupViews('city', cityIds); useGroupViews('area', areaIds); // asked now, so the sheets open with their numbers
-  const openCity = () => openSheet(c.location.citySheet, <>
+  const viaArea = useRef(false); // the Area pill with no city asks for the city first, then opens its areas
+  const openCity = () => { viaArea.current = false; setMenu('city'); };
+  const cityBody = <>
     {opt('all', !loc.city, <L n="map" />, c.location.allEgypt, 'pick-city', () => setLoc({ city: null, area: null }), <LocNums count={egypt} />)}
-    {byCount.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Gov name={x.slug} fallback={<Ic n="pin" />} />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); }, <LocNums views={{ kind: 'city', ids: cityIds, id: x.id }} count={x.visiblePlacesCount} />); })}
-  </>);
-  const openArea = () => { if (!city) return; openSheet(fill(c.location.areaSheet, { city: cityName ?? '' }), <>
+    {byCount.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Gov name={x.slug} fallback={<Ic n="pin" />} />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); if (viaArea.current) setMenu('area'); }, <LocNums views={{ kind: 'city', ids: cityIds, id: x.id }} count={x.visiblePlacesCount} />); })}
+  </>;
+  const openArea = () => { if (city) setMenu('area'); };
+  const areaBody = !city ? null : <>
     {opt('all', !loc.area, <L n="layers" />, c.location.allAreas, 'pick-area', () => setLoc({ city: loc.city, area: null }), <LocNums count={city.visiblePlacesCount} />)}
     {areaKeys.map((key) => { const n = regionLabel(key, lang, city.nameEn || city.name) || key; return opt(key, loc.area === n, <L n="map-pin" />, n, 'pick-area', () => setLoc({ city: loc.city, area: n }), <LocNums views={{ kind: 'area', ids: areaIds, id: key }} count={areaCounts ? areaCounts[key] ?? 0 : null} />); })}
-  </>); };
+  </>;
   const reset = (e: React.MouseEvent<HTMLButtonElement>) => { const ic = e.currentTarget.querySelector('.lucide'); if (ic) animate(ic, { transform: ['rotate(0deg)', 'rotate(-360deg)'] }, spring(0, 0.5)); haptic(); setTimeout(() => { setLoc({ city: null, area: null }); if (n) { const keep = new URLSearchParams(location.search); ['intent', 'cat', 'when', 'f'].forEach((k) => keep.delete(k)); go(`${location.pathname}${keep.toString() ? '?' + keep : ''}`); } toast(c.location.cleared); }, 220); };
   const openFilters = useOpenFilters();
   const sp = useSearchParams();
   const n = withFilters ? nF(readF(sp)) : 0;
   return (
     <div className="locbar" role="group" aria-label={c.location.aria}>
-      <button className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" onClick={openCity}>{loc.city ? <Gov name={loc.city} fallback={<L n="map-pin" />} /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
-      <button className={`loc-pill press ${loc.area ? 'on' : ''} ${loc.city ? '' : 'off'}`} data-act={loc.city ? 'area' : 'city'} aria-disabled={loc.city ? undefined : true} onClick={loc.city ? openArea : openCity}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
+      <button ref={cityPill} className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" aria-haspopup="true" aria-expanded={menu === 'city'} onClick={openCity}>{loc.city ? <Gov name={loc.city} fallback={<L n="map-pin" />} /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
+      <button ref={areaPill} className={`loc-pill press ${loc.area ? 'on' : ''}`} data-act="area" aria-haspopup="true" aria-expanded={menu === 'area'} onClick={city ? openArea : () => { viaArea.current = true; setMenu('city'); }}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
+      <LocMenu open={menu === 'city'} anchor={cityPill} onClose={() => setMenu(null)}>{cityBody}</LocMenu>
+      <LocMenu open={menu === 'area' && !!city} anchor={areaPill} onClose={() => setMenu(null)}>{areaBody}</LocMenu>
       {withFilters ? <button className={`loc-pill filters press ${n ? 'on' : ''}`} data-act="filters" onClick={openFilters}><L n="sliders-horizontal" /><b>{c.location.filters}</b>{n ? <em className="n-badge">{n}</em> : null}</button> : null}
       {loc.city || loc.area || n ? <button className="icon-btn reset-btn press" data-act="reset-all" aria-label={c.location.reset} onClick={reset}><L n="rotate-ccw" /></button> : null}
     </div>

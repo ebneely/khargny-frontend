@@ -395,7 +395,9 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 /* ONE location bar, pinned */
 .locbar-wrap{position:sticky;top:52px;z-index:28;padding:6px 16px 8px;background:var(--bar);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
 .locbar-wrap .locbar{margin:0}
-.loc-pill.off{opacity:.5}
+.loc-menu-scrim{position:fixed;inset:0;z-index:69}
+.loc-menu{position:fixed;z-index:70;overflow-y:auto;overscroll-behavior:contain;padding:6px;border-radius:16px;background:var(--card);box-shadow:0 12px 32px rgba(36,28,22,.18),0 0 0 1px rgba(36,28,22,.05);will-change:transform,opacity}
+.loc-menu .option{min-height:42px;padding:0 10px}
 .loc-pill.on b{color:var(--accent)}
 .search-pin{top:96px}
 @media (min-width:1024px){ .locbar-wrap{top:60px;padding:8px 24px} .locbar-wrap .locbar{max-width:600px;margin:0 auto} }
