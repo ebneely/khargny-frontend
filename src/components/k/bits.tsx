@@ -12,8 +12,8 @@ export function Brand() {
 }
 
 type Click = (e: MouseEvent<HTMLButtonElement>) => void;
-export function Btn({ label, kind = 'secondary', icon, wide, onClick, act }: { label: ReactNode; kind?: 'primary' | 'secondary' | 'plain'; icon?: StrokeName; wide?: boolean; onClick?: Click; act?: string }) {
-  return <button className={`btn ${kind} ${wide ? 'wide' : ''} press`} data-act={act ?? ''} onClick={onClick}>{icon ? <Ic n={icon} /> : null}{label}</button>;
+export function Btn({ label, kind = 'secondary', icon, wide, onClick, act, disabled }: { label: ReactNode; kind?: 'primary' | 'secondary' | 'plain'; icon?: StrokeName; wide?: boolean; onClick?: Click; act?: string; disabled?: boolean }) {
+  return <button className={`btn ${kind} ${wide ? 'wide' : ''} press`} data-act={act ?? ''} disabled={disabled} onClick={onClick}>{icon ? <Ic n={icon} /> : null}{label}</button>;
 }
 export function IconBtn({ icon, label, cls = '', onClick, act, pressed, id }: { icon: StrokeName; label: string; cls?: string; onClick?: Click; act?: string; pressed?: boolean; id?: string }) {
   return <button className={`icon-btn ${cls} press`} aria-label={label} data-act={act ?? ''} data-id={id} aria-pressed={pressed} onClick={onClick}><Ic n={icon} /></button>;

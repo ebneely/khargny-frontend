@@ -5,3 +5,4 @@ export * from './blend.ts';
 export * from './trending.ts';
 export * from './collections.ts';
 export * from './metaSwap.ts';
+export * from './proof.ts';

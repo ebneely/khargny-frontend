@@ -1207,3 +1207,25 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
   .sidebar,.rail-right{top:128px}
 }
 
+
+/* proof on a correction or a report (owner 2026-11-14): up to 4 thumbnails, each with its own upload bar, retry and remove */
+.corr-proof{display:grid;gap:8px;justify-items:start;margin-top:12px}
+.proof-list{display:flex;flex-wrap:wrap;gap:10px}
+.proof-item{position:relative;width:76px;height:76px}
+.proof-thumb{position:relative;display:block;width:100%;height:100%;padding:0;border:0;border-radius:14px;overflow:hidden;background:var(--fill);cursor:default}
+.proof-thumb:not(:disabled){cursor:pointer}
+.proof-thumb img,.proof-thumb video{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.proof-kind{position:absolute;left:6px;top:6px;display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:rgba(20,14,10,.55);color:#fff}
+.proof-kind .lucide{width:12px;height:12px}
+.proof-bar{position:absolute;left:8px;right:8px;bottom:8px;height:4px;border-radius:2px;background:rgba(255,255,255,.7);overflow:hidden}
+.proof-bar i{display:block;height:100%;background:var(--accent);transform-origin:0 50%;transition:transform .2s ease-out}
+[dir=rtl] .proof-bar i{transform-origin:100% 50%}
+.proof-item.err .proof-thumb::after{content:"";position:absolute;inset:0;background:rgba(229,72,77,.38)}
+.proof-retry{position:absolute;inset:0;z-index:1;display:grid;place-items:center;color:#fff}
+.proof-retry .lucide{width:22px;height:22px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.proof-x{position:absolute;top:-7px;inset-inline-end:-7px;z-index:2;display:grid;place-items:center;width:24px;height:24px;padding:0;border:2px solid var(--card);border-radius:50%;background:rgba(20,14,10,.72);color:#fff}
+.proof-x .lucide{width:13px;height:13px}
+.proof-err{margin:0;color:#C6363B;font-weight:600}
+:root[data-theme=dark] .proof-err{color:#FF8A8D}
+.btn:disabled{opacity:.5;pointer-events:none}
+@media (prefers-reduced-motion: reduce){ .proof-bar i{transition:none} }

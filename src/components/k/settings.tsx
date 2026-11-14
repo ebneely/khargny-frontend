@@ -16,6 +16,7 @@ import { L, Ic } from './icons';
 import { Btn, IconBtn, Group, Seg } from './bits';
 import { toK, placeHref, type KPlace } from './data';
 import { Meta } from './place';
+import { ProofPicker, useProofBusy } from './proof';
 import { Shell } from './Shell';
 import { TrendCard } from './home';
 import { MarketCard } from './market';
@@ -88,8 +89,9 @@ function CorrForm({ p }: { p?: KPlace }) {
       <div className="corr-list" role="radiogroup">{list.map(([k, l, i]) => <button key={k} className="option press" role="radio" aria-checked={pick === k} data-act="corr-pick" data-v={k} onClick={() => { haptic(); setPick(k); }}><L n={i} /><span className="grow">{l}</span><Ic n="check" cls="check" /></button>)}</div></section>
     <section className="group corr-detail" hidden={!pick || done} ref={det}>{!pick ? null : p ? <><h2 className="group-title"><L n="pencil-line" /> {c.correction.rightAnswer}</h2>{field(pick as Kind)}
       <div className="corr-field"><span>{c.correction.howKnow}</span>{seg([['visit', c.correction.visit], ['staff', c.correction.staff], ['online', c.correction.online]], 'visit', 'source')}</div>
-      </>
+      <ProofPicker kind="corrections" /></>
       : <><h2 className="group-title"><L n="pencil-line" /> {c.report.tellMore}</h2><label className="corr-field"><span>{c.report.whatHappened}</span><textarea name="text" rows={3} placeholder={c.report.detail} /></label>
+        <ProofPicker kind="reports" />
         <p className="t-small" style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center' }}><L n="smartphone" />{c.report.device}</p></>}</section>
     <div className="corr-done" hidden={!done} ref={ok}>{done ? <div className="corr-ok"><span className="corr-check"><L n="check" /></span><h2 className="t-title">{c.correction.doneTitle}</h2><p className="t-small">{c.correction.doneBody}</p></div> : null}</div>
   </>;
@@ -98,7 +100,6 @@ function SegField({ opts, dflt, name }: { opts: [string, string][]; dflt: string
   const [v, set] = useState(dflt);
   return <span data-seg={name} data-v={v} style={{ display: 'contents' }}><Seg opts={opts} val={v} onPick={(x) => { haptic(); set(x); }} /></span>;
 }
-// shortcut: no photo proof or screenshot button until an upload route for anonymous devices exists (a button that only toasts is a lie)
 
 /** Send: reads the form this button belongs to (its sheet or the page), posts it, shows thanks, then steps back. */
 function useSend(p?: KPlace) {
@@ -107,10 +108,12 @@ function useSend(p?: KPlace) {
     const btn = e.currentTarget, scope = btn.closest('.sheet') ?? document, form = scope.querySelector<HTMLElement>('.corr')!;
     const picked = form.querySelector<HTMLElement>('[data-corr] .option[aria-checked="true"]');
     if (!picked) { const g = form.querySelector('[data-corr]'); if (g) animate(g, { transform: ['translateX(0)', 'translateX(-6px)', 'translateX(6px)', 'translateX(0)'] }, { duration: 0.32 }); toast(c.correction.pickFirst); return; }
+    if (form.querySelector('.proof-bar')) { toast(c.proof.wait); return; } // the button is disabled too; this covers a fast tap
+    const media: string[] = JSON.parse(form.querySelector<HTMLElement>('.corr-proof')?.dataset.media || '[]'), withMedia = media.length ? { media } : {};
     const kind = picked.dataset.v!, text = (form.querySelector<HTMLInputElement>('.corr-detail [name="text"]')?.value || '').trim(), seg = (n: string) => form.querySelector<HTMLElement>(`[data-seg="${n}"]`)?.dataset.v;
     try {
-      if (p) await apiRequest('POST', `/v1/places/${p.id}/corrections`, { body: { kind, source: seg('source') || 'visit', answer: { text, ...(kind === 'phone' && text ? { phone: text } : {}), ...(kind === 'name' && text ? { name: text } : {}), ...(kind === 'closed' ? { since: seg('since') } : {}) } } });
-      else await apiRequest('POST', '/v1/reports', { body: { kind, text: text || c.report.issues[kind as keyof typeof c.report.issues], device: { app: 'web', ua: navigator.userAgent.slice(0, 240), w: innerWidth, h: innerHeight, lang: document.documentElement.lang } } });
+      if (p) await apiRequest('POST', `/v1/places/${p.id}/corrections`, { body: { kind, source: seg('source') || 'visit', answer: { text, ...(kind === 'phone' && text ? { phone: text } : {}), ...(kind === 'name' && text ? { name: text } : {}), ...(kind === 'closed' ? { since: seg('since') } : {}) }, ...withMedia } });
+      else await apiRequest('POST', '/v1/reports', { body: { kind, text: text || c.report.issues[kind as keyof typeof c.report.issues], device: { app: 'web', ua: navigator.userAgent.slice(0, 240), w: innerWidth, h: innerHeight, lang: document.documentElement.lang }, ...withMedia } });
     } catch (err) { toast(err instanceof ApiError && err.status === 429 ? c.common.tooMany : c.common.failed); return; }
     haptic(); btn.style.visibility = 'hidden';
     (form.closest('.sheet-body') ?? document.scrollingElement)?.scrollTo({ top: form.closest('.sheet-body') ? 0 : Math.max(0, form.getBoundingClientRect().top + scrollY - 70), behavior: 'instant' });
@@ -122,18 +125,18 @@ function useSend(p?: KPlace) {
 
 function FormPage({ title, tab, p }: { title: string; tab: 'explore' | 'profile'; p?: KPlace }) {
   const { c, go, lang } = useK();
-  const send = useSend(p);
+  const send = useSend(p), uploading = useProofBusy();
   useEffect(() => { document.body.classList.add('form-page'); return () => document.body.classList.remove('form-page'); }, []);
-  return <Shell cur={tab} wide noLoc actionbar={<Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide onClick={(e) => void send(e)} />}>
+  return <Shell cur={tab} wide noLoc actionbar={<Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide disabled={uploading} onClick={(e) => void send(e)} />}>
     <div className="corr"><div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><IconBtn icon="back" label={c.common.back} cls="filled" act="page-back" onClick={() => (history.length > 1 ? history.back() : go(p ? placeHref(p, lang) : `/${lang}/settings/`))} /><h1 className="t-title grow">{title}</h1></div><CorrForm p={p} /></div>
     {/* desktop has no fixed action bar (it hides at 1024 px), so the send button closes the form and sticks to the bottom of the column */}
-    <div className="corr-send-desk desk-only"><Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide onClick={(e) => void send(e)} /></div>
+    <div className="corr-send-desk desk-only"><Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide disabled={uploading} onClick={(e) => void send(e)} /></div>
   </Shell>;
 }
 export function ReportPage() { const { c } = useK(); return <FormPage title={c.report.title} tab="profile" />; }
 export function CorrectionPage({ p }: { p: KPlace }) { const { c } = useK(); return <FormPage title={c.correction.title} tab="explore" p={p} />; }
 
-function SendBtn({ p }: { p?: KPlace }) { const { c } = useK(); const send = useSend(p); return <Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide onClick={(e) => void send(e)} />; }
+function SendBtn({ p }: { p?: KPlace }) { const { c } = useK(); const send = useSend(p), uploading = useProofBusy(); return <Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide disabled={uploading} onClick={(e) => void send(e)} />; }
 /** Phone: Report a problem as a sheet. */
 export function useOpenReport() {
   const { c, openSheet } = useK();

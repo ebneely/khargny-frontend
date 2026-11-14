@@ -120,6 +120,15 @@ export const en = {
     issues: { bug: 'Something is broken', wrong: 'Wrong information', slow: 'Slow or not loading', idea: 'An idea', other: 'Something else' },
     tellMore: 'Tell us more', detail: 'What you did and what you saw', screenshot: 'Add a screenshot', device: 'We attach your device and app version so we can find it.',
   },
+  // proof on a correction or a report: up to 4 photos or short videos (owner, 2026-11-14; same words as the app)
+  proof: {
+    add: 'Add photo or video', label: 'Photos or videos (up to {n})', remove: 'Remove', retry: 'Tap to try again', uploading: 'Uploading…', wait: 'Wait for the upload to finish',
+    errors: {
+      missing: 'That file was empty. Pick it again', type: 'Only photos and mp4 or mov videos', decode: "We couldn't read that file", heic: "We couldn't read that photo. Try a JPEG",
+      too_large: 'Too big: photos up to 8 MB, videos up to 30 MB', too_long: 'Videos up to 30 seconds', rate: "That's enough for today. Try again tomorrow",
+      storage: "We couldn't save it. Try again", failed: "It didn't upload. Tap to try again",
+    },
+  },
   correction: {
     title: 'Suggest a correction', whatsWrong: "What's not right?", rightAnswer: 'The right answer',
     issues: { hours: 'Opening hours', location: 'Location', phone: 'Phone number', closed: 'Closed for good', photos: 'Photos', prices: 'Prices or menu', name: 'Name or category', other: 'Something else' },
