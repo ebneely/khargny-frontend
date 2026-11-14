@@ -110,7 +110,7 @@ function Stories({ list }: { list: KPlace[] }) {
     <Link key={p.id} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
       
       <img src={p.photos[0]?.s} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      <b style={{ position: 'absolute', left: 8, right: 8, bottom: 7, color: '#fff', fontSize: 12, fontWeight: 750, lineHeight: 1.2, textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{p.name}</b>
+      <b dir="auto" style={{ position: 'absolute', left: 8, right: 8, bottom: 7, color: '#fff', fontSize: 12, fontWeight: 750, lineHeight: 1.2, textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{p.name}</b>
     </Link>))}</div>;
 }
 
@@ -240,7 +240,7 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
   const st = openStateOf(p, now, lang);
   return <div className="tm-deal"><img src={p.photos[0]?.m} alt="" /><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
-    <div className="tm-deal-text"><b>{p.name}</b><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
+    <div className="tm-deal-text"><b dir="auto">{p.name}</b><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;
 }
 
@@ -279,13 +279,15 @@ function TrendMenu({ win, onPick }: { win: Win; onPick: (w: Win) => void }) {
   useEffect(() => { if (ref.current) animate(ref.current, { opacity: [0, 1], transform: ['scale(.94)', 'scale(1)'] }, spring(0, 0.3)); }, []);
   return <div className="trend-menu" role="menu" ref={ref}>{WINDOWS.map((v) => <button key={v} className="option press" role="menuitemradio" aria-checked={v === win} data-act="trend-set" onClick={() => onPick(v)}>{v === 'live' ? <i className="live" /> : <L n="clock" />}<span className="grow">{c.trending.windows[v]}</span><Ic n="check" cls="check" /></button>)}</div>;
 }
-// views in the window and growth against the window before it come from the stats route; hidden until it answers
+// views in the window and growth against the window before it (viewsPrev) come from the stats route; hidden until it answers
 function TrendRow({ p, i, win, href }: { p: KPlace; i: number; win: Win; href: string }) {
   const { c } = useK();
   const s = usePlaceStats(p.id);
-  const n = win === 'live' ? s?.live?.views : win === '24h' ? s?.d1?.views : win === '7d' ? s?.d7?.views : s?.d30?.views;
-  return <div className="trend-row" data-item><span className="trend-n">{i + 1}</span><Link className="trend-main press" href={href}><img src={p.photos[0]?.s} alt="" /><span className="grow"><b>{p.name}</b>
-    <span className="trend-stat">{n == null ? null : win === 'live' ? <span className="live-pill"><i className="live" />{fill(c.trending.hereNow, { n })}</span> : <span><Ic n="eye" />{k(n)}</span>}</span></span></Link><Go5 p={p} small /></div>;
+  const w = win === 'live' ? s?.live : win === '24h' ? s?.d1 : win === '7d' ? s?.d7 : s?.d30;
+  const n = w?.views, g = w?.viewsPrev ? w.views / w.viewsPrev - 1 : 0; // nothing before: no growth figure (proto)
+  return <div className="trend-row" data-item><span className="trend-n">{i + 1}</span><Link className="trend-main press" href={href}><img src={p.photos[0]?.s} alt="" /><span className="grow"><b dir="auto">{p.name}</b>
+    <span className="trend-stat">{n == null ? null : win === 'live' ? <span className="live-pill"><i className="live" />{fill(c.trending.hereNow, { n })}</span> : <><span><Ic n="eye" />{k(n)}</span>
+      {g > 0.02 ? <span className="up"><L n="trending-up" />{Math.round(g * 100)}%</span> : g < -0.02 ? <span className="down"><L n="trending-down" />{Math.round(-g * 100)}%</span> : null}</>}</span></span></Link><Go5 p={p} small /></div>;
 }
 
 

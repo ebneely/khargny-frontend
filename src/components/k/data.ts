@@ -92,9 +92,9 @@ export const isSheetPath = (path: string) => isPlacePath(path) || /^\/(ar|en)\/(
 
 /** GET /v1/places/:id/stats (contracts/api.md). Missing route or place -> null: counts stay hidden, never a fake 0. */
 export type KStats = {
-  live?: { views: number };
-  d1?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number>;
-  d7?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number>;
-  d30?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number> & { days?: number[] };
+  live?: { views: number; viewsPrev?: number };
+  d1?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number> & { viewsPrev?: number };
+  d7?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number> & { viewsPrev?: number };
+  d30?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number> & { days?: number[]; viewsPrev?: number };
   all?: Record<'views' | 'likes' | 'saves' | 'shares' | 'goes', number>;
 };
