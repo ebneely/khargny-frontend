@@ -543,7 +543,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .badge-row .t-small{display:block;margin-top:1px}
 /* search: entry point */
 .gsearch{position:relative}
-.gs-hint{position:absolute;left:36px;right:12px;top:0;bottom:0;display:flex;align-items:center;pointer-events:none;overflow:hidden;color:var(--ink3);font-size:14px;white-space:nowrap}
+.gs-hint{position:absolute;inset-inline:36px 12px;top:0;bottom:0;display:flex;align-items:center;pointer-events:none;overflow:hidden;color:var(--ink3);font-size:14px;white-space:nowrap}
 .gs-hint span{display:block;overflow:hidden;text-overflow:ellipsis}
 .gsearch input::placeholder{color:transparent}
 .gsearch.has-text .gs-hint,.chrome-top.searching .gsearch input:focus ~ .gs-hint{display:none}
@@ -1155,3 +1155,5 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 .map-opt .map-ic{width:28px;height:28px;object-fit:contain;flex:none}
 /* owner 2026-11-14: every sheet is at most 90% of the screen; longer content scrolls inside, the grabber/header and the foot stay put */
 .sheet .sheet-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+/* Arabic: arrows and chevrons that mean "forward" or "back" point the reading way */
+[dir=rtl] .lucide-arrow-right,[dir=rtl] .lucide-chevron-right,[dir=rtl] .lucide-chevron-left,[dir=rtl] .ic-back{transform:scaleX(-1)}

@@ -15,7 +15,7 @@ export function L({ n, cls }: { n: string; cls?: string }) {
 export type StrokeName = keyof typeof strokePaths;
 /** ic(name): the prototype's own line set (tab bar, actions, stats). */
 export function Ic({ n, cls }: { n: StrokeName; cls?: string }) {
-  return <svg className={cls} viewBox="0 0 24 24" aria-hidden="true"><path d={strokePaths[n]} /></svg>;
+  return <svg className={n === 'back' ? `${cls ?? ''} ic-back`.trim() : cls} viewBox="0 0 24 24" aria-hidden="true"><path d={strokePaths[n]} /></svg>;
 }
 
 /** govIcon(name): the governorate's landmark for a city slug or English name; the fallback when the city has none. */

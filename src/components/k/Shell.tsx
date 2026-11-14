@@ -94,8 +94,9 @@ export function TabNav() {
     '--lg-glass': dark ? 'rgba(34,27,22,.84)' : 'rgba(251,246,238,.84)', '--lg-glass-active': dark ? 'rgba(46,37,30,.92)' : 'rgba(246,238,228,.92)', '--lg-selection': dark ? 'rgba(232,116,58,.22)' : 'rgba(217,98,42,.16)', '--lg-lens': dark ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)' } as React.CSSProperties;
   return <>
     <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
-    <div id="glass-tabs">{Glass ? <Glass aria-label="Main" value={tab} style={glassStyle} link={Link}
-      items={NAV.map(([key, href, icon]) => ({ value: key, href: `/${lang}${href === '/' ? '' : href}`, label: c.nav[key], icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /> : null}</div>
+    {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
+    <div id="glass-tabs" dir="ltr">{Glass ? <Glass aria-label="Main" value={tab} style={glassStyle} link={Link}
+      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `/${lang}${href === '/' ? '' : href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /> : null}</div>
   </>;
 }
 
