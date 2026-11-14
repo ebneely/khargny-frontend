@@ -126,6 +126,8 @@ function FormPage({ title, tab, p }: { title: string; tab: 'explore' | 'profile'
   useEffect(() => { document.body.classList.add('form-page'); return () => document.body.classList.remove('form-page'); }, []);
   return <Shell cur={tab} wide noLoc actionbar={<Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide onClick={(e) => void send(e)} />}>
     <div className="corr"><div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><IconBtn icon="back" label={c.common.back} cls="filled" act="page-back" onClick={() => (history.length > 1 ? history.back() : go(p ? placeHref(p, lang) : `/${lang}/settings/`))} /><h1 className="t-title grow">{title}</h1></div><CorrForm p={p} /></div>
+    {/* desktop has no fixed action bar (it hides at 1024 px), so the send button closes the form and sticks to the bottom of the column */}
+    <div className="corr-send-desk desk-only"><Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide onClick={(e) => void send(e)} /></div>
   </Shell>;
 }
 export function ReportPage() { const { c } = useK(); return <FormPage title={c.report.title} tab="profile" />; }

@@ -1157,3 +1157,6 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 .sheet .sheet-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 /* Arabic: arrows and chevrons that mean "forward" or "back" point the reading way */
 [dir=rtl] .lucide-arrow-right,[dir=rtl] .lucide-chevron-right,[dir=rtl] .lucide-chevron-left,[dir=rtl] .ic-back{transform:scaleX(-1)}
+/* desktop form pages (Suggest a correction, Report a problem): the send button ends the form and stays in reach */
+.corr-send-desk{position:sticky;bottom:16px;z-index:5;display:flex;max-width:640px;margin:16px 0 24px;padding:8px;border-radius:22px;background:var(--bar);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);box-shadow:var(--sh2)}
+.corr-send-desk .btn{flex:1;height:40px}
