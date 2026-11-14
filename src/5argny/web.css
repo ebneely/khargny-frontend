@@ -191,7 +191,7 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
   .tabbar,.actionbar{display:none}
   .layout{display:grid;grid-template-columns:240px minmax(0,600px) 300px;gap:32px;justify-content:center;padding:16px 24px}
   .layout.wide{grid-template-columns:240px minmax(0,1fr);max-width:1240px;margin:0 auto}
-  .sidebar{display:block;position:sticky;top:76px;align-self:start}
+  .sidebar{display:block;position:sticky;top:calc(var(--chrome-h,60px) + 16px);align-self:start}
   .sidebar .nav-item{position:relative;display:flex;align-items:center;gap:10px;height:38px;padding:0 12px;border-radius:12px;font-weight:650;color:var(--ink)}
   .sidebar .nav-item[aria-current="page"]{color:var(--accent)}
   .sidebar .pill{background:var(--card);box-shadow:var(--sh1);border-radius:12px}
@@ -202,7 +202,7 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
   .sidebar .side-quiet .side-link{height:30px;font-size:12px;font-weight:500;color:var(--ink3)}
   .sidebar .side-quiet .side-link svg{width:15px;height:15px}
   .sidebar .side-link img{width:26px;height:26px;border-radius:8px;object-fit:cover}
-  .rail-right{display:grid;gap:14px;position:sticky;top:76px;align-self:start}
+  .rail-right{display:grid;gap:14px;position:sticky;top:calc(var(--chrome-h,60px) + 16px);align-self:start}
   .page{padding:0}
   .page-pad,.chips,.rail-head,.rail-row,.grid{padding-inline:0}
   .hero,.post,.group{margin-inline:0}
@@ -242,7 +242,7 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 .place-tools{display:flex;align-items:center;gap:4px;padding:0 10px 10px}
 @media (min-width:1024px){
   .place-wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px}
-  .place-side{position:sticky;top:76px;align-self:start}
+  .place-side{position:sticky;top:calc(var(--chrome-h,60px) + 16px);align-self:start}
   .place-wrap .place-media{border-radius:var(--r-card);overflow:hidden;aspect-ratio:16/10}
   .place-wrap .place-head,.place-wrap .place-tools{padding-inline:0}
 }
