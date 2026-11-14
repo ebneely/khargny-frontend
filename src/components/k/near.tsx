@@ -56,5 +56,5 @@ export function useNearPlaces(limit = 20): KPlace[] | null {
 /** "N km away" on a card, only when the card came with a real distance. */
 export function KmAway({ p }: { p: Pick<KPlace, 'distanceKm'> }) {
   const { c } = useK();
-  return p.distanceKm == null ? null : <Bit icon="navigation">{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</Bit>;
+  return p.distanceKm == null ? null : <Bit icon="map-pin">{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</Bit>;
 }

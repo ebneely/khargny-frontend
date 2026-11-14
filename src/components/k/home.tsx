@@ -225,7 +225,7 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
   const st = openStateOf(p, now, lang);
   return <div className="tm-deal"><img src={p.photos[0]?.m} alt="" /><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
-    <div className="tm-deal-text"><b>{p.name}</b><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="navigation" />{fill(c.units.km, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
+    <div className="tm-deal-text"><b>{p.name}</b><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.km, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;
 }
 
