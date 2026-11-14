@@ -1406,3 +1406,10 @@ body.form-page #glass-tabs{display:none!important}
 @media (pointer:coarse){ #app{will-change:transform} }
 .scrim{-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 @media (prefers-reduced-motion: reduce),(prefers-reduced-transparency: reduce){ .scrim{-webkit-backdrop-filter:none;backdrop-filter:none} }
+
+/* device diagnosis switches (?off=blur,loops,cv,layer, see the head script): each removes one suspect so a phone without an
+   inspector can show which one costs the frames. Not for customers; nothing links to them. */
+html.off-blur *,html.off-blur *::before,html.off-blur *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.off-loops #app *,html.off-loops #app *::before,html.off-loops #app *::after{animation:none!important}
+html.off-cv .tile,html.off-cv .post,html.off-cv .rail-row > *{content-visibility:visible!important}
+html.off-layer #app{will-change:auto!important}
