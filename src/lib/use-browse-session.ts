@@ -9,7 +9,7 @@ const historyKey = '__khgBrowse';
 const publicKeys = new Set(['cities', 'categories', 'amenities', 'tags', 'places', 'search', 'home']);
 const isPublic = (key: QueryKey) => publicKeys.has(String(key[0]));
 const fullAddress = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
-const ownedPath = (path: string) => /^\/(ar|en)(\/|$)/.test(path);
+const ownedPath = (path: string) => /^\/(?!api\/|_next\/)/.test(path); // English pages have no prefix, so every page path
 let session: ReturnType<typeof createBrowseSession> | undefined;
 let initialQueries: unknown;
 let installed = false;

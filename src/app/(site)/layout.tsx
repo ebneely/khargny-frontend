@@ -5,7 +5,7 @@ import { NavProgress } from "@/components/NavProgress";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import type { Locale } from "@/i18n/dictionaries";
 import { getSiteSettings } from '@/lib/api/site-settings';
 import { SiteSettingsProvider } from '@/lib/api/hooks/use-site-settings';
@@ -32,13 +32,9 @@ export default async function RootLayout({
   // string — is already correct. Without this the server rendered the default (ar) and the
   // client flipped on mount: the ar→en→ar flash on refresh.
   //
-  // The URL is the source of truth (/en/... or /ar/...); middleware puts the segment it
-  // matched on this header. The cookie is only the fallback for a request that somehow
-  // reached the layout unprefixed.
-  const urlLocale = (await headers()).get("x-khargny-locale");
-  const cookieLocale = (await cookies()).get("khargny.locale")?.value;
-  const chosen = urlLocale ?? cookieLocale;
-  const locale: Locale = chosen === "en" ? "en" : "ar";
+  // The URL is the only source (owner 2026-11-14): /ar/... is Arabic, a plain URL English. Middleware puts the language
+  // it read on this header.
+  const locale: Locale = (await headers()).get("x-khargny-locale") === "ar" ? "ar" : "en";
   const dir = locale === "ar" ? "rtl" : "ltr";
   const requestHeaders = await headers();
   const [settings] = await Promise.all([

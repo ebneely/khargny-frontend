@@ -1,5 +1,6 @@
 // The prototype's place shape (ui-unify/proto/data.js), built from the real API so every component reads the same fields.
 import { normalizePhoto, photoCandidates } from '@/lib/place-photo';
+import { langPrefix } from '@5argny/core/rules/locale';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { regionLabel } from '@/lib/egypt-regions';
 import type { Category, CityWithAreas } from '@/lib/api/types';
@@ -88,10 +89,10 @@ export function catTotals(rows: [string, unknown][]): CatTotals {
   return out;
 }
 
-export const placeHref = (p: Pick<KPlace, 'citySlug' | 'slug'>, lang: Lang) => `/${lang}/explorer/${p.citySlug}/${p.slug}/`;
-export const isPlacePath = (path: string) => /^\/(ar|en)\/explorer\/[^/]+\/[^/]+\/?$/.test(path);
+export const placeHref = (p: Pick<KPlace, 'citySlug' | 'slug'>, lang: Lang) => `${langPrefix(lang)}/explorer/${p.citySlug}/${p.slug}/`;
+export const isPlacePath = (path: string) => /^(\/ar)?\/explorer\/[^/]+\/[^/]+\/?$/.test(path);
 /** Opens as a sheet on a phone and as a depth-1 page on desktop: a place, a collection, a Marketplace listing, a host. */
-export const isSheetPath = (path: string) => isPlacePath(path) || /^\/(ar|en)\/(c|marketplace|host)\/[^/]+\/?$/.test(path);
+export const isSheetPath = (path: string) => isPlacePath(path) || /^(\/ar)?\/(c|marketplace|host)\/[^/]+\/?$/.test(path);
 
 /** GET /v1/places/:id/stats (contracts/api.md). Missing route or place -> null: counts stay hidden, never a fake 0. */
 export type KStats = {

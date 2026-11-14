@@ -2,6 +2,7 @@
 // Explore from proto/app.js Explore(): the location bar with Filters, a title that names what and where, the count and
 // the sort, then the results grid. Everything comes from the URL, so the query is kept.
 import { useEffect, useRef, useState } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import { useSearchParams } from 'next/navigation';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { animate } from 'motion';
@@ -149,7 +150,7 @@ export function ExploreView() {
         : res.length ? <><div className={`grid ${reveal}`}>{res.map((p) => <Tile key={p.id} p={p} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>
           {res0.moreError ? <div className="more-fail" role="alert">{c.states.moreFailed}<button className="btn secondary press" data-act="retry-more" onClick={res0.retryMore}><L n="rotate-ccw" />{c.states.retry}</button></div> : null}<div ref={end} aria-hidden="true" /></>
         : <StateBlock icon="search" title={fill(c.explore.empty, { what: headText.toLowerCase(), when: whenText.toLowerCase(), place: where }).replace(/\s+/g, ' ')}
-          action={<Btn label={filtered ? c.states.explore.clear : c.states.explore.everything} kind="primary" act="empty-reset" onClick={() => { setLoc({ city: null, area: null }); go(`/${lang}/explorer/`); }} />} />}
+          action={<Btn label={filtered ? c.states.explore.clear : c.states.explore.everything} kind="primary" act="empty-reset" onClick={() => { setLoc({ city: null, area: null }); go(`${langPrefix(lang)}/explorer/`); }} />} />}
     </Shell>
   );
 }

@@ -4,6 +4,7 @@
 // free listings from the tourism routes (level=free), the host's public profile, reviews from people who went.
 // Bits are icon + text, never "·". Booking and messaging the host come with spec 003, so neither is drawn here.
 import { useState, type ReactNode } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQueries } from '@tanstack/react-query';
@@ -50,7 +51,7 @@ export function MarketTrending({ list }: { list: Trip[] }) {
   const top = [...list].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
   if (!top.length) return null;
   return <section className="card rail-card"><h2 className="t-head"><L n="flame" /> {fill(c.trending.market, { market: c.market.title })}</h2>
-    {top.map((t, n) => <div key={t.id} className="trend-row" data-item><span className="trend-n">{n + 1}</span><Link className="trend-main press" href={`/${lang}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
+    {top.map((t, n) => <div key={t.id} className="trend-row" data-item><span className="trend-n">{n + 1}</span><Link className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
       <span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span><span className="stats"><Verified on={t.agency.verified} /></span></span></Link></div>)}</section>;
 }
 /** Home's rail: two experiences and a way into the Marketplace. */
@@ -60,9 +61,9 @@ export function MarketCard() {
   const list = trips.slice(0, 2);
   if (!list.length) return null;
   return <section className="card rail-card"><h2 className="t-head"><L n="store" /> {c.trending.marketRail}</h2>
-    {list.map((t) => <Link key={t.id} className="trend-main press" href={`/${lang}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
+    {list.map((t) => <Link key={t.id} className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b>
       <span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span><Verified on={t.agency.verified} /></span></Link>)}
-    <Link className="btn plain press" href={`/${lang}/marketplace/`}>{c.trending.seeAllExperiences} <L n="arrow-right" /></Link></section>;
+    <Link className="btn plain press" href={`${langPrefix(lang)}/marketplace/`}>{c.trending.seeAllExperiences} <L n="arrow-right" /></Link></section>;
 }
 
 export function MarketView() {
@@ -73,8 +74,8 @@ export function MarketView() {
   const list = trips.filter((t) => !only || t.agency.verified);
   return <Shell cur="market" right={<MarketTrending list={trips} />}>
     <div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><h1 className="t-display grow">{c.market.title}</h1></div>
-    <div className="page-pad" style={{ marginBottom: 12 }}><Seg opts={[['0', c.market.all], ['1', c.market.verifiedOnly]]} val={only ? '1' : '0'} onPick={(v) => go(`/${lang}/marketplace/${v === '1' ? '?v=1' : ''}`)} /></div>
-    {isLoading ? null : list.length ? list.map((t) => { const kind = kindOf(t.agency.kind); return <Link key={t.id} className="card post press" data-item href={`/${lang}/marketplace/${t.id}/`} style={{ display: 'block' }}>
+    <div className="page-pad" style={{ marginBottom: 12 }}><Seg opts={[['0', c.market.all], ['1', c.market.verifiedOnly]]} val={only ? '1' : '0'} onPick={(v) => go(`${langPrefix(lang)}/marketplace/${v === '1' ? '?v=1' : ''}`)} /></div>
+    {isLoading ? null : list.length ? list.map((t) => { const kind = kindOf(t.agency.kind); return <Link key={t.id} className="card post press" data-item href={`${langPrefix(lang)}/marketplace/${t.id}/`} style={{ display: 'block' }}>
       <div className="media" style={{ aspectRatio: '16/11' }}><img src={coverSrc(t)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
       <div style={{ padding: '12px 14px 14px' }}><div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}><Verified on={t.agency.verified} /><span className="t-small" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><L n={kindIcon[kind]} />{c.market.hostKinds[kind]}</span><HostTrips id={t.agency.id} /><span className="grow" /></div>
         <b className="t-head" style={{ display: 'block' }}>{tripTitle(t, lang)}</b><p className="bits" style={{ marginTop: 4 }}><Bit icon="calendar">{tripDate(t, lang)}</Bit><Bit icon="clock">{length(t)}</Bit><Bit icon="users">{fill(c.market.seatsLeft, { n: t.seatsLeft })}</Bit></p><Price t={t} /></div></Link>; })
@@ -113,8 +114,8 @@ export function ListingBody({ id }: { id: string }) {
   return <>
     <div className="place-media"><img src={coverSrc(t)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
     <div className="place-head"><h1 className="t-display">{tripTitle(t, lang)}</h1><p className="bits"><Bit icon="calendar">{tripDate(t, lang)}</Bit><Bit icon="clock">{length(t)}</Bit><Bit icon="users">{fill(c.market.seatsLeft, { n: t.seatsLeft })}</Bit></p><Price t={t} big /></div>
-    <div className="place-tools"><IconBtn icon="saved" label={c.common.save} cls={on ? 'on' : ''} act="save" pressed={on} onClick={like} /><IconBtn icon="share" label={c.common.share} act="share" onClick={() => share({ href: `/${lang}/marketplace/${t.id}/` })} /><span className="grow" /><IconBtn icon="more" label={c.common.more} cls="filled" act="listing-more" onClick={() => report(t)} /></div>
-    <Group title={c.market.host}><Link className="row press host-link" href={`/${lang}/host/${t.agency.id}/`} style={{ alignItems: 'flex-start', gap: 12 }}><span className="host-av sm">{t.agency.name[0]}</span><span className="grow"><b>{t.agency.name}</b>
+    <div className="place-tools"><IconBtn icon="saved" label={c.common.save} cls={on ? 'on' : ''} act="save" pressed={on} onClick={like} /><IconBtn icon="share" label={c.common.share} act="share" onClick={() => share({ href: `${langPrefix(lang)}/marketplace/${t.id}/` })} /><span className="grow" /><IconBtn icon="more" label={c.common.more} cls="filled" act="listing-more" onClick={() => report(t)} /></div>
+    <Group title={c.market.host}><Link className="row press host-link" href={`${langPrefix(lang)}/host/${t.agency.id}/`} style={{ alignItems: 'flex-start', gap: 12 }}><span className="host-av sm">{t.agency.name[0]}</span><span className="grow"><b>{t.agency.name}</b>
       {rate ? <span className="host-rate"><Stars r={rate} /><b>{rate.toFixed(1)}</b><span className="t-small">{fill(c.market.reviewsN, { n: host!.metrics.ratingCount })}</span></span> : null}
       {host ? <span className="t-small" style={{ display: 'block' }}>{fill(host.metrics.trips === 1 ? c.market.hostLineOne : c.market.hostLine, { kind: c.market.hostKinds[kind], n: host.metrics.trips, brand: c.brand })}</span> : null}
       <span className="t-small" style={{ display: 'block', color: t.agency.verified ? 'var(--good)' : 'var(--warn)', marginTop: 4 }}>{t.agency.verified ? (kind === 'office' ? c.market.checkedIdLicence : c.market.checkedId) : c.market.notChecked}</span></span><L n="chevron-right" /></Link></Group>
@@ -136,7 +137,7 @@ export function HostBody({ id }: { id: string }) {
     <div className="host-head page-pad"><span className="host-av">{h.name[0]}</span><div><h1 className="t-display">{h.name}</h1>
       <p className="bits"><Bit icon={kindIcon[kind]}>{c.market.hostKinds[kind]}</Bit><Bit icon="route">{h.metrics.trips === 1 ? c.market.oneTrip : fill(c.market.trips, { n: h.metrics.trips })}</Bit>{since ? <Bit icon="calendar">{fill(c.market.since, { brand: c.brand, year: new Date(since).getFullYear() })}</Bit> : null}</p>
       <p className="host-tags">{h.verified ? <Tag label={kind === 'office' ? c.market.idLicence : c.market.verified} tone="good" icon="shield-check" /> : <Tag label={c.market.notVerified} tone="warn" icon="shield-alert" />}{rate ? <span className="host-rate"><Stars r={rate} /><b>{rate.toFixed(1)}</b></span> : null}</p></div></div>
-    {h.trips.length ? <Group title={fill(c.market.tripsBy, { name: h.name.split(',')[0] })}><div className="host-trips">{h.trips.map((t) => <Link key={t.id} className="trend-main press" href={`/${lang}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b><span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span></span></Link>)}</div></Group> : null}
+    {h.trips.length ? <Group title={fill(c.market.tripsBy, { name: h.name.split(',')[0] })}><div className="host-trips">{h.trips.map((t) => <Link key={t.id} className="trend-main press" href={`${langPrefix(lang)}/marketplace/${t.id}/`}><img src={coverSrc(t)} alt="" /><span className="grow"><b>{tripTitle(t, lang)}</b><span className="bits"><Bit icon="wallet">{fill(c.units.egp, { n: t.priceEgp })}</Bit><Bit icon="calendar">{tripDate(t, lang)}</Bit></span></span></Link>)}</div></Group> : null}
     <Reviews list={reviews} title={c.market.reviewsOfHost} />
   </div>;
 }
@@ -144,7 +145,7 @@ export function HostBody({ id }: { id: string }) {
 /** Desktop (or landed on): the listing or host as a page with its back button (proto asPage). */
 export function MarketPage({ children, pin }: { children: ReactNode; pin?: boolean }) {
   const { c, go, lang } = useK();
-  const back = () => (history.length > 1 ? history.back() : go(`/${lang}/marketplace/`));
+  const back = () => (history.length > 1 ? history.back() : go(`${langPrefix(lang)}/marketplace/`));
   return <Shell cur="market" wide><div className="place-wrap"><div>{pin ? <div className="back-pin"><IconBtn icon="back" label={c.common.back} cls="page-back" act="page-back" onClick={back} /></div>
     : <div className="page-pad" style={{ margin: '4px 0 4px' }}><IconBtn icon="back" label={c.common.back} cls="filled" act="page-back" onClick={back} /></div>}{children}</div></div></Shell>;
 }

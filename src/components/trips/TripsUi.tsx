@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Eye, MapPin, Star } from 'lucide-react';
@@ -40,7 +41,7 @@ export function useTripText() {
   const { locale, t } = useI18n();
   const tag = locale === 'ar' ? 'ar-EG' : 'en-GB';
   return {
-    href: (path: string) => `/${locale}${path.replace(/\/?$/, '/')}`,
+    href: (path: string) => `${langPrefix(locale)}${path.replace(/\/?$/, '/')}`,
     title: (trip: Pick<Trip, 'title' | 'titleEn'>) => (locale === 'en' && trip.titleEn ? trip.titleEn : trip.title),
     price: (value: number) => t('trips.price', { price: new Intl.NumberFormat(tag).format(value) }),
     number: (value: number) => new Intl.NumberFormat(tag).format(value),

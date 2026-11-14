@@ -8,6 +8,7 @@
  * per the §33 cell named in `UI_UX/explorer/page-tree.md`.
  */
 import * as React from "react";
+import { langPrefix } from '@5argny/core/rules/locale';
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
 import { CitySelector } from "@/components/explorer/CitySelector";
@@ -67,7 +68,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
   const citySlug = initialCitySlug ?? params.citySlug as string;
   const router = useRouter();
   const { sentinelRef, blockRef, contentRef } = useStickyBrowse();
-  useBrowseRestore(`/${locale}/explorer/${citySlug}/`, address.toString());
+  useBrowseRestore(`${langPrefix(locale)}/explorer/${citySlug}/`, address.toString());
 
   const browse = useBrowseAddress(initialPage);
   const { setSearch, debouncedSearch, isDebouncing } = browse;

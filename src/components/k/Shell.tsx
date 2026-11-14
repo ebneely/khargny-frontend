@@ -3,6 +3,7 @@
 // The shell from proto/app.js shell(): one top chrome (top bar with the search, the location bar folding under it),
 // the sidebar on desktop, the page, the right rail; the tab bar lives in the layout (TabNav) so it persists across pages.
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { animate } from 'motion';
@@ -31,7 +32,7 @@ const noop = () => () => {};
 
 function NavItems({ cur }: { cur: Tab }) {
   const { lang, c } = useK();
-  return <>{NAV.map(([key, href, icon]) => <Link key={key} className="nav-item press" href={`/${lang}${href === '/' ? '' : href}`} aria-current={cur === key ? 'page' : undefined}><Ic n={icon} /><span>{c.nav[key]}</span></Link>)}</>;
+  return <>{NAV.map(([key, href, icon]) => <Link key={key} className="nav-item press" href={`${langPrefix(lang)}${href}`} aria-current={cur === key ? 'page' : undefined}><Ic n={icon} /><span>{c.nav[key]}</span></Link>)}</>;
 }
 
 /**
@@ -99,8 +100,8 @@ function Sidebar({ cur }: { cur: Tab }) {
   }, [cur]);
   return (
     <aside className="sidebar"><nav data-slider="nav" ref={nav}><span className="pill" /><NavItems cur={cur} /></nav>
-      <div className="side-section"><div className="t-micro">{c.sidebar.shortcuts}</div>{INTENTS.slice(0, 5).map((x) => <Link key={x.key} className="side-link press" href={`/${lang}/explorer/?intent=${x.key}`}><L n={x.icon} />{c.intents[x.key]}</Link>)}</div>
-      {cols.length ? <div className="side-section"><div className="t-micro">{c.sidebar.collections}</div>{cols.map((col) => <Link key={col.id} className="side-link press" href={`/${lang}/c/${col.slug}/`}>{col.places[0] ? <img src={col.places[0].photos[0]?.s} alt="" /> : <L n="library" />}{col.title}</Link>)}</div> : null}
+      <div className="side-section"><div className="t-micro">{c.sidebar.shortcuts}</div>{INTENTS.slice(0, 5).map((x) => <Link key={x.key} className="side-link press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><L n={x.icon} />{c.intents[x.key]}</Link>)}</div>
+      {cols.length ? <div className="side-section"><div className="t-micro">{c.sidebar.collections}</div>{cols.map((col) => <Link key={col.id} className="side-link press" href={`${langPrefix(lang)}/c/${col.slug}/`}>{col.places[0] ? <img src={col.places[0].photos[0]?.s} alt="" /> : <L n="library" />}{col.title}</Link>)}</div> : null}
     </aside>
   );
 }
@@ -160,13 +161,13 @@ export function TabNav() {
     <div id="chrome"><nav className="tabbar" data-slider="tab" ref={plain}><span className="pill" /><NavItems cur={tab} /></nav></div>
     {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
     <div id="glass-tabs" dir="ltr">{Glass ? <Glass aria-label={c.nav.tabsAria} value={tab} style={glassStyle} link={Link}
-      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `/${lang}${href === '/' ? '' : href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /> : null}</div>
+      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `${langPrefix(lang)}${href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /> : null}</div>
   </>;
 }
 
 // the searched word stays in the bar across pages until it is cleared (proto S.q); Explore's ?q= is the truth there
 let barQ = '';
-const onExplore = () => /^\/(ar|en)\/explorer\/?$/.test(location.pathname);
+const onExplore = () => /^(\/ar)?\/explorer\/?$/.test(location.pathname);
 
 function TopBar() {
   const { c, lang, go } = useK();
@@ -201,11 +202,11 @@ function TopBar() {
   useEffect(() => { if (!searching) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); });
   const hints = c.search.hints;
   return <>
-    <header className="topbar"><BrandMark href={`/${lang}`} label={c.nav.homeAria} />
+    <header className="topbar"><BrandMark href={`${langPrefix(lang)}/`} label={c.nav.homeAria} />
       <label className={`search gsearch ${q ? 'has-text' : ''}`}><Ic n="search" /><span className="gs-hint" aria-hidden="true"><span ref={hintEl}>{hints[hint % hints.length]}</span></span>
         <input ref={input} type="search" placeholder={c.search.placeholder} data-act="gsearch" value={q} aria-label={c.search.placeholder} autoComplete="off" enterKeyHint="search"
           onFocus={enter} onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { putRecent(q); commit(q); exit(); go(`/${lang}/explorer/${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`); } }} />
+          onKeyDown={(e) => { if (e.key === 'Enter') { putRecent(q); commit(q); exit(); go(`${langPrefix(lang)}/explorer/${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`); } }} />
         <button type="button" className="gs-clear press" data-act="gs-clear" aria-label={c.search.clear} onClick={(e) => { e.preventDefault(); clear(); }}><L n="x" /></button></label>
       <button className="gs-cancel press" data-act="gs-cancel" onClick={cancel}>{c.search.cancel}</button>
     </header>
@@ -238,12 +239,12 @@ function SearchPanel({ q, onCancel, onGo }: { q: string; onCancel: () => void; o
     [...p.children].forEach((ch, n) => animate(ch, { opacity: [0, 1], transform: ['translateY(6px)', 'translateY(0)'] }, { ...spring(0, 0.35), delay: 0.02 * n }));
   }, []);
   const m = moment(now);
-  const chips: [string, string, string][] = [[c.moments[m.title], `/${lang}/explorer/?intent=${m.x.key}&when=now`, m.x.icon], [c.search.zero.openLate, `/${lang}/explorer/?when=tonight`, 'moon'], [c.search.zero.workFrom, `/${lang}/explorer/?intent=coffee`, 'laptop']];
+  const chips: [string, string, string][] = [[c.moments[m.title], `${langPrefix(lang)}/explorer/?intent=${m.x.key}&when=now`, m.x.icon], [c.search.zero.openLate, `${langPrefix(lang)}/explorer/?when=tonight`, 'moon'], [c.search.zero.workFrom, `${langPrefix(lang)}/explorer/?intent=coffee`, 'laptop']];
   const body = q.trim() ? <Results q={q} onGo={onGo} /> : <>
     <div className="sg-sec"><L n="sparkles" /> {c.search.zero.rightNow}</div>
-    <div className="sg-chips">{chips.map(([l, h, i]) => <Link key={l} className="chip press" href={h} data-act="sg-go" onClick={() => onGo(l)}><L n={i} />{l}</Link>)}<button className="chip press" data-act="shuffle-search" onClick={() => { onGo(''); go(`/${lang}`); setTimeout(() => document.querySelector<HTMLElement>('[data-act="shuffle"]')?.click(), 450); }}><L n="dices" />{c.search.zero.surprise}</button></div>
-    {recent.length ? <><div className="sg-sec"><L n="history" /> {c.search.zero.recent}</div>{recent.map((r) => <div key={r} className="sg-row"><Link className="grow press" href={`/${lang}/explorer/?q=${encodeURIComponent(r)}`} data-act="sg-go" onClick={() => onGo(r)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}><L n="clock" /><b>{r}</b></Link><button className="icon-btn press" aria-label={c.search.remove} data-act="sg-forget" onClick={(e) => { const row = e.currentTarget.closest('.sg-row') as HTMLElement; localStorage.setItem(RECENT_KEY, JSON.stringify(getL<string>(RECENT_KEY).filter((x) => x !== r))); animate(row, { opacity: 0, transform: 'translateX(-12px)' }, spring(0, 0.25)).finished.then(() => setRecent((l) => l.filter((x) => x !== r))); }}><L n="x" /></button></div>)}</> : null}
-    {trending.length ? <><div className="sg-sec"><L n="flame" /> {fill(c.search.zero.trendingIn, { place: where })}</div>{trending.map((x, n) => <Link key={x.term} className="sg-row press" href={`/${lang}/explorer/?q=${encodeURIComponent(x.term)}`} data-act="sg-go" onClick={() => onGo(x.term)}><span className="sg-rank">{n + 1}</span><b className="grow" dir="auto">{x.term}</b><em className="sg-n">{fill(x.searches === 1 ? c.search.zero.oneSearch : c.search.zero.searches, { n: x.searches })}</em></Link>)}</> : null}
+    <div className="sg-chips">{chips.map(([l, h, i]) => <Link key={l} className="chip press" href={h} data-act="sg-go" onClick={() => onGo(l)}><L n={i} />{l}</Link>)}<button className="chip press" data-act="shuffle-search" onClick={() => { onGo(''); go(`${langPrefix(lang)}/`); setTimeout(() => document.querySelector<HTMLElement>('[data-act="shuffle"]')?.click(), 450); }}><L n="dices" />{c.search.zero.surprise}</button></div>
+    {recent.length ? <><div className="sg-sec"><L n="history" /> {c.search.zero.recent}</div>{recent.map((r) => <div key={r} className="sg-row"><Link className="grow press" href={`${langPrefix(lang)}/explorer/?q=${encodeURIComponent(r)}`} data-act="sg-go" onClick={() => onGo(r)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}><L n="clock" /><b>{r}</b></Link><button className="icon-btn press" aria-label={c.search.remove} data-act="sg-forget" onClick={(e) => { const row = e.currentTarget.closest('.sg-row') as HTMLElement; localStorage.setItem(RECENT_KEY, JSON.stringify(getL<string>(RECENT_KEY).filter((x) => x !== r))); animate(row, { opacity: 0, transform: 'translateX(-12px)' }, spring(0, 0.25)).finished.then(() => setRecent((l) => l.filter((x) => x !== r))); }}><L n="x" /></button></div>)}</> : null}
+    {trending.length ? <><div className="sg-sec"><L n="flame" /> {fill(c.search.zero.trendingIn, { place: where })}</div>{trending.map((x, n) => <Link key={x.term} className="sg-row press" href={`${langPrefix(lang)}/explorer/?q=${encodeURIComponent(x.term)}`} data-act="sg-go" onClick={() => onGo(x.term)}><span className="sg-rank">{n + 1}</span><b className="grow" dir="auto">{x.term}</b><em className="sg-n">{fill(x.searches === 1 ? c.search.zero.oneSearch : c.search.zero.searches, { n: x.searches })}</em></Link>)}</> : null}
     {opened.length ? <><div className="sg-sec"><L n="eye" /> {c.search.zero.youOpened}</div><div className="sg-opened">{opened.map((p) => <Link key={p.slug} className="press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo('')}><img src={p.s} alt="" /><b dir="auto">{p.name}</b></Link>)}</div></> : null}
   </>;
   return createPortal(<>
@@ -273,7 +274,7 @@ function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   const { c, lang, setLoc, loc } = useK();
   const where = usePlaceName();
   const go = useGo(q);
-  const comp = go ? ([[fill(c.search.results.intentIn, { intent: c.intents[go.key], place: where }), `/${lang}/explorer/?intent=${go.key}`, go.icon, go.total], [fill(c.search.results.intentOpenNow, { intent: c.intents[go.key] }), `/${lang}/explorer/?intent=${go.key}&when=now`, 'clock', go.open]] as [string, string, string, number | null][]).filter((r) => (r[3] ?? 0) > 0) : [];
+  const comp = go ? ([[fill(c.search.results.intentIn, { intent: c.intents[go.key], place: where }), `${langPrefix(lang)}/explorer/?intent=${go.key}`, go.icon, go.total], [fill(c.search.results.intentOpenNow, { intent: c.intents[go.key] }), `${langPrefix(lang)}/explorer/?intent=${go.key}&when=now`, 'clock', go.open]] as [string, string, string, number | null][]).filter((r) => (r[3] ?? 0) > 0) : [];
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
   const { data, isFetching, isError, error, refetch } = useSearchPlaces({ q, limit: 20 }, { locale: lang });
@@ -291,10 +292,10 @@ function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   return <>
     {comp.length ? <><div className="sg-sec"><L n="navigation" /> {c.search.results.go}</div>{comp.map(([l, h, i, n]) => <Link key={h} className="sg-row sg-comp press" href={h} data-act="sg-go" onClick={() => onGo(q)}><span className="sg-ic"><L n={i} /></span><b className="grow">{l}</b><em className="sg-n"><i className="live" />{n}</em></Link>)}</> : null}
     {places.length ? <><div className="sg-sec"><L n="map-pin" /> {c.search.results.places}</div>{places.map((p) => <Link key={p.id} className="sg-row press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo(q)}><span className="tile-media sg-thumb"><img src={p.photos[0]?.s} alt="" /></span><span className="grow"><b dir="auto">{hl(p.name)}</b><Meta p={p} /></span><Stats p={p} /></Link>)}</> : null}
-    {areas.length ? <><div className="sg-sec"><L n="map" /> {c.search.results.areas}</div>{areas.map((a) => <Link key={a.city.id + a.key} className="sg-row press" href={`/${lang}/explorer/`} data-act="sg-area" onClick={() => { onGo(a.n); setLoc({ city: a.city.slug, area: a.n }); }}><span className="sg-ic"><Gov name={a.city.slug} fallback={<L n="map-pin" />} /></span><span className="grow"><b>{hl(a.n)}</b><span className="t-small">{lang === 'ar' ? a.city.name : a.city.nameEn || a.city.name}</span></span></Link>)}</> : null}
+    {areas.length ? <><div className="sg-sec"><L n="map" /> {c.search.results.areas}</div>{areas.map((a) => <Link key={a.city.id + a.key} className="sg-row press" href={`${langPrefix(lang)}/explorer/`} data-act="sg-area" onClick={() => { onGo(a.n); setLoc({ city: a.city.slug, area: a.n }); }}><span className="sg-ic"><Gov name={a.city.slug} fallback={<L n="map-pin" />} /></span><span className="grow"><b>{hl(a.n)}</b><span className="t-small">{lang === 'ar' ? a.city.name : a.city.nameEn || a.city.name}</span></span></Link>)}</> : null}
     {places.length || areas.length || comp.length
-      ? <Link className="sg-row sg-all press" href={`/${lang}/explorer/?q=${encodeURIComponent(q.trim())}`} data-act="sg-go" onClick={() => onGo(q)}><L n="search" /><span className="grow">{fill(c.search.results.seeEverything, { q: q.trim() })}</span><L n="arrow-right" /></Link>
-      : <div className="empty" style={{ padding: 18 }}><L n="search-x" /><p className="t-head">{fill(c.search.results.nothing, { q: q.trim() })}</p><Link className="btn secondary press" href={`/${lang}/explorer/`} data-act="sg-go" onClick={() => onGo('')}>{c.states.search.action}</Link></div>}
+      ? <Link className="sg-row sg-all press" href={`${langPrefix(lang)}/explorer/?q=${encodeURIComponent(q.trim())}`} data-act="sg-go" onClick={() => onGo(q)}><L n="search" /><span className="grow">{fill(c.search.results.seeEverything, { q: q.trim() })}</span><L n="arrow-right" /></Link>
+      : <div className="empty" style={{ padding: 18 }}><L n="search-x" /><p className="t-head">{fill(c.search.results.nothing, { q: q.trim() })}</p><Link className="btn secondary press" href={`${langPrefix(lang)}/explorer/`} data-act="sg-go" onClick={() => onGo('')}>{c.states.search.action}</Link></div>}
   </>;
 }
 

@@ -3,6 +3,7 @@
 // Place patterns from proto/app.js, one component each: Meta, StatePill, OpenBar, AllDay, HoursUnknown, Carousel,
 // Actions (ActBtn + Cnt), Go5 (with its flight), Stats, Tile, Post, plus the Share and Which-map sheets they open.
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { animate } from 'motion';
@@ -129,7 +130,7 @@ function useSwap() {
       const area = p.area || p.city;
       const city0 = cities.find((x) => x.id === p.cityId);
       // the swap lands on Explore with that half changed: the place's city, the area (if any), the category
-      const href = (catId: string, region: string | null) => { const cat = categories.find((x) => x.id === catId); return { to: `/${lang}/explorer/?cat=${encodeURIComponent(cat?.nameEn || cat?.nameAr || '')}`, loc: { city: p.citySlug, area: region ? regionLabel(region, lang, city0?.nameEn || city0?.name) || region : null } }; };
+      const href = (catId: string, region: string | null) => { const cat = categories.find((x) => x.id === catId); return { to: `${langPrefix(lang)}/explorer/?cat=${encodeURIComponent(cat?.nameEn || cat?.nameAr || '')}`, loc: { city: p.citySlug, area: region ? regionLabel(region, lang, city0?.nameEn || city0?.name) || region : null } }; };
       const row = (key: string, label: string, icon: string, { to, loc }: { to: string; loc: { city: string; area: string | null } }, on: boolean) => <button key={key} className="option press" role="radio" aria-checked={on} data-act="meta-pick" onClick={(e) => { haptic(); e.currentTarget.closest('.sheet')?.querySelectorAll('[role="radio"]').forEach((o) => o.setAttribute('aria-checked', String(o === e.currentTarget))); setTimeout(() => dismissAll(() => { setLoc(loc); go(to); }), 220); }}><L n={icon} /><span className="grow">{label}</span><Ic n="check" cls="check" /></button>;
       if (kind === 'cat') openSheet(fill(c.place.swap.what, { area }), categories.map((x) => { const en = x.nameEn || x.nameAr; return row(x.id, (lang === 'ar' ? x.nameAr : en) || en, catIcon(en), href(x.id, p.region), x.id === p.catId); }));
       else {

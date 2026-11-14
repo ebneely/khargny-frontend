@@ -8,10 +8,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // The plan is guest-personal, not indexable content. Every real URL carries a locale
-      // segment, so "/plan" alone matched nothing that exists — the rule read as intent
-      // while /ar/plan and /en/plan stayed fully crawlable.
-      disallow: ["/plan", "/ar/plan", "/en/plan", "/*/plan", "/*/trips/me", "/*/trips/cash", "/*/trips/qr", "/*/trips/sign-in"],
+      // The plan is guest-personal, not indexable content. English is the plain URL and Arabic is under /ar, so each
+      // private path is listed both ways ("/*/x" does not match "/x").
+      disallow: ["/plan", "/*/plan", "/trips/me", "/*/trips/me", "/trips/cash", "/*/trips/cash", "/trips/qr", "/*/trips/qr", "/trips/sign-in", "/*/trips/sign-in"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

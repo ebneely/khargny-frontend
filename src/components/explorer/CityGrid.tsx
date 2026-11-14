@@ -5,6 +5,7 @@
  * Localized: shows the Arabic or English city name by locale; count word via the dictionary.
  */
 import * as React from "react";
+import { langPrefix } from '@5argny/core/rules/locale';
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { useCityPlaces } from "@/lib/api/hooks/use-cities";
@@ -72,7 +73,7 @@ export function CityGrid({ cities, countSlots }: CityGridProps) {
         return (
           <Link
             key={city.id}
-            href={`/${locale}/explorer/${city.slug}/`}
+            href={`${langPrefix(locale)}/explorer/${city.slug}/`}
             className="khg-city-card"
             data-trace-id={`city-card-${city.slug}`}
           >

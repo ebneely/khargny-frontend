@@ -1,4 +1,5 @@
 import { SiteHeader } from '@/components/ds/SiteHeader';
+import { langPrefix } from '@5argny/core/rules/locale';
 import { NotFoundState } from '@/components/explorer/NotFoundState';
 import { currentLocale, currentPath } from '@/lib/seo';
 
@@ -8,7 +9,7 @@ export default async function PlaceNotFound() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface-app)' }}>
       <SiteHeader active="explore" />
-      <NotFoundState backHref={`/${locale}/explorer/${citySlug ? `${encodeURIComponent(citySlug)}/` : ''}`} backLabel={locale === 'ar' ? 'ارجع للأماكن' : 'Back to places'} />
+      <NotFoundState backHref={`${langPrefix(locale)}/explorer/${citySlug ? `${encodeURIComponent(citySlug)}/` : ''}`} backLabel={locale === 'ar' ? 'ارجع للأماكن' : 'Back to places'} />
     </div>
   );
 }

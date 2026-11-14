@@ -2,6 +2,7 @@
 // One client context for the 5argny shell: language and copy, "now", the location bar, the sheet stack, the toast,
 // and the document-level behaviours the prototype binds once (press feedback, bars that hide on scroll, theme).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import { usePathname, useRouter } from 'next/navigation';
 import { animate } from 'motion';
 import { copy } from '@5argny/core/copy';
@@ -71,7 +72,7 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
   const closeLanded = useCallback((velocity = 0) => {
     // the screen under the sheet takes the address: the Marketplace for a listing or a host, Home otherwise (proto route())
     const first = contentRef.current?.keys[0] ?? '';
-    history.replaceState(history.state, '', /^\/(ar|en)\/(marketplace|host)\//.test(first) ? `/${lang}/marketplace/` : `/${lang}/`); setContent(null); contentRef.current = null;
+    history.replaceState(history.state, '', /^(\/ar)?\/(marketplace|host)\//.test(first) ? `${langPrefix(lang)}/marketplace/` : `${langPrefix(lang)}/`); setContent(null); contentRef.current = null;
     setSheets((s) => s.map((x) => (x.closing ? x : { ...x, closing: velocity || 0.0001 })));
   }, [lang]);
   const closeTop = useCallback((velocity = 0) => {

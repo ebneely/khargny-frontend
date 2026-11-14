@@ -61,14 +61,13 @@ async function getAll<T extends PublicRecord>(pathBase: string): Promise<T[]> {
 }
 
 /**
- * Every page now lives under a locale segment (/ar/... and /en/...). A bare URL only
- * redirects, so the sitemap must list the real ones — both languages, cross-linked with
- * hreflang so search engines treat them as translations rather than duplicates.
+ * Every page has two addresses: the plain English one and the Arabic one under /ar. The sitemap lists both,
+ * cross-linked with hreflang so search engines treat them as translations rather than duplicates.
  */
 
 /**
- * next.config sets `trailingSlash: true`, so `/en/explorer/cairo` 308-redirects to
- * `/en/explorer/cairo/`. Listing the un-slashed form made every single sitemap entry cost a
+ * next.config sets `trailingSlash: true`, so `/explorer/cairo` 308-redirects to
+ * `/explorer/cairo/`. Listing the un-slashed form made every single sitemap entry cost a
  * redirect hop, which crawlers discount and which wasted the crawl budget of a 900-URL map.
  */
 function localized(

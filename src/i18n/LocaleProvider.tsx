@@ -6,13 +6,10 @@ import {
   dictionaries,
   DEFAULT_LOCALE,
   LOCALE_DIR,
-  LOCALES,
   type Dictionary,
   type Locale,
 } from "./dictionaries";
-
-const STORAGE_KEY = "khargny.locale";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+import { bare, langPrefix } from "@5argny/core/rules/locale";
 
 interface LocaleContextValue {
   locale: Locale;
@@ -45,22 +42,12 @@ export function LocaleProvider({
 }: {
   children: React.ReactNode;
   /**
-   * The locale the SERVER already rendered with, read from the khargny.locale cookie in the
-   * root layout. Seeding state with it means the first client render matches the server —
-   * no ar→en (or en→ar) flip-flash on refresh, and <html lang/dir> is already correct.
+   * The locale the SERVER already rendered with, read from the URL in the root layout. Seeding state with it means
+   * the first client render matches the server, and <html lang/dir> is already correct.
    */
   initialLocale?: Locale;
 }) {
   const [locale, setLocaleState] = React.useState<Locale>(initialLocale ?? DEFAULT_LOCALE);
-
-  // Legacy migration only: a returning visitor who has localStorage but no cookie yet (the
-  // cookie is new). Reconcile once so their choice sticks; the cookie is then authoritative
-  // and this branch never runs again for them, so it can't cause the flash on later loads.
-  React.useEffect(() => {
-    if (initialLocale) return; // server already knew via cookie — nothing to reconcile
-    const stored = window.localStorage.getItem(STORAGE_KEY) as Locale | null;
-    if (stored === "ar" || stored === "en") setLocaleState(stored);
-  }, [initialLocale]);
 
   React.useEffect(() => {
     const el = document.documentElement;
@@ -73,25 +60,11 @@ export function LocaleProvider({
   const setLocale = React.useCallback(
     (l: Locale) => {
       setLocaleState(l);
-      try {
-        window.localStorage.setItem(STORAGE_KEY, l);
-      } catch {
-        /* storage may be unavailable; the in-memory locale still applies */
-      }
-      // Write the cookie so the NEXT server render (a refresh, a hard nav) paints this locale
-      // from the first byte. SameSite=Lax is fine — this is a display preference, not a secret.
-      document.cookie = `${STORAGE_KEY}=${l}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
-
-      // The language lives in the URL (/ar/... | /en/...), so switching it is a navigation.
-      // Read the path off `window.location` rather than `usePathname()`: the locale segment
-      // is consumed by a middleware rewrite, so the hook can report the stripped path while
-      // the address bar still shows the prefix. The address bar is what we are swapping.
+      // The language is the URL (plain = English, /ar = Arabic), so switching it is a navigation. Read the path off
+      // `window.location` rather than `usePathname()`: the /ar segment is consumed by a middleware rewrite, so the
+      // hook can report the stripped path while the address bar still shows the prefix.
       const { pathname, search, hash } = window.location;
-      const first = pathname.split("/")[1];
-      const rest = (LOCALES as string[]).includes(first)
-        ? pathname.slice(first.length + 1) || "/"
-        : pathname;
-      router.push(`/${l}${rest === "/" ? "" : rest}${search}${hash}`);
+      router.push(`${langPrefix(l)}${bare(pathname)}${search}${hash}`);
     },
     [router],
   );

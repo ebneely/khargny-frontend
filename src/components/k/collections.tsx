@@ -4,6 +4,7 @@
 // creating one (private or public), adding a place from its ···, saving a team collection, and sharing (a private
 // one asks to become public first). People's own collections belong to this device (no accounts).
 import { useState, type ReactNode } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { animate } from 'motion';
@@ -85,7 +86,7 @@ export function ColSave({ col }: { col: ColItem }) {
 }
 export function ColCard({ col, views }: { col: ColItem; views?: number }) {
   const { lang } = useK();
-  return <div className="col-card" data-item><Link className="card press" href={`/${lang}/c/${col.slug}/`}><Cover col={col} /><span className="col-body"><b>{col.title}</b><span className="t-small"><ColMeta col={col} views={views} /></span></span></Link>{col.own ? null : <ColSave col={col} />}</div>;
+  return <div className="col-card" data-item><Link className="card press" href={`${langPrefix(lang)}/c/${col.slug}/`}><Cover col={col} /><span className="col-body"><b>{col.title}</b><span className="t-small"><ColMeta col={col} views={views} /></span></span></Link>{col.own ? null : <ColSave col={col} />}</div>;
 }
 
 /** "New collection": a name and who can see it; created with the place it came from, if any. */
@@ -134,11 +135,11 @@ export function CollectionView({ slug, sheet }: { slug: string; sheet?: boolean 
   const views = useGroupViews(col ? [col.id] : [])[col?.id ?? ''];
   const save = useSaveSection();
   const share = useShare();
-  const back = sheet ? null : <div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><IconBtn icon="back" label={c.common.back} cls="filled" act="page-back" onClick={() => (history.length > 1 ? history.back() : go(`/${lang}`))} /></div>;
+  const back = sheet ? null : <div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><IconBtn icon="back" label={c.common.back} cls="filled" act="page-back" onClick={() => (history.length > 1 ? history.back() : go(`${langPrefix(lang)}/`))} /></div>;
   const wrap = (body: ReactNode, own = false) => (sheet ? <div className="col-sheet">{body}</div> : <Shell cur={own ? 'saved' : 'home'} wide noLoc>{body}</Shell>);
   if (isLoading) return wrap(back);
   if (!col) return wrap(<>{back}<div className="group empty"><L n="library" /><p className="t-head">{c.collections.gone}</p></div></>);
-  const href = `/${lang}/c/${slug}/`;
+  const href = `${langPrefix(lang)}/c/${slug}/`;
   const setPub = async (pub: boolean) => {
     haptic();
     qc.setQueryData<CRaw | null>(['c', slug], (r) => (r ? { ...r, isPublic: pub } : r));
@@ -161,6 +162,6 @@ export function CollectionView({ slug, sheet }: { slug: string; sheet?: boolean 
     <div className="col-head page-pad"><Cover col={col} /><div><h1 className="t-display">{col.title}</h1><p className="t-small col-meta"><ColMeta col={col} views={views} /></p></div></div>
     <div className="col-actions page-pad">{actions}</div>
     {col.places.length ? <div className="grid">{col.places.map((p) => <Tile key={p.id} p={p} />)}</div>
-      : <div className="group empty"><L n="bookmark-plus" /><p className="t-head">{c.collections.emptyTitle}</p><p className="t-small">{before}<L n="ellipsis" />{fill(after ?? '', { title: col.title })}</p><Btn label={c.common.findPlaces} kind="primary" act="go-explore" onClick={() => go(`/${lang}/explorer/`)} /></div>}
+      : <div className="group empty"><L n="bookmark-plus" /><p className="t-head">{c.collections.emptyTitle}</p><p className="t-small">{before}<L n="ellipsis" />{fill(after ?? '', { title: col.title })}</p><Btn label={c.common.findPlaces} kind="primary" act="go-explore" onClick={() => go(`${langPrefix(lang)}/explorer/`)} /></div>}
   </>, col.own);
 }

@@ -2,6 +2,7 @@
 // A place, from proto/app.js PlaceContent(): one body for the phone sheet and the page; the page adds the back pin,
 // the side column (5argny!/Call, On 5argny, Earned) on desktop and the action bar on a phone.
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { animate } from 'motion';
 import { amenityIcons, amenityIconFallback } from '@5argny/core/icons';
@@ -49,7 +50,7 @@ export function PlaceSkel() {
 /** A place that did not load: gone (with a way on), or what failed with Try again. */
 function PlaceFailed({ error, retry, busy }: { error: unknown; retry: () => unknown; busy: boolean }) {
   const { c, lang, go } = useK();
-  if (failKind(error) === 'gone') return <div style={{ paddingTop: 16 }}><StateBlock icon="map-pin-off" title={c.states.placeGone} body={c.states.placeGoneBody} action={<Btn label={c.common.findPlaces} kind="primary" act="go-explore" onClick={() => go(`/${lang}/explorer/`)} />} /></div>;
+  if (failKind(error) === 'gone') return <div style={{ paddingTop: 16 }}><StateBlock icon="map-pin-off" title={c.states.placeGone} body={c.states.placeGoneBody} action={<Btn label={c.common.findPlaces} kind="primary" act="go-explore" onClick={() => go(`${langPrefix(lang)}/explorer/`)} />} /></div>;
   return <div style={{ paddingTop: 16 }}><Failed error={error} retry={retry} busy={busy} /></div>;
 }
 
@@ -134,7 +135,7 @@ function Similar({ p }: { p: KPlace }) {
   const list = data.filter((x) => x.id !== p.id).slice(0, 8).map((x) => toK(x as never, { cities, categories }, lang));
   if (isError) return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2></div><Failed compact error={error} retry={refetch} busy={isFetching} /></section>;
   if (!list.length) return null;
-  return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`/${lang}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x) => <Tile key={x.id} p={x} />)}</div></section>;
+  return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`${langPrefix(lang)}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x) => <Tile key={x.id} p={x} />)}</div></section>;
 }
 
 /** The place itself: body (both layouts), foot (5argny! and Call), side (desktop column). */
@@ -189,7 +190,7 @@ export function PlaceLoading({ failed }: { failed?: ReactNode }) {
 function PlacePageBody({ p }: { p: KPlace }) {
   const { c, go, lang } = useK();
   const { body, foot, side } = usePlaceParts(p);
-  const back = () => (history.length > 1 ? history.back() : go(`/${lang}`));
+  const back = () => (history.length > 1 ? history.back() : go(`${langPrefix(lang)}/`));
   return <Shell cur="explore" wide actionbar={foot}>
     <div className="place-wrap"><div><div className="back-pin"><IconBtn icon="back" label={c.common.back} cls="page-back" act="page-back" onClick={back} /></div>{body}</div>
       <aside className="place-side"><div className="card" style={{ padding: 14, display: 'grid', gap: 8 }}>{foot}</div>{side}</aside></div>

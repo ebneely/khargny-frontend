@@ -35,7 +35,7 @@ export function createBrowseSession(saved?: SavedSession) {
       return snapshots.get(address);
     },
     isBack(address: string) { return pending === address; },
-    hasPrevious() { return /^\/(ar|en)(\/|$)/.test(entries.get(index - 1) ?? ''); },
+    hasPrevious() { return /^\/(?!api\/|_next\/)/.test(entries.get(index - 1) ?? ''); },
     export(): SavedSession { return { index, entries: [...entries], snapshots: [...snapshots.values()] }; },
   };
 }

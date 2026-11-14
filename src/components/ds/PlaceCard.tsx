@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { useI18n } from '@/i18n/LocaleProvider';
@@ -25,7 +26,7 @@ export function PlaceCard({ image, imageSizes, title, category, searchReason, ar
   const [saveState, setSaveState] = useState({ favorite, saved: favorite });
   if (saveState.favorite !== favorite) setSaveState({ favorite, saved: favorite });
   const saved = saveState.favorite === favorite ? saveState.saved : favorite;
-  const address = href?.startsWith('/explorer/') ? `/${locale}${href.replace(/\/+$/, '')}/` : href;
+  const address = href?.startsWith('/explorer/') ? `${langPrefix(locale)}${href.replace(/\/+$/, '')}/` : href;
   const words = <><span className={styles.title} data-place-title title={title}>{title}</span>
     <span className={styles.meta} title={area || undefined}>{[category, area].filter(Boolean).join(' · ')}{badge && <span data-badge-tone={badgeTone}>{' · '}{badge}</span>}</span>
     {searchReason && <span data-search-reason className={styles.reason} title={searchReason}>{searchReason}</span>}

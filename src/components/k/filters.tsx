@@ -2,6 +2,7 @@
 // Explore's filter state and the Filters sheet (proto app.js readF/FiltersBody/FiltersFoot/refreshFilters).
 // The state lives in the URL (?intent ?cat ?when ?f=amenityId,band:N ?q ?sort ?badge) so the query is kept on reload and Back.
 import { useRef, useState } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import { useQuery } from '@tanstack/react-query';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
@@ -217,7 +218,7 @@ export function useOpenFilters() {
       const [, tick] = useState(0);
       const sub = useRef(false); if (!sub.current) { sub.current = true; listeners.add(() => tick((n) => n + 1)); }
       return part === 'body' ? <FiltersBody f={staged} onChange={set} />
-        : <FiltersFoot get={() => staged} onClear={() => set({ intent: '', cat: '', when: '', filters: new Set() })} onApply={() => { closeTop(); const q = writeF(staged, keep); go(`/${lang}/explorer/${q.toString() ? '?' + q : ''}`); }} />;
+        : <FiltersFoot get={() => staged} onClear={() => set({ intent: '', cat: '', when: '', filters: new Set() })} onApply={() => { closeTop(); const q = writeF(staged, keep); go(`${langPrefix(lang)}/explorer/${q.toString() ? '?' + q : ''}`); }} />;
     };
     openSheet(c.filters.title, <Live part="body" />, <Live part="foot" />);
   };

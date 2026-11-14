@@ -8,3 +8,4 @@ export * from './metaSwap.ts';
 export * from './proof.ts';
 export * from './near.ts';
 export * from './loading.ts';
+export * from './locale.ts';

@@ -1,7 +1,7 @@
 import '@5argny/core/web.css';
 import type { Viewport } from 'next';
 import { Cairo, IBM_Plex_Sans_Arabic } from 'next/font/google';
-import { cookies, headers } from 'next/headers';
+import { headers } from 'next/headers';
 import { HydrationBoundary } from '@tanstack/react-query';
 import { QueryProvider } from '@/components/QueryProvider';
 import { PageViewTracker } from '@/components/analytics/PageViewTracker';
@@ -24,7 +24,7 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, maxi
 
 // Light, Dark or Auto from kh.theme, set before the first paint so there is no flash. A phone landing on a sheet address
 // hides the server-drawn page until the sheet comes up over Home (no desktop page flashing first).
-const THEME = `(function(){try{var t=localStorage.getItem('kh.theme')||'auto';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d?'#14100D':'#FBF6EE');var p=location.pathname.split('/').filter(Boolean);if(innerWidth<1024&&((p[1]==='explorer'&&p.length===4)||(['c','marketplace','host'].indexOf(p[1])>=0&&p.length===3)))document.documentElement.classList.add('landing')}catch(e){}})()`;
+const THEME = `(function(){try{var t=localStorage.getItem('kh.theme')||'auto';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d?'#14100D':'#FBF6EE');var p=location.pathname.split('/').filter(Boolean);if(p[0]==='ar')p.shift();if(innerWidth<1024&&((p[0]==='explorer'&&p.length===3)||(['c','marketplace','host'].indexOf(p[0])>=0&&p.length===2)))document.documentElement.classList.add('landing')}catch(e){}})()`;
 
 const tabOf = (path: string): Tab => {
   const first = path.split('/').filter(Boolean)[0] ?? '';
@@ -33,8 +33,7 @@ const tabOf = (path: string): Tab => {
 
 export default async function KLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const h = await headers();
-  const chosen = h.get('x-khargny-locale') ?? (await cookies()).get('khargny.locale')?.value;
-  const locale = chosen === 'en' ? 'en' : 'ar';
+  const locale = h.get('x-khargny-locale') === 'ar' ? 'ar' : 'en'; // the URL only (owner 2026-11-14)
   const path = h.get('x-khargny-path') ?? '/';
   const time = new URLSearchParams(h.get('x-khargny-search') ?? '').get('time');
   const [settings, catalog, totals] = await Promise.all([

@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // Home from proto/app.js Home(): Stories, TakeMe, Near you, Earned, Collections by 5argny, 5argny Social, and the right rail.
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { langPrefix } from '@5argny/core/rules/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { blend, pickNear, kmText, type BlendPlace } from '@5argny/core/rules';
 import { apiRequest } from '@/lib/api/client';
@@ -145,8 +146,8 @@ function NearYou({ list, desk }: { list: KPlace[] | null; desk?: boolean }) {
   if (!pos) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><NearAsk /></section>;
   if (q.isPending) return <section className={cls} aria-label={c.home.nearYou} aria-busy="true"><div className="rail-head">{head}</div><div className="rail-row">{[0, 1, 2, 3].map((i) => <TileSkel key={i} />)}</div></section>;
   if (q.isError) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} /></section>;
-  if (!list?.length) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><StateBlock compact icon="map-pin-off" title={c.states.near.empty} body={c.states.near.emptyBody} action={<Link className="btn secondary press" href={`/${lang}/explorer/`}>{c.states.near.seeEgypt}</Link>} /></section>;
-  return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}<Link className="btn plain press" href={`/${lang}/explorer/?sort=near`}>{c.common.seeAll}</Link></div>
+  if (!list?.length) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><StateBlock compact icon="map-pin-off" title={c.states.near.empty} body={c.states.near.emptyBody} action={<Link className="btn secondary press" href={`${langPrefix(lang)}/explorer/`}>{c.states.near.seeEgypt}</Link>} /></section>;
+  return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}<Link className="btn plain press" href={`${langPrefix(lang)}/explorer/?sort=near`}>{c.common.seeAll}</Link></div>
     {desk ? null : <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearestFirst}</p>}<div className="rail-row">{list.slice(0, desk ? 6 : 7).map((p) => <Tile key={p.id} p={p} />)}</div></section>;
 }
 
@@ -158,7 +159,7 @@ function Earned() {
   const { data: categories = [] } = useCategories();
   const list = (raw ?? []).map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length && p.badges.length).sort((a, b) => b.badges.length - a.badges.length);
   if (!list.length) return null;
-  return <section className="rail earned"><div className="rail-head"><h2 className="t-head"><L n="award" /> {withBrand(c.home.earned)}</h2><Link className="btn plain press" href={`/${lang}/explorer/?badge=1`}>{fill(c.home.earnedAll, { n: list.length })}</Link></div>
+  return <section className="rail earned"><div className="rail-head"><h2 className="t-head"><L n="award" /> {withBrand(c.home.earned)}</h2><Link className="btn plain press" href={`${langPrefix(lang)}/explorer/?badge=1`}>{fill(c.home.earnedAll, { n: list.length })}</Link></div>
     <div className="rail-row">{list.map((p) => <Tile key={p.id} p={p} extra={<span className="earned-tags"><BadgeTags p={p} /></span>} />)}</div></section>;
 }
 
@@ -240,10 +241,10 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
   const cats = [...data.categories].sort((a, b) => (totalByCategory[b.id] ?? -1) - (totalByCategory[a.id] ?? -1));
   const photo = (cat: HomeData['categories'][number]) => pool.find((p) => p.cat === cat.en)?.photos[0]?.m || coverByCategory[cat.id] || photoFor([cat.en], 0);
   const allCats = () => {
-    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{cats.map((cat) => <Link key={cat.id} className="tm-tile press" href={`/${lang}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photo(cat)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
+    openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{cats.map((cat) => <Link key={cat.id} className="tm-tile press" href={`${langPrefix(lang)}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img src={photo(cat)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
     requestAnimationFrame(() => document.querySelectorAll('.sheet .tm-sheet .tm-tile').forEach((tl, n) => animate(tl, { opacity: [0, 1], transform: ['translateY(14px) scale(.96)', 'translateY(0) scale(1)'] }, { ...spring(0, 0.45), delay: 0.04 + n * 0.03 })));
   };
-  const tile = (x: Intent, n: number) => { const t = total(x); return <Link key={x.key} className="tm-pick press" href={`/${lang}/explorer/?intent=${x.key}`}><span className="tm-pick-img"><img src={photoFor(x.cats, n)} alt="" loading="lazy" /></span>
+  const tile = (x: Intent, n: number) => { const t = total(x); return <Link key={x.key} className="tm-pick press" href={`${langPrefix(lang)}/explorer/?intent=${x.key}`}><span className="tm-pick-img"><img src={photoFor(x.cats, n)} alt="" loading="lazy" /></span>
     <span className="tm-pick-name"><L n={x.icon} /><b>{c.intents[x.key]}</b></span>{t != null ? <span className="tm-pick-n">{fill(c.common.places, { n: t })}</span> : null}</Link>; };
   return (
     <section className={`tm tm3 ${flipped ? 'flipped' : ''}`} aria-label={c.home.takeMe.aria} ref={card}>
@@ -251,7 +252,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
         <div className="tm-head"><div><b className="tm-q">{lang === 'ar' ? 'خرجني فين؟' : c.home.takeMe.question}</b><span className="tm-time" aria-label={`${c.home.takeMe.timeNow} ${t12(now, lang)}`} suppressHydrationWarning><L n="clock" />{t12(now, lang)}<span className="tm-nudge">{c.home.takeMe.cantPick}</span></span></div>
           <svg className="tm-route" aria-hidden="true"><path className="tm-route-base" /><path className="tm-route-line" /><circle className="tm-route-end" r="3" /></svg>
           <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} onClick={shuffle}><L n="dices" /><span>{c.home.takeMe.surprise}</span></button></div>
-        <Link className="tm-lead press" href={`/${lang}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
+        <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
           <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{leadCity ? <span className="tm-sub">{open ? <><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: leadName })}</> : <><L n="map-pin" />{leadName}</>}</span> : null}</span>
           <span className="tm-go"><L n="arrow-right" /></span></Link>
         <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img">{cats.slice(0, 4).map((cat) => <img key={cat.id} src={photo(cat)} alt="" loading="lazy" />)}</span><span className="tm-pick-name"><L n="layout-grid" /><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>

@@ -5,7 +5,7 @@
 export type Locale = "ar" | "en";
 
 export const LOCALES: Locale[] = ["ar", "en"];
-export const DEFAULT_LOCALE: Locale = "ar";
+export const DEFAULT_LOCALE: Locale = "en"; // a plain URL is English; Arabic lives under /ar (owner 2026-11-14)
 
 export const LOCALE_DIR: Record<Locale, "rtl" | "ltr"> = {
   ar: "rtl",

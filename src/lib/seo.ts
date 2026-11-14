@@ -3,34 +3,31 @@
  *
  * Two things about this site make hand-written metadata get it wrong every time:
  *
- * 1. Every real URL carries a locale segment. Middleware rewrites `/en/explorer/cairo` to
+ * 1. An Arabic URL carries an /ar segment. Middleware rewrites `/ar/explorer/cairo` to
  *    `/explorer/cairo` internally, so route code never sees the segment — but the crawlable
- *    address always has it. A canonical built from the route path alone points at a URL that
- *    only exists as a redirect.
- * 2. `trailingSlash: true` in next.config means `/en/explorer/cairo` 308s to
- *    `/en/explorer/cairo/`. A canonical or sitemap entry without the slash costs a redirect
+ *    address has it. English is the plain URL (the old /en/... only redirects).
+ * 2. `trailingSlash: true` in next.config means `/explorer/cairo` 308s to
+ *    `/explorer/cairo/`. A canonical or sitemap entry without the slash costs a redirect
  *    hop on every crawl.
  *
  * Everything here produces the address the visitor's browser actually ends on.
  */
-import { headers, cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { SITE_URL } from './config';
 import { urlFor } from './site-url';
 import { normalizeSiteSettings, siteSocialUrls } from '@/lib/site-socials';
-import { LOCALES, DEFAULT_LOCALE, type Locale } from '@/i18n/dictionaries';
+import type { Locale } from '@/i18n/dictionaries';
+import { hreflangFor } from '@5argny/core/rules/locale';
 import { normalizePhoto, type Photo } from '@/lib/place-photo';
 import { isPreviewDeployment } from '@/lib/seo-environment';
 
 export { isPreviewDeployment } from '@/lib/seo-environment';
 export { urlFor } from './site-url';
 
-/** The locale this request is being served in. Mirrors what the root layout decides. */
+/** The locale this request is being served in: the URL's, as the middleware read it (the URL only, owner 2026-11-14). */
 export async function currentLocale(): Promise<Locale> {
-  const fromUrl = (await headers()).get('x-khargny-locale');
-  const fromCookie = (await cookies()).get('khargny.locale')?.value;
-  const chosen = fromUrl ?? fromCookie;
-  return chosen === 'en' ? 'en' : DEFAULT_LOCALE;
+  return (await headers()).get('x-khargny-locale') === 'ar' ? 'ar' : 'en';
 }
 
 /**
@@ -44,14 +41,10 @@ export async function currentPath(): Promise<string> {
 /**
  * canonical + hreflang for a route path (without the locale segment).
  *
- * x-default points at Arabic: it is the default the middleware sends an unprefixed request
- * to, so it is the honest answer to "which one for an unmatched language".
+ * x-default points at the plain English URL: it is what an unprefixed address serves.
  */
 export function alternatesFor(path: string, locale: Locale): Metadata['alternates'] {
-  const languages: Record<string, string> = {};
-  for (const language of LOCALES) languages[language] = urlFor(path, language);
-  languages['x-default'] = urlFor(path, DEFAULT_LOCALE);
-
+  const languages = Object.fromEntries(Object.entries(hreflangFor(path)).map(([language, p]) => [language, `${SITE_URL}${p}`]));
   return { canonical: urlFor(path, locale), languages };
 }
 

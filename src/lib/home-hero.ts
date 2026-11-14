@@ -1,4 +1,5 @@
 import type { City, Place } from "@/lib/api/types";
+import { langPrefix } from '@5argny/core/rules/locale';
 import type { SearchRequest } from "@/lib/place-search";
 
 export const CITY_CENTRES: Record<
@@ -206,7 +207,7 @@ export async function detectNearbyLocation(
 }
 
 export function detectedCityAddress(locale: string, detected: DetectedLocation): string {
-  const address = `/${locale}/explorer/${encodeURIComponent(detected.city.slug)}/`;
+  const address = `${langPrefix(locale === 'ar' ? 'ar' : 'en')}/explorer/${encodeURIComponent(detected.city.slug)}/`;
   return detected.region && detected.city.areaKeys?.includes(detected.region)
     ? `${address}?${new URLSearchParams({ region: detected.region })}`
     : address;

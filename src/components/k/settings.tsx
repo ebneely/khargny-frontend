@@ -5,6 +5,7 @@
 // reportBody: Suggest a correction (POST /v1/places/:id/corrections) and Report a problem (POST /v1/reports).
 // A page on desktop or when landed on; a sheet on a phone (the correction stacks over the place sheet).
 import { useEffect, useRef, useState } from 'react';
+import { bare, langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { animate } from 'motion';
@@ -45,7 +46,7 @@ export function SettingsView() {
     setTimeout(() => html.classList.remove('theme-fade'), 400);
   };
   // the language is part of every address: the same page under the other prefix
-  const pickLang = (l: 'en' | 'ar') => { if (l !== lang) location.assign(`/${l}${location.pathname.replace(/^\/(en|ar)(?=\/|$)/, '')}${location.search}`); };
+  const pickLang = (l: 'en' | 'ar') => { if (l !== lang) location.assign(`${langPrefix(l)}${bare(location.pathname)}${location.search}`); };
   const report = useOpenReport();
   return <Shell cur="profile" right={<HomeRail />}>
     <h1 className="t-display page-pad" style={{ margin: '4px 0 12px' }}>{c.settings.title}</h1>
@@ -53,7 +54,7 @@ export function SettingsView() {
       <div className="row"><span className="grow">{c.settings.appearance}</span><Seg opts={[['light', c.settings.light], ['dark', c.settings.dark], ['auto', c.settings.auto]]} val={theme} onPick={pickTheme} /></div>
       <div className="row"><span className="grow">{c.settings.language}</span><Seg opts={[['en', c.settings.english], ['ar', c.settings.arabic]]} val={lang} onPick={pickLang} /></div>
     </Group>
-    <Group title={c.settings.help}><Link className="row press" href={`/${lang}/settings/report/`} data-act="report-open" onClick={(e) => { if (desk()) return; e.preventDefault(); report(); }}><Ic n="flag" /><span className="grow">{c.settings.report}</span><L n="chevron-right" /></Link></Group>
+    <Group title={c.settings.help}><Link className="row press" href={`${langPrefix(lang)}/settings/report/`} data-act="report-open" onClick={(e) => { if (desk()) return; e.preventDefault(); report(); }}><Ic n="flag" /><span className="grow">{c.settings.report}</span><L n="chevron-right" /></Link></Group>
   </Shell>;
 }
 
@@ -128,7 +129,7 @@ function FormPage({ title, tab, p }: { title: string; tab: 'explore' | 'profile'
   const send = useSend(p), uploading = useProofBusy();
   useEffect(() => { document.body.classList.add('form-page'); return () => document.body.classList.remove('form-page'); }, []);
   return <Shell cur={tab} wide noLoc actionbar={<Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide disabled={uploading} onClick={(e) => void send(e)} />}>
-    <div className="corr"><div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><IconBtn icon="back" label={c.common.back} cls="filled" act="page-back" onClick={() => (history.length > 1 ? history.back() : go(p ? placeHref(p, lang) : `/${lang}/settings/`))} /><h1 className="t-title grow">{title}</h1></div><CorrForm p={p} /></div>
+    <div className="corr"><div className="page-pad" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><IconBtn icon="back" label={c.common.back} cls="filled" act="page-back" onClick={() => (history.length > 1 ? history.back() : go(p ? placeHref(p, lang) : `${langPrefix(lang)}/settings/`))} /><h1 className="t-title grow">{title}</h1></div><CorrForm p={p} /></div>
     {/* desktop has no fixed action bar (it hides at 1024 px), so the send button closes the form and sticks to the bottom of the column */}
     <div className="corr-send-desk desk-only"><Btn label={c.common.sendToTeam} kind="primary" icon="flag" act="corr-send" wide disabled={uploading} onClick={(e) => void send(e)} /></div>
   </Shell>;
