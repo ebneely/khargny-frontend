@@ -263,7 +263,18 @@ export function Tile({ p, extra }: { p: KPlace; extra?: ReactNode }) {
 /** A Tile's skeleton: the Tile's own markup with stand-in words (five counts, as a list card carries), so nothing moves when it lands. */
 export function TileSkel() {
   return <div className="card tile skel" aria-hidden="true"><span className="tile-media"><Sk cls="sk-img" /></span>
-    <div className="tile-body"><b><span className="sk">Place name here</span></b><span style={{ display: 'block', margin: '3px 0 2px' }}><span className="stats">{['eye', 'heart', 'saved', 'share', 'go'].map((n) => <span key={n} className="views sk"><Ic n={n as 'eye'} /><span className="n">0.0k</span></span>)}</span></span><span className="t-small"><span className="sk">Area, City</span></span></div></div>;
+    <div className="tile-body"><b><span className="sk">Place name here</span></b><span style={{ display: 'block', margin: '3px 0 2px' }}><span className="stats">{['eye', 'heart', 'saved', 'share', 'go'].map((n) => <span key={n} className="views sk"><Ic n={n as 'eye'} /><span className="n">0</span></span>)}</span></span><span className="t-small"><span className="sk">Area, City</span></span></div></div>;
+}
+
+/** A feed Post's skeleton: the Post's own markup (head, photo, actions and 5argny!) with stand-ins. */
+export function PostSkel() {
+  const { c } = useK();
+  return <article className="card post skel" aria-hidden="true">
+    <header className="post-head"><Sk cls="avatar" w={32} h={32} r={999} /><div className="post-who"><b><span className="sk">Place name here</span></b><span className="meta"><span className="cat-bubble sk">Category</span><span className="cat-bubble sk">Area name</span></span></div><span className="live-pill sk">Open</span></header>
+    <div className="media"><Sk style={{ position: 'absolute', inset: 0, borderRadius: 0 }} /></div>
+    <div className="post-foot"><div className="post-actions">{(['heart', 'saved', 'share'] as const).map((n) => <span key={n} className="icon-btn act-btn sk"><Ic n={n} /><span className="n">00</span></span>)}<span className="act-views sk"><Ic n="eye" /><span className="n">0.0k</span></span><span className="grow" />
+      <span className="btn primary go5 sk"><span className="go5-ic"><L n="navigation" /></span><b>{c.go5.label}</b><em className="go5-n"><L n="users" /><span className="n">00</span></em></span></div></div>
+  </article>;
 }
 
 export function BadgeTags({ p }: { p: KPlace }) {

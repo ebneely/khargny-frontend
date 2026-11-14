@@ -22,7 +22,7 @@ import { Shell, usePlaceName } from './Shell';
 import { readF, useCatIds, useLocIds, useCounts, usePriceBands, useListQuery, useEarned, totalKey, type When } from './filters';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { useK, reduce } from './KProvider';
-import { usePosition, askPosition, nearParam } from './near';
+import { usePosition, askPosition, askFail, nearParam } from './near';
 
 type Sort = 'popular' | 'near' | 'open';
 const PAGE = 24;
@@ -85,7 +85,7 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
 }
 
 export function ExploreView() {
-  const { c, lang, now, loc, content, setLoc, go } = useK();
+  const { c, lang, now, loc, content, setLoc, go, toast } = useK();
   // an old city page (/explorer/<city>/?area=) lands here as ?city=&area=: set the location bar once, then drop them from the address
   const { data: allCities = [] } = useCities();
   const seed = useSearchParams();
@@ -109,7 +109,7 @@ export function ExploreView() {
   // warm what the Filters sheet shows (category counts, price bands, amenities), so it opens complete
   useCounts(''); usePriceBands(); useAmenities();
   // "Nearest" is the person's own choice, so it may ask for the location then; the list then comes nearest first from the API
-  useEffect(() => { if (sort === 'near' && !pos) void askPosition(); }, [sort, pos]);
+  useEffect(() => { if (sort === 'near' && !pos) void askPosition().then((ok) => { const why = askFail(); if (!ok && why) toast(c.states.near[why]); }); }, [sort, pos]); // eslint-disable-line react-hooks/exhaustive-deps
   const here = pos;
   // shortcut: search results (q) carry no distanceKm (the search route takes no near=), so Nearest orders them by the cards' own coordinates
   const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);

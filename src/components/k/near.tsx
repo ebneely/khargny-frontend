@@ -30,30 +30,39 @@ export const readPosition = read;
 /** "lat,lng" for the API, or null. */
 export const nearParam = (p: Pos | null) => (p ? `${p.lat},${p.lng}` : null);
 
-/** Asks the browser once (a tap, never on load). Resolves false when denied or unavailable: nothing changes then. */
+/** Why the last ask gave no position: refused, not found, or outside Egypt; null when it worked or was never asked. */
+export type AskFail = 'denied' | 'unavailable' | 'outside';
+let fail: AskFail | null = null;
+export const askFail = () => fail;
+export const useAskFail = () => useSyncExternalStore(subscribe, askFail, () => null);
+
+/** Asks the browser once (a tap, never on load). Resolves false when denied, unavailable or outside Egypt (askFail says which). */
 export function askPosition(): Promise<boolean> {
+  const end = (done: (ok: boolean) => void, why: AskFail | null) => { fail = why; listeners.forEach((f) => f()); done(!why); };
   return new Promise((done) => {
-    if (!navigator.geolocation) return done(false);
+    if (!navigator.geolocation) return end(done, 'unavailable');
     navigator.geolocation.getCurrentPosition((g) => {
       const pos = coarse({ lat: g.coords.latitude, lng: g.coords.longitude });
-      if (!inEgypt(pos)) return done(false); // outside Egypt the API has no nearest; nothing changes
+      if (!inEgypt(pos)) return end(done, 'outside'); // outside Egypt the API has no nearest; nothing changes
       try { sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch {}
-      listeners.forEach((f) => f()); done(true);
-    }, () => done(false), { maximumAge: 10 * 60_000, timeout: 15_000 });
+      end(done, null);
+    }, (e) => end(done, e.code === 1 ? 'denied' : 'unavailable'), { maximumAge: 10 * 60_000, timeout: 15_000 });
   });
 }
 
 /** The nearest places to the person (GET /v1/places?near=&sort=distance), nearest first, each with distanceKm. */
-export function useNearPlaces(limit = 20): KPlace[] | null {
+export function useNearPlaces(limit = 20): KPlace[] | null { return useNearQuery(limit).list; }
+/** The same, with its query, for Near you's loading, failed and empty states. */
+export function useNearQuery(limit = 20) {
   const { lang } = useK();
   const near = nearParam(usePosition());
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
-  const { data } = useQuery({
+  const q = useQuery({
     queryKey: ['places', 'near', near, limit], enabled: !!near, staleTime: 5 * 60_000,
     queryFn: async () => normalizePlaceList(await apiRequest<unknown>('GET', '/v1/places', { params: { near: near!, sort: 'distance', limit } })).items,
   });
-  return near && data ? data.map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length) : null;
+  return { q, list: near && q.data ? q.data.map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length) : null };
 }
 
 /**
@@ -76,9 +85,11 @@ export const surpriseQuery = (near: string | null) => ({
 export function NearAsk() {
   const { c } = useK();
   const [asking, setAsking] = useState(false);
+  const why = useAskFail();
   return <>
     <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearAskBody}</p>
-    <div className="page-pad"><button className="btn secondary press" data-act="near-ask" disabled={asking} onClick={() => { haptic(); setAsking(true); void askPosition().finally(() => setAsking(false)); }}><L n="navigation" />{c.home.nearAsk}</button></div>
+    <div className="page-pad"><button className="btn secondary press" data-act="near-ask" disabled={asking} onClick={() => { haptic(); setAsking(true); void askPosition().finally(() => setAsking(false)); }}><L n="navigation" />{c.home.nearAsk}</button>
+      {why ? <p className="t-small" role="alert" style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'flex-start' }}><L n="map-pin-off" />{c.states.near[why]}</p> : null}</div>
   </>;
 }
 

@@ -14,16 +14,17 @@ import Link from 'next/link';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
 import { L, Ic } from './icons';
-import { Brand, Tag, Bit } from './bits';
+import { Brand, Btn, Tag, Bit } from './bits';
 import { INTENTS, moment, t12, k, openState as openStateOf, type Intent } from './rules';
 import { placeHref, toK, type KPlace } from './data';
-import { Post, Tile, Go5, StatePill, Meta, BadgeTags, usePlaceStats, catIcon } from './place';
+import { Post, PostSkel, Tile, TileSkel, Go5, StatePill, Meta, BadgeTags, usePlaceStats, catIcon } from './place';
 import { Shell, usePlaceName, useLocKeys } from './Shell';
 import { useK, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
 import { MarketCard } from './market';
-import { usePosition, askPosition, useNearPlaces, readPosition, nearParam, surpriseQuery, NearAsk } from './near';
+import { usePosition, askPosition, useNearPlaces, useNearQuery, readPosition, nearParam, surpriseQuery, NearAsk } from './near';
 import { useCatTotals, useEarned } from './filters';
+import { Failed, Sk, StateBlock, useReveal } from './states';
 
 export type HomeCollection = { id: string; slug: string; title: string; places: KPlace[] };
 export type HomeData = { pool: KPlace[]; trending: KPlace[]; collections: HomeCollection[]; categories: { id: string; en: string; label: string }[]; openByCategory: Record<string, number> | null };
@@ -35,6 +36,18 @@ export function withBrand(s: string) { const [a, b = ''] = s.split('{brand}'); r
  * Home's rows for the location bar: the server's Egypt-wide rows until a city is picked, then the pool and the counts
  * fetched again for that city and area, so every number says what it counts.
  */
+/** Home's pool for a city and area (the feed and Stories read its loading and failed states too). */
+const poolQuery = (scope: { cityId?: string; region?: string }) => ({
+  queryKey: ['home', 'pool', scope.cityId ?? '', scope.region ?? ''], staleTime: 60_000,
+  queryFn: async () => normalizePlaceList(await apiRequest('GET', '/v1/places', { params: { limit: 40, ...scope } })).items,
+});
+/** The pool's state once a city is picked: Egypt-wide, the rows come with the page and never load here. */
+function usePoolState() {
+  const { city, areaKey } = useLocKeys();
+  const q = useQuery({ ...poolQuery({ cityId: city?.id, ...(areaKey ? { region: areaKey } : {}) }), enabled: !!city });
+  return { on: !!city, loading: !!city && q.isPending, error: !!city && q.isError && !q.data ? q.error : null, retry: q.refetch, busy: q.isFetching, empty: !!city && !!q.data && q.data.length === 0 };
+}
+
 function useHere(data: HomeData) {
   const { lang } = useK();
   const { city, areaKey } = useLocKeys();
@@ -42,9 +55,7 @@ function useHere(data: HomeData) {
   const { data: categories = [] } = useCategories();
   const on = !!city;
   const scope = { cityId: city?.id, ...(areaKey ? { region: areaKey } : {}) };
-  const { data: pool } = useQuery({
-    queryKey: ['home', 'pool', city?.id ?? '', areaKey ?? ''], enabled: on, staleTime: 60_000, placeholderData: (prev) => prev,
-    queryFn: async () => normalizePlaceList(await apiRequest('GET', '/v1/places', { params: { limit: 40, ...scope } })).items,
+  const { data: pool } = useQuery({ ...poolQuery(scope), enabled: on, placeholderData: (prev) => prev,
   });
   // places and a photo per category: one shared query with Filters (Egypt-wide it arrives with the page)
   const totals = useCatTotals();
@@ -93,13 +104,26 @@ export function HomeView({ data }: { data: HomeData }) {
       <Earned />
       <TeamCollections list={data.collections} />
       <h1 className="t-display page-pad social-h" style={{ margin: '6px 0 10px' }}>{withBrand(c.home.social)}</h1>
-      {social.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 ? <div className="desk-only"><NearYou list={near} desk /></div> : null}</Fragment>)}
+      <Social list={social} near={near} />
     </Shell>
   );
 }
 
+// the feed after a city is picked: its skeleton, what failed, or a city with nothing yet and a way back to all of Egypt
+function Social({ list, near }: { list: KPlace[]; near: KPlace[] | null }) {
+  const { c, setLoc } = useK();
+  const where = usePlaceName();
+  const st = usePoolState();
+  const reveal = useReveal(st.loading);
+  if (st.loading) return <><PostSkel /><PostSkel /></>;
+  if (st.error) return <Failed error={st.error} retry={st.retry} busy={st.busy} />;
+  if (st.empty) return <StateBlock icon="map-pin-off" title={fill(c.states.feed.empty, { place: where })} body={c.states.feed.emptyBody} action={<Btn label={c.states.feed.allEgypt} kind="primary" act="all-egypt" onClick={() => setLoc({ city: null, area: null })} />} />;
+  return <div className={reveal}>{list.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 ? <div className="desk-only"><NearYou list={near} desk /></div> : null}</Fragment>)}</div>;
+}
+
 function Stories({ list }: { list: KPlace[] }) {
   const { lang } = useK();
+  if (usePoolState().loading) return <div className="rail-row stories skel" aria-hidden="true" style={{ paddingTop: 4, paddingBottom: 12 }}>{Array.from({ length: 8 }, (_, i) => <Sk key={i} w={96} h={150} r={16} style={{ flex: 'none' }} />)}</div>;
   return <div className="rail-row stories" style={{ paddingTop: 4, paddingBottom: 12 }}>{list.map((p) => (
     <Link key={p.id} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
       
@@ -117,8 +141,11 @@ function NearYou({ list, desk }: { list: KPlace[] | null; desk?: boolean }) {
   const pos = usePosition();
   const head = desk ? <h2 className="t-head">{c.home.nearYou}</h2> : <h2 className="t-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}><Ic n="near" />{c.home.nearYou}</h2>;
   const cls = desk ? 'rail near' : 'near phone-only';
+  const { q } = useNearQuery(); // the same query as `list`: its loading, failed and empty states
   if (!pos) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><NearAsk /></section>;
-  if (!list?.length) return null;
+  if (q.isPending) return <section className={cls} aria-label={c.home.nearYou} aria-busy="true"><div className="rail-head">{head}</div><div className="rail-row">{[0, 1, 2, 3].map((i) => <TileSkel key={i} />)}</div></section>;
+  if (q.isError) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} /></section>;
+  if (!list?.length) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><StateBlock compact icon="map-pin-off" title={c.states.near.empty} body={c.states.near.emptyBody} action={<Link className="btn secondary press" href={`/${lang}/explorer/`}>{c.states.near.seeEgypt}</Link>} /></section>;
   return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}<Link className="btn plain press" href={`/${lang}/explorer/?sort=near`}>{c.common.seeAll}</Link></div>
     {desk ? null : <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearestFirst}</p>}<div className="rail-row">{list.slice(0, desk ? 6 : 7).map((p) => <Tile key={p.id} p={p} />)}</div></section>;
 }
@@ -170,7 +197,6 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
     queryFn: () => apiRequest<{ byCategory: Record<string, number> }>('GET', '/v1/places/counts', { params: { when: 'now', city: leadCity!.slug } }).catch(() => null),
   });
   const open = leadNow ? categories.filter((x) => (lead.cats as readonly string[]).includes(x.nameEn || '')).reduce((a, x) => a + (leadNow.byCategory[x.slug] ?? 0), 0) : null;
-
 
   // the route line runs from "Can't pick?" to Surprise me
   useLayoutEffect(() => {
