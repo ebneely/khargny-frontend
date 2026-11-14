@@ -258,7 +258,7 @@ export function Tile({ p, extra, surface, position, mark, term }: { p: KPlace; e
   return (
     <Link ref={ref} className="card tile press" data-item href={placeHref(p, lang)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
       
-      <span className="tile-media"><img src={p.photos[0]?.s} alt="" loading="lazy" />{mark ? <MarkChip mark={mark} over /> : null}{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
+      <span className="tile-media"><img src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
       <div className="tile-body"><b dir="auto">{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
     </Link>
   );
@@ -303,11 +303,6 @@ export function useShowing(ref: React.RefObject<HTMLElement | null>, surface: Sh
   }, [ref, tracker, surface, id]);
 }
 
-/** "Rising" or "New on 5argny" on a card: the status only, never a number (decision 0006). */
-export function MarkChip({ mark, over }: { mark: 'rising' | 'new'; over?: boolean }) {
-  const { c } = useK();
-  return <span className={over ? 'mark-chip over' : 'mark-chip'}><Tag label={c.marks[mark]} tone={mark === 'rising' ? 'accent' : 'good'} /></span>;
-}
 
 export function BadgeTags({ p }: { p: KPlace }) {
   const label = useBadgeLabel();
@@ -341,7 +336,7 @@ export function Post({ p, surface, position, mark }: { p: KPlace } & CardTrack) 
       
       <header className="post-head"><img className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b dir="auto">{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
       <div className="media"><Carousel photos={p.photos.slice(0, 5)} /></div>
-      <div className="post-foot">{p.badges.length || mark ? <p className="post-meta">{mark ? <MarkChip mark={mark} /> : null}<BadgeTags p={p} /></p> : null}
+      <div className="post-foot">{p.badges.length ? <p className="post-meta"><BadgeTags p={p} /></p> : null}
         <div className="post-actions"><Actions p={p} end={<Go5 p={p} />} /></div></div>
     </article>
   );

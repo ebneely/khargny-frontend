@@ -18,7 +18,7 @@ import { L, Ic } from './icons';
 import { Brand, Btn, Tag, Bit } from './bits';
 import { INTENTS, moment, t12, k, openState as openStateOf, type Intent } from './rules';
 import { placeHref, toK, type KPlace } from './data';
-import { Post, PostSkel, Tile, TileSkel, Go5, StatePill, Meta, BadgeTags, MarkChip, useShowing, usePlaceStats, catIcon, type CardTrack } from './place';
+import { Post, PostSkel, Tile, TileSkel, Go5, StatePill, Meta, BadgeTags, useShowing, usePlaceStats, catIcon, type CardTrack } from './place';
 import { Shell, usePlaceName, useLocKeys } from './Shell';
 import { useK, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
@@ -158,7 +158,6 @@ function Story({ p, position, mark }: { p: KPlace; position: number; mark: FeedM
   useShowing(ref, 'stories', p.id, position);
   return (
     <Link ref={ref} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
-      {mark ? <MarkChip mark={mark} over /> : null}
       <img src={p.photos[0]?.s} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <b dir="auto" style={{ position: 'absolute', left: 8, right: 8, bottom: 7, color: '#fff', fontSize: 12, fontWeight: 750, lineHeight: 1.2, textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{p.name}</b>
     </Link>
@@ -265,7 +264,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
     if (!next) return;
     recent.current = [...recent.current, next.id].slice(-5); setDeal(next);
     const flip = card.current!.querySelector<HTMLElement>('.tm-flip')!;
-    if (!flipped) { setFlipped(true); animate(flip, { transform: ['rotateY(0deg)', 'rotateY(180deg)'] }, spring(0.12, 0.6)); }
+    if (!flipped) { setFlipped(true); animate(flip, { transform: ['rotateY(0deg)', 'rotateY(180deg)'] }, spring(0.12, 0.6)); card.current!.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     else requestAnimationFrame(() => { const d = card.current!.querySelector('.tm-deal'); if (d) animate(d, { opacity: [0, 1], transform: ['scale(.94)', 'scale(1)'] }, spring(0.3, 0.45)); });
   };
   const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)); };
