@@ -45,11 +45,11 @@ export function usePlace(slug: string | null | undefined) {
   });
 }
 
-/** GET /v1/places/:id/similar */
+/** GET /v1/places/:id/similar (answers the paged envelope `{ data, meta }`, like the list) */
 export function useSimilarPlaces(id: string | null | undefined) {
   return useQuery({
     queryKey: placesKeys.similar(id ?? ''),
-    queryFn: async () => (await apiRequest<Place[]>('GET', `/v1/places/${id}/similar`)).map(normalizePlaceFlags),
+    queryFn: async (): Promise<Place[]> => normalizePlaceList(await apiRequest<unknown>('GET', `/v1/places/${id}/similar`)).items,
     enabled: Boolean(id),
     staleTime: 5 * 60 * 1000,
   });
