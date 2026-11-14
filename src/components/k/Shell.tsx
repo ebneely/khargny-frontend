@@ -163,9 +163,17 @@ export function TabNav() {
   </>;
 }
 
+// the searched word stays in the bar across pages until it is cleared (proto S.q); Explore's ?q= is the truth there
+let barQ = '';
+const onExplore = () => /^\/(ar|en)\/explorer\/?$/.test(location.pathname);
+
 function TopBar() {
   const { c, lang, go } = useK();
-  const [q, setQ] = useState('');
+  const urlQ = useSearchParams().get('q');
+  const [q, setQ] = useState(() => barQ);
+  // an Explore deep link (or a new ?q= on it) puts its word in the bar; the server render starts empty, so no mismatch
+  useEffect(() => { if (onExplore()) { barQ = (urlQ ?? '').trim(); setQ(barQ); } else setQ(barQ); }, [urlQ]);
+  const commit = (v: string) => { barQ = v.trim(); setQ(barQ); };
   const [searching, setSearching] = useState(false);
   const [hint, setHint] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -181,7 +189,13 @@ function TopBar() {
   }, [q]);
   const enter = () => { if (searching) return; from.current = { path: location.pathname + location.search, y: scrollY }; setSearching(true); document.querySelector('.chrome-top')?.classList.remove('compact'); };
   const exit = () => { setSearching(false); input.current?.blur(); };
-  const cancel = () => { const back = from.current; exit(); if (back) requestAnimationFrame(() => scrollTo({ top: back.y, behavior: 'instant' })); };
+  const cancel = () => { const back = from.current; exit(); setQ(barQ); if (back) requestAnimationFrame(() => scrollTo({ top: back.y, behavior: 'instant' })); };
+  // one × clears the word; on Explore it also drops ?q= from the results
+  const clear = () => {
+    barQ = ''; setQ(''); haptic();
+    if (searching) { input.current?.focus(); return; }
+    if (onExplore() && urlQ != null) { const n = new URLSearchParams(location.search); n.delete('q'); go(`${location.pathname}${n.toString() ? '?' + n : ''}`); }
+  };
   useEffect(() => { document.querySelector('.chrome-top')?.classList.toggle('searching', searching); }, [searching]);
   useEffect(() => { if (!searching) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); });
   const hints = c.search.hints;
@@ -190,11 +204,11 @@ function TopBar() {
       <label className={`search gsearch ${q ? 'has-text' : ''}`}><Ic n="search" /><span className="gs-hint" aria-hidden="true"><span ref={hintEl}>{hints[hint % hints.length]}</span></span>
         <input ref={input} type="search" placeholder={c.search.placeholder} data-act="gsearch" value={q} aria-label={c.search.placeholder} autoComplete="off" enterKeyHint="search"
           onFocus={enter} onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { putRecent(q); exit(); go(`/${lang}/explorer/${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`); } }} />
-        <button type="button" className="gs-clear press" data-act="gs-clear" aria-label={c.search.clear} onClick={(e) => { e.preventDefault(); setQ(''); haptic(); input.current?.focus(); }}><L n="x" /></button></label>
+          onKeyDown={(e) => { if (e.key === 'Enter') { putRecent(q); commit(q); exit(); go(`/${lang}/explorer/${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`); } }} />
+        <button type="button" className="gs-clear press" data-act="gs-clear" aria-label={c.search.clear} onClick={(e) => { e.preventDefault(); clear(); }}><L n="x" /></button></label>
       <button className="gs-cancel press" data-act="gs-cancel" onClick={cancel}>{c.search.cancel}</button>
     </header>
-    {searching ? <SearchPanel q={q} onCancel={cancel} onGo={(term) => { if (term) putRecent(term); exit(); }} /> : null}
+    {searching ? <SearchPanel q={q} onCancel={cancel} onGo={(term) => { if (term) { putRecent(term); commit(term); } exit(); }} /> : null}
   </>;
 }
 
