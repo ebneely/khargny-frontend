@@ -676,7 +676,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .col-empty{display:grid;place-items:center;color:var(--ink3)}
 .col-body{display:block;padding:8px 10px 10px}
 .col-body b{display:block;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.col-body .t-small,.col-meta{display:flex;align-items:center;gap:4px}
+.col-body .t-small,.col-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;min-width:0}
 .col-body .lucide,.col-meta .lucide{width:13px;height:13px}
 .col-save{position:absolute;top:8px;right:8px;width:30px;height:30px;background:rgba(36,28,22,.42);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .col-save.on{background:var(--accent)}
@@ -720,7 +720,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .cat-bubble .lucide{width:13px;height:13px}
 .cat-bubble.down,.cat-bubble:active{transform:scale(.95)}
 .cat-bubble:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.meta-area{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--ink2);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.meta-area{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--ink2);white-space:nowrap;min-width:0}
 .meta-area .lucide{width:12px;height:12px;color:var(--ink3);flex:none}
 .tm-deal-text .meta-area{color:rgba(255,255,255,.85)}
 .tm-deal-text .meta-area .lucide{color:rgba(255,255,255,.7)}
@@ -960,8 +960,8 @@ body.has-glass #chrome .tabbar{display:none}
 .option[aria-checked="true"] .gv{color:var(--accent)}
 
 /* card stats v3: one quiet row, no bubble, no grid: five small counts that fit a narrow card */
-.tile .stats,.mini .stats,.trend-main .stats{display:flex;flex-wrap:nowrap;gap:8px;padding:0;margin:4px 0 2px;background:none;border-radius:0;overflow:hidden}
-@container (max-width:240px){ .tile .stats,.mini .stats,.trend-main .stats{display:flex;gap:7px} }
+.tile .stats,.mini .stats,.trend-main .stats{display:flex;flex-wrap:wrap;gap:2px 8px;padding:0;margin:4px 0 2px;background:none;border-radius:0}
+@container (max-width:240px){ .tile .stats,.mini .stats,.trend-main .stats{display:flex;gap:2px 7px} }
 .tile .stats .views,.mini .stats .views,.trend-main .stats .views{gap:2px;font-size:11px;white-space:nowrap}
 .tile .stats svg,.mini .stats svg,.trend-main .stats svg{width:12px;height:12px}
 /* the signal rings travel the whole pill: they start (or end) beyond its far edge, so no ring ever appears or stops inside it */
@@ -1057,7 +1057,8 @@ html.holding,html.holding *{-webkit-user-select:none!important;user-select:none!
 .corr.in-sheet > h1{text-align:center}
 
 /* a sheet owns the scroll: the page behind is locked, and a short sheet still swallows the gesture instead of passing it on */
-html.sheet-open,html.sheet-open body{overflow:hidden;overscroll-behavior:none}
+html.sheet-open{overflow:hidden;overscroll-behavior:none}
+html.lock-fixed body{overflow:hidden;overscroll-behavior:none} /* body overflow only with the phone lock: on desktop it would make <body> the sticky container and the top bar and sidebar jump away */
 .sheet{overscroll-behavior:contain}
 .sheet-body{overscroll-behavior:contain}
 
@@ -1160,3 +1161,6 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 /* desktop form pages (Suggest a correction, Report a problem): the send button ends the form and stays in reach */
 .corr-send-desk{position:sticky;bottom:16px;z-index:5;display:flex;max-width:640px;margin:16px 0 24px;padding:8px;border-radius:22px;background:var(--bar);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);box-shadow:var(--sh2)}
 .corr-send-desk .btn{flex:1;height:40px}
+/* sheet page lock: desktop keeps every column in place (overflow only), phones pin the body and keep the sticky top chrome on screen */
+html{scrollbar-gutter:stable}
+html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}

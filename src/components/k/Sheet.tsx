@@ -15,21 +15,32 @@ type El = HTMLDivElement & { _pos?: number; _anim?: Anim };
 // progress 0..1 of the bottom-most sheet drives the page recede + scrim
 function depth(prog: number, animated: boolean) {
   const app = document.getElementById('app'), sc = document.querySelector<HTMLElement>('.scrim');
-  if (app && !reduce()) {
-    if (prog > 0 && !app.dataset.origin) { app.style.transformOrigin = `50% ${scrollY + innerHeight / 2}px`; app.dataset.origin = '1'; }
+  // desktop (no touch): the page stays exactly where it was, only dimmed; the recede is a phone gesture
+  if (app && !reduce() && touchLock()) {
+    if (prog > 0 && !app.dataset.origin) { app.style.transformOrigin = `50% ${(lockedAt ?? scrollY) + innerHeight / 2}px`; app.dataset.origin = '1'; }
     const to = prog > 0 ? `translateY(${(prog * 6).toFixed(2)}px) scale(${(1 - prog * 0.045).toFixed(4)})` : 'translateY(0px) scale(1)';
-    if (animated) animate(app, { transform: to }, spring(0, 0.42)); else app.style.transform = to;
+    // start from the same function list as the target: from `none` the animation library interpolates a matrix and the page dips to ~10% mid-way
+    if (animated) { if (!app.style.transform) app.style.transform = 'translateY(0px) scale(1)'; animate(app, { transform: to }, spring(0, 0.42)); } else app.style.transform = to;
     if (prog === 0 && !animated) { app.style.transform = ''; delete app.dataset.origin; }
   }
   if (sc) { sc.style.opacity = String(prog); const b = reduce() ? 'none' : `blur(${(prog * 3).toFixed(2)}px)`; sc.style.backdropFilter = b; sc.style.setProperty('-webkit-backdrop-filter', b); }
 }
 
-// the page behind a sheet is pinned where it was (proto lockPage): no scroll-through, same place after
+// the page behind a sheet is pinned where it was (proto lockPage): no scroll-through, same place after.
+// Touch phones (iOS Safari ignores overflow:hidden): body position:fixed at -scrollY, and the sticky top chrome is moved
+// down by the same amount so it stays on screen. Desktop: overflow:hidden on <html> with a stable scrollbar gutter, nothing
+// repositioned, so sticky and fixed columns (top bar, sidebar, side rail) stay exactly where they were.
 let lockedAt: number | null = null;
+const touchLock = () => typeof window !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 function lockPage(on: boolean) {
   const b = document.body, h = document.documentElement;
-  if (on && lockedAt === null) { lockedAt = scrollY; h.classList.add('sheet-open'); Object.assign(b.style, { position: 'fixed', top: -lockedAt + 'px', left: '0', right: '0', width: '100%' }); }
-  else if (!on && lockedAt !== null) { const y = lockedAt; lockedAt = null; h.classList.remove('sheet-open'); Object.assign(b.style, { position: '', top: '', left: '', right: '', width: '' }); scrollTo({ top: y, behavior: 'instant' }); }
+  if (on && lockedAt === null) {
+    lockedAt = scrollY; h.classList.add('sheet-open');
+    if (touchLock()) { h.classList.add('lock-fixed'); h.style.setProperty('--lock-y', lockedAt + 'px'); Object.assign(b.style, { position: 'fixed', top: -lockedAt + 'px', left: '0', right: '0', width: '100%' }); }
+  } else if (!on && lockedAt !== null) {
+    const y = lockedAt, fixed = h.classList.contains('lock-fixed'); lockedAt = null; h.classList.remove('sheet-open', 'lock-fixed'); h.style.removeProperty('--lock-y');
+    if (fixed) { Object.assign(b.style, { position: '', top: '', left: '', right: '', width: '' }); scrollTo({ top: y, behavior: 'instant' }); }
+  }
 }
 
 function setPos(sh: El, y: number) { sh._pos = y; sh.style.transform = `translateY(${y}px)`; }
@@ -74,7 +85,7 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
       const app = document.getElementById('app'); if (app) app.inert = false;
       const sc = document.querySelector<HTMLElement>('.scrim');
       if (sc) { sc.style.transition = 'opacity .3s, backdrop-filter .3s'; sc.style.opacity = '0'; sc.style.backdropFilter = 'blur(0px)'; setTimeout(() => sc.remove(), 320); }
-      if (app && !reduce()) animate(app, { transform: 'translateY(0px) scale(1)' }, spring(0, 0.4)).finished.then(() => { app.style.transform = ''; delete app.dataset.origin; });
+      if (app && app.dataset.origin && !reduce()) animate(app, { transform: 'translateY(0px) scale(1)' }, spring(0, 0.4)).finished.then(() => { app.style.transform = ''; delete app.dataset.origin; });
       else if (app) app.style.transform = '';
     }
     return () => clearTimeout(t);
