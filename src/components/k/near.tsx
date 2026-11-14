@@ -91,11 +91,13 @@ export function NearAsk() {
   const { c } = useK();
   const [asking, setAsking] = useState(false);
   const why = useAskFail();
-  return <>
-    <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearAskBody}</p>
-    <div className="page-pad"><button className="btn secondary press" data-act="near-ask" disabled={asking} onClick={() => { haptic(); setAsking(true); void askPosition().finally(() => setAsking(false)); }}><L n="navigation" />{c.home.nearAsk}</button>
-      {why ? <p className="t-small" role="alert" style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'flex-start' }}><L n="map-pin-off" />{c.states.near[why]}</p> : null}</div>
-  </>;
+  return <div className="near-ask">
+    <span className="near-ask-ic"><L n="map-pin" /></span>
+    <h2 className="near-ask-title">{c.home.nearYou}</h2>
+    <p className="near-ask-body">{c.home.nearAskBody}</p>
+    <button className="btn primary press" data-act="near-ask" disabled={asking} onClick={() => { haptic(); setAsking(true); void askPosition().finally(() => setAsking(false)); }}><L n="navigation" />{c.home.nearAsk}</button>
+    {why ? <p className="t-small near-ask-why" role="alert"><L n="map-pin-off" />{c.states.near[why]}</p> : null}
+  </div>;
 }
 
 /** "N km away" on a card, only when the card came with a real distance. */

@@ -174,7 +174,7 @@ function NearYou({ list, desk }: { list: KPlace[] | null; desk?: boolean }) {
   const head = desk ? <h2 className="t-head">{c.home.nearYou}</h2> : <h2 className="t-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}><Ic n="near" />{c.home.nearYou}</h2>;
   const cls = desk ? 'rail near' : 'near phone-only';
   const { q } = useNearQuery(); // the same query as `list`: its loading, failed and empty states
-  if (!pos) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><NearAsk /></section>;
+  if (!pos) return <section className={desk ? 'rail' : 'phone-only'} aria-label={c.home.nearYou}><NearAsk /></section>;
   if (q.isPending) return <section className={cls} aria-label={c.home.nearYou} aria-busy="true"><div className="rail-head">{head}</div><div className="rail-row">{[0, 1, 2, 3].map((i) => <TileSkel key={i} />)}</div></section>;
   if (q.isError) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} /></section>;
   if (!list?.length) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><StateBlock compact icon="map-pin-off" title={c.states.near.empty} body={c.states.near.emptyBody} action={<Link className="btn secondary press" href={`${langPrefix(lang)}/explorer/`}>{c.states.near.seeEgypt}</Link>} /></section>;
