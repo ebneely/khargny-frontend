@@ -101,9 +101,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const cities = (await getJson<City>("/v1/cities")).filter(isPublic);
   if (cities.some((city) => !city?.id || !city.slug)) throw new Error('Sitemap upstream city is incomplete');
-  const cityPages: MetadataRoute.Sitemap = cities.flatMap((c) =>
-    localized(`/explorer/${encodeURIComponent(c.slug)}`, { lastModified: lastModified(c.updatedAt), changeFrequency: "weekly", priority: 0.7 }),
-  );
+  // city pages are gone in the redesign (/explorer/<city>/ 308s to Explore with the city set), so only places are listed
 
   // place URLs need the city slug — fetch places per city (bounded by the city count).
   const placePages: MetadataRoute.Sitemap = [];
@@ -131,5 +129,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch {}
 
-  return [...new Map([...staticPages, ...cityPages, ...placePages, ...tripPages].map((entry) => [entry.url, entry])).values()];
+  return [...new Map([...staticPages, ...placePages, ...tripPages].map((entry) => [entry.url, entry])).values()];
 }

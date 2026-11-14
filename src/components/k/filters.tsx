@@ -45,7 +45,7 @@ export function useLocIds() {
 export function useCatIds(f: Pick<F, 'intent' | 'cat'>) {
   const { data: categories = [] } = useCategories();
   const intent = INTENTS.find((x) => x.key === f.intent);
-  return categories.filter((c) => (f.cat ? (c.nameEn || c.nameAr) === f.cat || c.slug === f.cat : intent ? (intent.cats as readonly string[]).includes(c.nameEn || '') : false));
+  return categories.filter((c) => (f.cat ? (c.nameEn || c.nameAr) === f.cat || c.slug === f.cat || c.id === f.cat : intent ? (intent.cats as readonly string[]).includes(c.nameEn || '') : false));
 }
 
 /** Places per category: totals (GET /v1/places meta.total) or, for a When, GET /v1/places/counts. */

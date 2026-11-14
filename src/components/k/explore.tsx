@@ -10,6 +10,7 @@ import { matchesWhen } from '@5argny/core/rules';
 import { apiRequest } from '@/lib/api/client';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
+import { regionLabel } from '@/lib/egypt-regions';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { useSearchPlaces } from '@/lib/api/hooks/use-search';
 import { Ic } from './icons';
@@ -48,7 +49,16 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean) {
 }
 
 export function ExploreView() {
-  const { c, lang, now, loc, content } = useK();
+  const { c, lang, now, loc, content, setLoc } = useK();
+  // an old city page (/explorer/<city>/?area=) lands here as ?city=&area=: set the location bar once, then drop them from the address
+  const { data: allCities = [] } = useCities();
+  const seed = useSearchParams();
+  useEffect(() => {
+    const slug = seed.get('city'); if (!slug || !allCities.length) return;
+    const city = allCities.find((x) => x.slug === slug); const key = seed.get('area');
+    if (city) setLoc({ city: city.slug, area: key ? regionLabel(key, lang, city.nameEn || city.name) || key : null });
+    const u = new URL(location.href); u.searchParams.delete('city'); u.searchParams.delete('area'); history.replaceState(history.state, '', u.pathname + u.search);
+  }, [allCities.length]); // eslint-disable-line react-hooks/exhaustive-deps
   // a sheet over Explore changes the address; the page underneath keeps the query it was showing (no refetch, no reset)
   const live = useSearchParams();
   const kept = useRef(live);
@@ -69,7 +79,7 @@ export function ExploreView() {
   res = [...res].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a)); // paid places first inside a match, looking like any other
   const intent = INTENTS.find((x) => x.key === f.intent);
   const { data: categories = [] } = useCategories();
-  const catLabel = f.cat ? (categories.find((x) => (x.nameEn || x.nameAr) === f.cat || x.slug === f.cat)?.[lang === 'ar' ? 'nameAr' : 'nameEn'] || f.cat) : '';
+  const catLabel = f.cat ? (categories.find((x) => (x.nameEn || x.nameAr) === f.cat || x.slug === f.cat || x.id === f.cat)?.[lang === 'ar' ? 'nameAr' : 'nameEn'] || f.cat) : '';
   const head = badge ? <>{fill(c.explore.earned, { brand: '' }).trim()} <Brand /></> : catLabel || (intent ? c.intents[intent.key] : q ? `“${q}”` : c.explore.everything);
   const headText = badge ? fill(c.explore.earned, { brand: c.brand }) : String(head);
   const whenText = f.when ? c.explore.when[f.when] : '';

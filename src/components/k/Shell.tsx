@@ -34,7 +34,11 @@ function NavItems({ cur }: { cur: Tab }) {
 }
 
 /** placeName(): the area, else the city, else Egypt. */
-export function usePlaceName() { const { loc, c } = useK(); return loc.area || loc.city || c.location.egypt; }
+export function usePlaceName() {
+  const { loc, c, lang } = useK(); const { data: cities = [] } = useCities();
+  const city = loc.city ? cities.find((x) => x.slug === loc.city) : null; // loc.city is the slug; people read the name
+  return loc.area || (city ? (lang === 'ar' ? city.name : city.nameEn || city.name) : loc.city) || c.location.egypt;
+}
 /** The location bar as the API reads it: the city row and the area's catalog key (places.region). */
 export function useLocKeys() {
   const { loc, lang } = useK();

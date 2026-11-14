@@ -30,6 +30,28 @@ function localeFromPath(pathname: string): Locale | null {
   return (LOCALES as string[]).includes(seg) ? (seg as Locale) : null;
 }
 
+
+/**
+ * Old (pre-redesign) addresses that still exist in search results, bookmarks, shares and the app: each lands on its
+ * redesign equivalent with one 308. Returns the new locale-less path + query, or null when the path is current.
+ *  /explorer/<city>/  -> /explorer/?city=<city> (area, q and category kept as the new Explore reads them)
+ *  /plan/             -> /saved/
+ *  /trips/listers/<id>/ -> /host/<id>/ (the host profile); the rest of /trips stays: bookings need sign-in (spec 003)
+ */
+export function redesignRoute(path: string, search: string): string | null {
+  const q = new URLSearchParams(search);
+  const city = /^\/explorer\/([^/]+)\/?$/.exec(path);
+  if (city) {
+    const next = new URLSearchParams({ city: decodeURIComponent(city[1]) });
+    for (const [from, to] of [['area', 'area'], ['q', 'q'], ['category', 'cat'], ['time', 'time']] as const) { const v = q.get(from); if (v) next.set(to, v); }
+    return `/explorer/?${next}`;
+  }
+  if (/^\/plan\/?$/.test(path)) return `/saved/${search}`;
+  const lister = /^\/trips\/listers\/([^/]+)\/?$/.exec(path);
+  if (lister) return `/host/${lister[1]}/${search}`;
+  return null;
+}
+
 export function proxy(req: NextRequest) {
   const forwarded = forwardBrowserApi(req);
   if (forwarded) return forwarded;
@@ -41,6 +63,14 @@ export function proxy(req: NextRequest) {
   if (urlLocale) {
     // Strip the prefix for the router; "/en" alone means the home page.
     const rest = pathname.slice(urlLocale.length + 1) || "/";
+    const moved = redesignRoute(rest, search);
+    if (moved) {
+      const to = req.nextUrl.clone(); const [p, qs = ''] = moved.split('?');
+      to.pathname = `/${urlLocale}${p}`; to.search = qs ? `?${qs}` : '';
+      const out = NextResponse.redirect(to, 308);
+      out.cookies.set(COOKIE, urlLocale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+      return out;
+    }
     const url = req.nextUrl.clone();
     url.pathname = rest;
 
@@ -64,9 +94,11 @@ export function proxy(req: NextRequest) {
   const cookie = req.cookies.get(COOKIE)?.value;
   const locale: Locale = (LOCALES as string[]).includes(cookie ?? "") ? (cookie as Locale) : DEFAULT_LOCALE;
   const url = req.nextUrl.clone();
-  url.pathname = `/${locale}${pathname === "/" ? "" : pathname}`;
-  url.search = search;
-  return NextResponse.redirect(url);
+  const moved = redesignRoute(pathname, search);
+  const [movedPath, movedQs = ''] = moved ? moved.split('?') : [pathname, search.replace(/^\?/, '')];
+  url.pathname = `/${locale}${movedPath === "/" ? "" : movedPath}`;
+  url.search = movedQs ? `?${movedQs}` : '';
+  return NextResponse.redirect(url, moved ? 308 : undefined);
 }
 
 export const config = {
