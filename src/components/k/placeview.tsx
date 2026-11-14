@@ -36,10 +36,12 @@ export function useKPlaceQ(slug: string) {
 
 /** The place's skeleton: its photo, name, category and area, opening pill and actions, in the place's own markup. */
 export function PlaceSkel() {
+  const { c } = useK();
+  // the gesture hint keeps its room (unseen), so the name and the bubbles wrap where the place's own do
   return <div className="skel" aria-hidden="true">
     <div className="place-media"><Sk style={{ position: 'absolute', inset: 0, borderRadius: 0 }} /></div>
-    <div className="place-head"><h1 className="t-display"><span className="sk">Place name</span></h1>
-      <p style={{ marginTop: 6 }}><span className="meta"><span className="cat-bubble sk">Category</span><span className="cat-bubble sk">Area name</span></span></p>
+    <div className="place-head"><span className="gesture-hint" style={{ visibility: 'hidden' }}><span>{c.place.loveHint}</span><span>{c.place.shareHint}</span></span><h1 className="t-display"><span className="sk">Place name here</span></h1>
+      <p style={{ marginTop: 6 }}><span className="meta"><span className="cat-bubble sk">Hotels & Resorts</span><span className="cat-bubble sk">Area name here</span></span></p>
       <div className="open-tl"><span className="live-pill sk">Open now</span></div></div>
     <div className="place-tools">{(['heart', 'saved', 'share'] as const).map((n) => <span key={n} className="icon-btn act-btn sk"><Ic n={n} /><span className="n">00</span></span>)}<span className="act-views sk"><Ic n="eye" /><span className="n">0.0k</span></span><span className="grow" /><span className="icon-btn sk" /></div>
   </div>;
@@ -105,7 +107,7 @@ function OverviewSlot({ id }: { id: string }) {
   const reveal = useReveal(q.isPending);
   // loading: On 5argny itself with zeros, drawn as its skeleton (web.css .ov-skel), so the page below never jumps
   if (q.isPending) return <div className="skel ov-skel" aria-hidden="true"><Overview s={HOLD} id={id} /></div>;
-  if (q.isError) return <section className="group" style={{ padding: 0 }}><Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} /></section>;
+  if (q.isError) return <Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} />;
   return q.data ? <div className={reveal}><Overview s={q.data} id={id} /></div> : null;
 }
 

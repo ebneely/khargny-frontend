@@ -1238,9 +1238,11 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
 :root{--sk-delay:150ms;--sk-fade:200ms;--sk-hi:rgba(255,253,249,.72)}
 :root[data-theme=dark]{--sk-hi:rgba(255,255,255,.06)}
 /* On 5argny loading is On 5argny itself with zeros: its lines and its plot take the skeleton look (placeview OverviewSlot) */
-.sk,.ov-skel :is(.group-title,p > b,p > .t-small,.hype-say,.hype-plot,.hype-help,.row .grow,.row > b,.row > .t-small,.row.t-micro > span:not(.grow)){border-radius:6px;color:transparent!important;text-shadow:none!important;-webkit-box-decoration-break:clone;box-decoration-break:clone;background-color:var(--fill);
-  background-image:linear-gradient(100deg,transparent 38%,var(--sk-hi) 50%,transparent 62%);background-size:100vw 100%;background-repeat:no-repeat;background-attachment:fixed;
+.sk,.ov-skel :is(.group-title,p > b,p > .t-small,.hype-say,.hype-plot,.hype-help,.row .grow,.row > b,.row > .t-small,.row.t-micro > span:not(.grow)){color:transparent!important;text-shadow:none!important;-webkit-box-decoration-break:clone;box-decoration-break:clone;background-color:var(--fill)!important;box-shadow:none!important;
+  background-image:linear-gradient(100deg,transparent 38%,var(--sk-hi) 50%,transparent 62%)!important;background-size:100vw 100%;background-repeat:no-repeat;background-attachment:fixed;
   animation:skIn var(--sk-fade) var(--sk-delay) both,skSweep 1.4s linear infinite}
+:where(.sk,.ov-skel *){border-radius:6px}
+.sk *,.ov-skel *{color:transparent!important}
 i.sk{display:block}
 .sk svg,.sk img,.ov-skel svg,.ov-skel .hype-dot,.ov-skel .hype-tag{visibility:hidden}
 .ov-skel :is(.group-title,.hype-say,.hype-help){width:fit-content}
@@ -1256,10 +1258,11 @@ i.sk{display:block}
 .empty.compact{padding:16px 14px;gap:6px}
 .empty.compact > .lucide,.empty.compact > svg{width:20px;height:20px}
 .more-fail{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 16px 4px;font-size:12.5px;color:var(--ink2)}
-/* offline: one quiet pill under the top bar; it goes when the connection is back (the queries refetch on their own) */
-.offline-bar{position:fixed;z-index:70;left:50%;top:calc(var(--back-top,56px) + 8px);display:inline-flex;align-items:center;gap:7px;max-width:calc(100vw - 32px);padding:7px 14px;border-radius:999px;
+/* offline: one quiet pill above the tab bar (bottom of the window on desktop); it goes when the connection is back (the queries refetch on their own) */
+.offline-bar{position:fixed;z-index:70;left:50%;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 74px);width:max-content;display:inline-flex;align-items:center;gap:7px;max-width:calc(100vw - 32px);padding:7px 14px;border-radius:999px;
   background:var(--card);box-shadow:var(--sh1);font-size:12.5px;font-weight:650;color:var(--ink2);transform:translateX(-50%);animation:skIn .25s ease-out both}
 .offline-bar .lucide{width:15px;height:15px;color:var(--ink3)}
+@media (min-width:1024px){ .offline-bar{bottom:24px} }
 /* a place name in English inside Arabic (dir=auto) runs and truncates left to right, but keeps the page's right edge */
 [dir=rtl] [dir=auto]{text-align:right}
 /* desktop place hero: the content column is 12 px wider than the prototype's (steady columns), so 16:10 alone made it 8 px taller */
