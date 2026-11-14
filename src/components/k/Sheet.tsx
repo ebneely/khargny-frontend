@@ -5,33 +5,43 @@ import { useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from '
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import { animate } from 'motion';
-import { useK, useKS, spring, reduce, type SheetEntry } from './KProvider';
+import { useK, useKS, spring, springCurve, reduce, type SheetEntry } from './KProvider';
 import { IconBtn } from './bits';
 import { renderSheet } from './sheets';
 
 type Anim = { stop: () => void } | null;
 type El = HTMLDivElement & { _pos?: number; _anim?: Anim; _wa?: Animation | null };
 
-// a lightly damped spring (bounce 0.1, response 0.42 s) sampled once into a CSS linear() easing: present and dismiss run on the
-// compositor through the Web Animations API, so the sheet moves at 60 fps even while the page under it is busy
-const SHEET = (() => {
-  const zeta = 0.9, w = (2 * Math.PI) / 0.42, wd = w * Math.sqrt(1 - zeta * zeta), end = 7 / (zeta * w), pts: string[] = [];
-  for (let i = 0; i <= 48; i++) { const t = (end * i) / 48; pts.push((1 - Math.exp(-zeta * w * t) * (Math.cos(wd * t) + ((zeta * w) / wd) * Math.sin(wd * t))).toFixed(4)); }
-  return { easing: `linear(${pts.join(', ')})`, ms: Math.round(end * 1000) };
-})();
+// Present and dismiss are the sheet's spring (bounce 0.1, 0.42 s) played as plain keyframes through the Web Animations API:
+// on the GPU in every engine, so the sheet moves at 60 fps even while the page under it is busy.
+const SHEET = () => springCurve(0.1, 0.42);
+
+// The page behind the sheet. Every move starts from where the page is on screen right now, read from its computed matrix
+// and written out in the target's own form. (Handing the library only the target made it read the start as a matrix the
+// FIRST time and mix it with a translate+scale list: the page collapsed to a thumbnail for a few frames on the first open
+// of every visit, and ran right from the second on, when the library remembered its own last value.)
+let appAnim: Animation | null = null;
+function recede(app: HTMLElement, y: number, s: number, duration: number, done?: () => void) {
+  const m = new DOMMatrix(getComputedStyle(app).transform), y0 = m.m42, s0 = m.m11;
+  appAnim?.cancel(); app.style.transform = `translateY(${y}px) scale(${s})`;
+  const c = springCurve(0, duration);
+  const a = (appAnim = app.animate(c.pts.map((p) => ({ transform: `translateY(${(y0 + (y - y0) * p).toFixed(3)}px) scale(${(s0 + (s - s0) * p).toFixed(5)})` })), { duration: c.ms }));
+  if (done) a.finished.then(() => { if (appAnim === a) done(); }, () => {});
+}
+const settle = (app: HTMLElement) => { appAnim?.cancel(); appAnim = null; app.style.transform = ''; delete app.dataset.origin; };
 
 // progress 0..1 of the bottom-most sheet drives the page recede + scrim
 function depth(prog: number, animated: boolean) {
   const app = document.getElementById('app'), sc = document.querySelector<HTMLElement>('.scrim');
   // desktop (no touch): the page stays exactly where it was, only dimmed; the recede is a phone gesture
   if (app && !reduce() && touchLock()) {
-    if (prog > 0 && !app.dataset.origin) { app.style.transformOrigin = `50% ${(lockedAt ?? scrollY) + innerHeight / 2}px`; app.style.willChange = 'transform'; app.dataset.origin = '1'; } // its own layer before it moves: no first-frame raster
-    const to = prog > 0 ? `translateY(${(prog * 6).toFixed(2)}px) scale(${(1 - prog * 0.045).toFixed(4)})` : 'translateY(0px) scale(1)';
-    // start from the same function list as the target: from `none` the animation library interpolates a matrix and the page dips to ~10% mid-way
-    if (animated) { if (!app.style.transform) app.style.transform = 'translateY(0px) scale(1)'; animate(app, { transform: to }, spring(0, 0.42)); } else app.style.transform = to;
-    if (prog === 0 && !animated) { app.style.transform = ''; app.style.willChange = ''; delete app.dataset.origin; }
+    if (prog > 0 && !app.dataset.origin) { app.style.transformOrigin = `50% ${(lockedAt ?? scrollY) + innerHeight / 2}px`; app.dataset.origin = '1'; }
+    const y = prog * 6, sc1 = 1 - prog * 0.045;
+    if (animated) recede(app, y, sc1, 0.42);
+    else if (prog === 0) settle(app);
+    else { appAnim?.cancel(); appAnim = null; app.style.transform = `translateY(${y.toFixed(2)}px) scale(${sc1.toFixed(4)})`; }
   }
-  // the scrim's blur is set once when it is made (a constant 3px); only its opacity follows the sheet, so the screen is never re-blurred at a new radius each frame
+  // the scrim's blur is constant (3px, web.css); only its opacity follows the sheet, so the screen is never re-blurred at a new radius each frame
   if (sc) sc.style.opacity = String(prog);
 }
 
@@ -75,7 +85,8 @@ function springTo(sh: El, y: number, velocity = 0) {
   halt(sh);
   if (Math.abs(velocity) < 50) { // no fling to carry: the compositor runs it
     const from = sh._pos || 0; setPos(sh, y); if (Math.abs(from - y) < 0.5) return;
-    sh._wa = sh.animate([{ transform: `translateY(${from}px)` }, { transform: `translateY(${y}px)` }], { duration: SHEET.ms, easing: SHEET.easing });
+    const c = SHEET();
+    sh._wa = sh.animate(c.pts.map((p) => ({ transform: `translateY(${(from + (y - from) * p).toFixed(2)}px)` })), { duration: c.ms });
     return;
   }
   // a release with momentum: hand the finger's velocity to the spring (main thread, gesture-driven)
@@ -101,7 +112,7 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
       requestAnimationFrame(() => depth(1, true));
     }
     // after it arrives: inert re-styles the whole page and focus forces a layout pass; the scrim already takes every tap
-    const f = setTimeout(() => { const app = document.getElementById('app'); if (app && sh.isConnected) app.inert = true; sh.focus({ preventScroll: true }); }, SHEET.ms);
+    const f = setTimeout(() => { const app = document.getElementById('app'); if (app && sh.isConnected) app.inert = true; sh.focus({ preventScroll: true }); }, SHEET().ms);
     return () => clearTimeout(f);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -111,7 +122,8 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
   const wasTop = useRef(true);
   useEffect(() => {
     const sh = ref.current!; if (wasTop.current === top || entry.closing) { wasTop.current = top; return; } wasTop.current = top;
-    animate(sh, { transform: top ? 'translateY(0px) scale(1)' : 'translateY(-8px) scale(.965)' }, spring(0, 0.4));
+    const back = 'translateY(-8px) scale(.965)', front = 'translateY(0px) scale(1)'; // both ends named: the library must not guess the start
+    animate(sh, { transform: top ? [back, front] : [front, back] }, spring(0, 0.4));
   }, [top, entry.closing]);
   // dismiss
   useEffect(() => {
@@ -124,8 +136,8 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
       // the page takes input again when the scrim is gone (it blocks taps until then), not in the middle of the exit motion
       if (sc) { sc.style.transition = 'opacity .3s'; sc.style.opacity = '0'; }
       setTimeout(() => { sc?.remove(); if (app && !document.documentElement.classList.contains('sheet-open')) app.inert = false; }, 320);
-      if (app && app.dataset.origin && !reduce()) animate(app, { transform: 'translateY(0px) scale(1)' }, spring(0, 0.4)).finished.then(() => { app.style.transform = ''; app.style.willChange = ''; delete app.dataset.origin; });
-      else if (app) { app.style.transform = ''; app.style.willChange = ''; }
+      if (app && app.dataset.origin && !reduce()) recede(app, 0, 1, 0.4, () => settle(app));
+      else if (app) settle(app);
     }
     return () => clearTimeout(t);
   }, [entry.closing, entry.id, first, removeSheet]);

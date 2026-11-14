@@ -4,7 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { usePathname, useRouter } from 'next/navigation';
-import { animate } from 'motion';
+import { animate, spring as springGen } from 'motion';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { copy } from '@5argny/core/copy';
 import { nowIn, type Lang, type Now } from './rules';
@@ -41,7 +41,27 @@ const KStore = createContext<StoreApi<KState> | null>(null);
 export function useKS<T>(pick: (s: KState) => T): T { const st = useContext(KStore); if (!st) throw new Error('useKS outside KProvider'); return useStore(st, pick); }
 
 export const reduce = () => typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-export const spring = (bounce = 0, duration = 0.38) => (reduce() ? { duration: 0.15 } : { type: 'spring' as const, bounce, duration });
+// WebKit (Safari and every browser on iOS) runs an animation whose easing is linear(...) in software, on the main thread,
+// capped at 30 fps in Low Power Mode (WebKit bugs 281429, 312407). The animation library writes its springs as linear(), so
+// there a spring without bounce is handed over as its fitted cubic-bezier (same duration, at most 2.6% off the curve),
+// which the GPU runs. Springs with a visible bounce keep the exact curve (small one-off pops).
+const softLinear = () => typeof navigator !== 'undefined' && /AppleWebKit/.test(navigator.userAgent) && !/Chrome\/|Chromium|Edg\/|Android/.test(navigator.userAgent);
+const FIT: [number, number, number, number][] = [[0.271, 0.488, 0.098, 1.062], [0.27, 0.409, 0.09, 1.12], [0.303, 0.541, 0.094, 1.105]]; // bounce 0, 0.1, 0.12
+export const spring = (bounce = 0, duration = 0.38) => (reduce() ? { duration: 0.15 }
+  : softLinear() && bounce <= 0.12 ? { duration, ease: FIT[bounce < 0.05 ? 0 : bounce < 0.11 ? 1 : 2] }
+  : { type: 'spring' as const, bounce, duration });
+// The same spring, sampled every 10 ms into progress points (0 to 1, overshoot included). Played as plain keyframes with
+// straight segments between them, it runs on the GPU in every engine: the form for the big movers (sheet, page behind it).
+const curves = new Map<string, { pts: number[]; ms: number }>();
+export function springCurve(bounce = 0, duration = 0.38) {
+  const key = bounce + ':' + duration; let c = curves.get(key);
+  if (!c) {
+    const g = springGen({ keyframes: [0, 1], bounce, duration: duration * 1000 }), pts: number[] = [];
+    for (let t = 0; t <= 3000; t += 10) { const st = g.next(t); pts.push(st.value); if (st.done) break; }
+    pts[pts.length - 1] = 1; c = { pts, ms: (pts.length - 1) * 10 }; curves.set(key, c);
+  }
+  return c;
+}
 export const desk = () => typeof window !== 'undefined' && matchMedia('(min-width:1024px)').matches;
 export const haptic = () => { try { navigator.vibrate?.(8); } catch {} };
 
@@ -64,9 +84,9 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); document.body.append(el); }
     // each sentence stays whole: a toast too long for a phone breaks between its sentences, never inside one
     el.replaceChildren(...msg.split(/(?<=\.)\s+/).map((part, i) => { const sp = document.createElement('span'); sp.textContent = (i ? ' ' : '') + part; sp.style.display = 'inline-block'; return sp; }));
-    animate(el, { opacity: [0, 1], transform: ['translate(-50%,12px)', 'translate(-50%,0)'] }, spring(0, 0.3));
+    animate(el, { opacity: [0, 1], transform: ['translate(-50%,12px)', 'translate(-50%,0px)'] }, spring(0, 0.3));
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => el && animate(el, { opacity: 0, transform: 'translate(-50%,12px)' }, spring(0, 0.3)), 1700);
+    toastTimer.current = setTimeout(() => el && animate(el, { opacity: [1, 0], transform: ['translate(-50%,0px)', 'translate(-50%,12px)'] }, spring(0, 0.3)), 1700);
   }, []);
 
   const openSheet = useCallback((label: string, body: ReactNode, foot?: ReactNode) => {

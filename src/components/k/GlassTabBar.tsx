@@ -5,8 +5,8 @@
 // - the glass is a static layer. On Chromium it bends the backdrop through an SVG displacement filter whose map is drawn
 //   once per bar size (never per frame); Safari and Firefox get a plain frosted backdrop, because they accept the url()
 //   but render nothing.
-// - the selection is a separate pill moved only with transform. Taps run a precomputed critically damped spring as a
-//   CSS linear() easing on the Web Animations API, so it runs off the main thread and can be interrupted from where it is.
+// - the selection is a separate pill moved only with transform. Taps run a precomputed critically damped spring as plain
+//   keyframes on the Web Animations API, so it runs off the main thread and can be interrupted from where it is.
 // - tab positions are measured once and on resize, never inside a frame. Dragging moves the pill 1:1 with the finger and
 //   flings it to the tab its momentum projects (velocity hand-off), then opens that tab.
 // - the bar re-renders only when the selected tab or the language changes.
@@ -16,13 +16,15 @@ import { Ic } from './icons';
 
 type Item = { key: string; href: string; label: string; icon: Parameters<typeof Ic>[0]['n'] };
 
-// critically damped spring, response 0.38 s (Apple's default feel), sampled into a linear() easing once
+// critically damped spring, response 0.38 s (Apple's default feel), sampled once. Played as plain keyframes, not as a
+// linear() easing: WebKit runs linear() in software (30 fps in Low Power Mode), keyframes run on the GPU everywhere
 const RESPONSE = 0.38;
 const SPRING = (() => {
   const w = (2 * Math.PI) / RESPONSE, end = 9.2 / w; // settles to within 0.1 %
-  const pts: string[] = [];
-  for (let i = 0; i <= 40; i++) { const t = (end * i) / 40; pts.push((1 - (1 + w * t) * Math.exp(-w * t)).toFixed(4)); }
-  return { easing: `linear(${pts.join(', ')})`, ms: Math.round(end * 1000) };
+  const pts: number[] = [];
+  for (let i = 0; i <= 40; i++) { const t = (end * i) / 40; pts.push(1 - (1 + w * t) * Math.exp(-w * t)); }
+  pts[pts.length - 1] = 1;
+  return { pts, ms: Math.round(end * 1000) };
 })();
 
 const reduceMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -71,7 +73,7 @@ function Bar({ items, current, label, dir }: { items: Item[]; current: string; l
     const from = anim.current?.playState === 'running' ? new DOMMatrix(getComputedStyle(p).transform).m41 : at.current;
     anim.current?.cancel(); anim.current = null; place(slot.x);
     if (reduceMotion() || Math.abs(from - slot.x) < 1) return;
-    anim.current = p.animate([{ transform: `translate3d(${from}px,0,0)` }, { transform: `translate3d(${slot.x}px,0,0)` }], { duration: SPRING.ms, easing: SPRING.easing });
+    anim.current = p.animate(SPRING.pts.map((k) => ({ transform: `translate3d(${(from + (slot.x - from) * k).toFixed(2)}px,0,0)` })), { duration: SPRING.ms });
   }, [place]);
 
   // measure the tabs once, and again only when the bar's size changes

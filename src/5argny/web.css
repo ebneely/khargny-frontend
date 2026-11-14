@@ -1399,3 +1399,10 @@ html.sheet-abs .scrim{position:absolute;inset:auto 0 auto 0}
 #glass-tabs{--lg-foreground:var(--ink);--lg-muted:var(--ink2);--lg-fill:var(--accent);--lg-tab-selected:var(--accent);--lg-glass:rgba(251,246,238,.62);--lg-glass-active:rgba(251,246,238,.85);--lg-edge:rgba(36,28,22,.08);--lg-drop:rgba(36,28,22,.08);--lg-selection:rgba(217,98,42,.15);--lg-lens:rgba(217,98,42,.06);--lg-lens-drop:rgba(36,28,22,.12);--lg-ring:var(--accent)}
 [data-theme=dark] #glass-tabs{--lg-glass:rgba(30,24,20,.62);--lg-glass-active:rgba(46,38,32,.7);--lg-edge:rgba(255,255,255,.08);--lg-drop:transparent;--lg-selection:rgba(232,116,58,.22);--lg-lens:rgba(232,116,58,.08);--lg-lens-drop:transparent}
 body.form-page #glass-tabs{display:none!important}
+
+/* layers exist before they move (owner 2026-11-14: "the first time is broken, the second is fine"). On touch phones the page
+   has its own GPU layer from the start, so the first sheet does not have to build and paint one while it animates. The
+   scrim's blur is constant; only its opacity animates. */
+@media (pointer:coarse){ #app{will-change:transform} }
+.scrim{-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+@media (prefers-reduced-motion: reduce),(prefers-reduced-transparency: reduce){ .scrim{-webkit-backdrop-filter:none;backdrop-filter:none} }
