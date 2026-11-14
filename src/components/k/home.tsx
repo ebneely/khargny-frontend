@@ -23,7 +23,7 @@ import { useK, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
 import { MarketCard } from './market';
 import { usePosition, askPosition, useNearPlaces } from './near';
-import { useCatTotals } from './filters';
+import { useCatTotals, useEarned } from './filters';
 
 export type HomeCollection = { id: string; slug: string; title: string; places: KPlace[] };
 export type HomeData = { pool: KPlace[]; trending: KPlace[]; collections: HomeCollection[]; categories: { id: string; en: string; label: string }[]; openByCategory: Record<string, number> | null };
@@ -96,7 +96,7 @@ export function HomeView({ data }: { data: HomeData }) {
       <Stories list={stories} />
       <TakeMe data={{ ...data, openByCategory: here.openByCategory }} totalByCategory={here.totalByCategory} coverByCategory={here.coverByCategory} pool={pool} />
       <NearYou list={near} />
-      <Earned pool={pool} />
+      <Earned />
       <TeamCollections list={data.collections} />
       <h1 className="t-display page-pad social-h" style={{ margin: '6px 0 10px' }}>{withBrand(c.home.social)}</h1>
       {social.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 && near?.length ? <div className="desk-only"><NearRail list={near.slice(0, 6)} /></div> : null}</Fragment>)}
@@ -135,9 +135,13 @@ function NearRail({ list }: { list: KPlace[] }) {
   return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.home.nearYou}</h2><Link className="btn plain press" href={`/${lang}/explorer/?sort=near`}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((p) => <Tile key={p.id} p={p} />)}</div></section>;
 }
 
-function Earned({ pool }: { pool: KPlace[] }) {
+// Earned on 5argny: the places holding a badge in the location bar (asked of the API: they are rarely in Home's pool)
+function Earned() {
   const { c, lang } = useK();
-  const list = pool.filter((p) => p.badges.length).sort((a, b) => b.badges.length - a.badges.length);
+  const raw = useEarned();
+  const { data: cities = [] } = useCities();
+  const { data: categories = [] } = useCategories();
+  const list = (raw ?? []).map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length && p.badges.length).sort((a, b) => b.badges.length - a.badges.length);
   if (!list.length) return null;
   return <section className="rail earned"><div className="rail-head"><h2 className="t-head"><L n="award" /> {withBrand(c.home.earned)}</h2><Link className="btn plain press" href={`/${lang}/explorer/?badge=1`}>{fill(c.home.earnedAll, { n: list.length })}</Link></div>
     <div className="rail-row">{list.map((p) => <Tile key={p.id} p={p} extra={<span className="earned-tags"><BadgeTags p={p} /></span>} />)}</div></section>;
