@@ -658,7 +658,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .place-side{display:grid;gap:12px}
 .place-side > .group{margin:0}
 
-.back-pin{position:sticky;top:var(--back-top,76px);height:0;z-index:6}
+.back-pin{position:sticky;top:var(--chrome-h,76px);height:0;z-index:6}
 .back-pin .page-back{position:relative;top:12px;inset-inline-start:12px;background:rgba(36,28,22,.42);color:#fff;-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);box-shadow:0 2px 10px rgba(36,28,22,.18)}
 .back-pin{transition:top .3s cubic-bezier(.2,.9,.3,1)}
 
@@ -1064,7 +1064,6 @@ html.holding,html.holding *{-webkit-user-select:none!important;user-select:none!
 
 /* a sheet owns the scroll: the page behind is locked, and a short sheet still swallows the gesture instead of passing it on */
 html.sheet-open{overflow:hidden;overscroll-behavior:none}
-html.lock-fixed body{overflow:hidden;overscroll-behavior:none} /* body overflow only with the phone lock: on desktop it would make <body> the sticky container and the top bar and sidebar jump away */
 .sheet{overscroll-behavior:contain}
 .sheet-body{overscroll-behavior:contain}
 
@@ -1187,7 +1186,7 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 @media (prefers-reduced-motion: reduce){ .live-pill.unknown .live::before,.live-pill.unknown .live::after{animation:none;display:none} }
 /* sheet page lock: desktop keeps every column in place (overflow only), phones pin the body and keep the sticky top chrome on screen */
 html{scrollbar-gutter:stable}
-html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
+
 /* the tab bar is glisse's Liquid Glass TabBar, tinted. The selection lens moves as a plain tinted pill: no backdrop filter or
    refraction on the moving piece, so sliding between tabs costs only a transform (owner 2026-11-14: it stuttered) */
 /* the brand mark in the top bar (owner 2026-11-14): the خرجني pin with the 5argny! arrow at its top right, like the app's splash.
@@ -1361,16 +1360,12 @@ h1 > .sk,h2 > .sk,h3 > .sk,p > .sk:not(.cat-bubble):not(.live-pill),.ov-skel p >
    raised fill instead, so they blend with what is under them instead of floating on a dark slab */
 .sheet .card{box-shadow:none;background:color-mix(in srgb,var(--ink) 4%,var(--card))}
 [data-theme=dark] .sheet .card{background:color-mix(in srgb,var(--ink) 6%,var(--card))}
-/* phones (owner 2026-11-14): the top chrome is fixed to the top of the screen, so it never moves with the page or rubber-
-   bands with it; the spacer keeps its height in the flow. The material reaches 1 px above the bar and fills the status bar
-   area, so no line of page shows above it while scrolling. */
-.chrome-spacer{display:none}
+/* phones (owner 2026-11-14, second call): the top chrome is sticky and does nothing on scroll. It sits 1 px above the
+   screen edge with 1 px of its own material over it, and the same material fills the status bar area, so no hairline of
+   page ever shows above it. */
 @media (max-width:1023px){
-  .chrome-top{position:fixed;top:0;left:0;right:0;padding-top:env(safe-area-inset-top)}
-  .chrome-top::before{content:"";display:block;position:absolute;left:0;right:0;top:-1px;height:calc(env(safe-area-inset-top) + 1px);background:var(--chrome-bg);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);pointer-events:none}
-  .chrome-top .topbar::before{top:-1px}
-  .chrome-spacer{display:block;height:var(--chrome-h,98px)}
-  html.lock-fixed .chrome-top{transform:none}
+  .chrome-top{top:-1px;padding-top:calc(env(safe-area-inset-top) + 1px)}
+  .chrome-top::before{content:"";display:block;position:absolute;left:0;right:0;top:-2px;height:calc(env(safe-area-inset-top) + 4px);background:var(--chrome-bg);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);pointer-events:none}
 }
 
 /* rendering cost without changing the look (owner 2026-11-14, measured: the idle home page spent most of its main thread
@@ -1378,3 +1373,29 @@ h1 > .sk,h2 > .sk,h3 > .sk,p > .sk:not(.cat-bubble):not(.live-pill),.ov-skel p >
    are off screen skip rendering (rings, photos, layout) until they come near the viewport. */
 .live-pill,.tm-count{contain:layout paint}
 .tile,.post,.rail-row > *{content-visibility:auto;contain-intrinsic-size:auto 280px}
+
+/* iOS 26 Safari draws no position:fixed content below its bottom bar (WebKit 300965, Apple forums 800798), so a fixed sheet
+   was cut off at the bar's edge on its way in and out. On touch phones a sheet is part of the page instead: placed in page
+   coordinates at the spot a fixed sheet would rest (measured when the sheet opens), with its surface
+   carried 140 px further down under the bar; the scrim covers the same area. Page content is drawn under the bar, so the
+   sheet now enters and leaves through the bottom of the screen. Desktop keeps fixed sheets. */
+html.sheet-abs .sheet,html.sheet-abs .scrim{--sheet-under:140px}
+html.sheet-abs .sheet{position:absolute;bottom:auto;translate:0 calc(var(--sheet-under) - 100%);padding-bottom:var(--sheet-under);max-height:calc(90dvh + var(--sheet-under))}
+html.sheet-abs .sheet.content{height:calc(90dvh + var(--sheet-under))}
+html.sheet-abs .sheet-foot{margin-bottom:calc(-1 * var(--sheet-under));padding-bottom:calc(max(12px,env(safe-area-inset-bottom)) + var(--sheet-under))}
+html.sheet-abs .scrim{position:absolute;inset:auto 0 auto 0}
+@media (min-width:1024px){ html.sheet-abs .sheet{max-height:calc(80vh + var(--sheet-under))} }
+
+/* the phone tab bar: iOS Safari gets glisse's bar back (owner 2026-11-14, the own bar ran at 10 fps there), in 5argny's
+   colours instead of glisse's blue; every other phone keeps the own GlassTabBar. html.ios is set by the head script. */
+#glass-tabs{display:none}
+@media (max-width:1023px){
+  html.ios .gbar{display:none}
+  html.ios #glass-tabs{position:fixed;z-index:45;left:0;right:0;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:center;padding:0 14px;overflow-x:clip;overflow-y:visible;pointer-events:none}
+}
+#glass-tabs > *{pointer-events:auto}
+#glass-tabs .gl-ic{display:inline-grid;place-items:center}
+#glass-tabs .gl-ic svg{width:22px;height:22px}
+#glass-tabs{--lg-foreground:var(--ink);--lg-muted:var(--ink2);--lg-fill:var(--accent);--lg-tab-selected:var(--accent);--lg-glass:rgba(251,246,238,.62);--lg-glass-active:rgba(251,246,238,.85);--lg-edge:rgba(36,28,22,.08);--lg-drop:rgba(36,28,22,.08);--lg-selection:rgba(217,98,42,.15);--lg-lens:rgba(217,98,42,.06);--lg-lens-drop:rgba(36,28,22,.12);--lg-ring:var(--accent)}
+[data-theme=dark] #glass-tabs{--lg-glass:rgba(30,24,20,.62);--lg-glass-active:rgba(46,38,32,.7);--lg-edge:rgba(255,255,255,.08);--lg-drop:transparent;--lg-selection:rgba(232,116,58,.22);--lg-lens:rgba(232,116,58,.08);--lg-lens-drop:transparent}
+body.form-page #glass-tabs{display:none!important}

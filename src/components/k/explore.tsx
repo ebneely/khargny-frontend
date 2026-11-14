@@ -23,7 +23,7 @@ import { trackSearchResults } from '@/lib/analytics/track';
 import { Shell, usePlaceName } from './Shell';
 import { readF, useCatIds, useLocIds, useCounts, usePriceBands, useListQuery, useEarned, totalKey, type When } from './filters';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
-import { useK, reduce } from './KProvider';
+import { useK, useKS, reduce } from './KProvider';
 import { usePosition, askPosition, askFail, nearParam } from './near';
 
 type Sort = 'popular' | 'near' | 'open';
@@ -87,7 +87,7 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
 }
 
 export function ExploreView() {
-  const { c, lang, now, loc, content, setLoc, go, toast } = useK();
+  const { c, lang, now, setLoc, go, toast } = useK(), loc = useKS((s) => s.loc), content = useKS((s) => s.content);
   // an old city page (/explorer/<city>/?area=) lands here as ?city=&area=: set the location bar once, then drop them from the address
   const { data: allCities = [] } = useCities();
   const seed = useSearchParams();

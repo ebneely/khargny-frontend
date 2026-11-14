@@ -21,7 +21,7 @@ import { Shell, putOpened } from './Shell';
 import { withBrand, HomeView, type HomeData } from './home';
 import { failKind } from '@5argny/core/rules';
 import { Failed, Sk, StateBlock, useReveal } from './states';
-import { useK, spring, desk } from './KProvider';
+import { useK, useKS, spring, desk } from './KProvider';
 import { PlaceMoreBody } from './collections';
 import { useOpenCorrection } from './settings';
 
@@ -200,7 +200,7 @@ function PlacePageBody({ p }: { p: KPlace }) {
 /** Phone, opened from inside the site: the content of the place sheet; a push inside it slides from the side it goes back to. */
 export function PlaceSheetBody({ slug }: { slug: string }) {
   const { p, q } = useKPlaceQ(slug);
-  const { content, lang } = useK();
+  const { lang } = useK(), content = useKS((s) => s.content);
   useSeen(p);
   const ref = useRef<HTMLDivElement>(null);
   const first = useRef(true);

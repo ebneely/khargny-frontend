@@ -18,7 +18,7 @@ import { catIcon } from './place';
 import { searchNormalize } from '@5argny/core/rules';
 import { Btn, Seg } from './bits';
 import { INTENTS } from './rules';
-import { useK, haptic, spring } from './KProvider';
+import { useK, useKS, haptic, spring } from './KProvider';
 import { catTotals, catTotalsKey } from './data';
 
 export type When = '' | 'now' | 'tonight' | 'weekend';
@@ -39,7 +39,7 @@ export function writeF(f: F, keep: URLSearchParams) {
 
 /** The location bar's city id and area key (the bar keeps the area's label). */
 export function useLocIds() {
-  const { loc, lang } = useK();
+  const { lang } = useK(), loc = useKS((s) => s.loc);
   const { data: cities = [] } = useCities();
   const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
   const area = city && loc.area ? (city.areaKeys ?? []).find((k) => k === loc.area || regionLabel(k, lang, city.nameEn || city.name) === loc.area) ?? null : null;

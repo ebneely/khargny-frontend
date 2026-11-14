@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { GlassTabBar } from './GlassTabBar';
 import { animate } from 'motion';
+import { TabBar as Glass } from 'glisse';
 import { fill } from '@5argny/core/copy';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
@@ -26,7 +27,7 @@ import { Failed, Sk } from './states';
 import { FootLinks } from './footlinks';
 import { hasLocBar, type Frame } from './frame';
 import { usePosition } from './near';
-import { useK, haptic, reduce, spring, type Tab } from './KProvider';
+import { useK, useKS, haptic, reduce, spring, type Tab } from './KProvider';
 import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -60,13 +61,13 @@ function BrandMark({ href, label }: { href: string; label: string }) {
 
 /** placeName(): the area, else the city, else Egypt. */
 export function usePlaceName() {
-  const { loc, c, lang } = useK(); const { data: cities = [] } = useCities();
+  const { c, lang } = useK(), loc = useKS((s) => s.loc); const { data: cities = [] } = useCities();
   const city = loc.city ? cities.find((x) => x.slug === loc.city) : null; // loc.city is the slug; people read the name
   return loc.area || (city ? (lang === 'ar' ? city.name : city.nameEn || city.name) : loc.city) || c.location.egypt;
 }
 /** The location bar as the API reads it: the city row and the area's catalog key (places.region). */
 export function useLocKeys() {
-  const { loc, lang } = useK();
+  const { lang } = useK(), loc = useKS((s) => s.loc);
   const { data: cities = [] } = useCities();
   const city = cities.find((x) => x.slug === loc.city) ?? null;
   const areaKey = city && loc.area ? (city.areaKeys ?? []).find((key) => (regionLabel(key, lang, city.nameEn || city.name) || key) === loc.area) ?? null : null;
@@ -82,47 +83,11 @@ if (typeof window !== 'undefined') addEventListener('popstate', () => { popped =
  * never unmount when you change page, so their icons and the sliding pill stay exactly as they are. The page between them
  * is the only thing that changes.
  */
-/**
- * The top chrome (owner 2026-11-14): scrolling down hides the location bar at once, scrolling up brings it back at once.
- * Each direction change moves it one time (12 px of travel in the new direction decides, so a jitter never replays it).
- * Pure motion, no fade: it slides up behind the top bar and back down on a critically damped, interruptible spring from
- * its current place. Transform only. A new page always starts with the bar out.
- */
-function useChromeFold(wrap: React.RefObject<HTMLDivElement | null>) {
-  const pathname = usePathname();
-  const hidden = useRef(false), anim = useRef<{ stop: () => void } | null>(null);
-  const set = useCallback((hide: boolean, instant = false) => {
-    const el = wrap.current; if (!el || hidden.current === hide) return;
-    hidden.current = hide; el.closest('.chrome-top')?.classList.toggle('compact', hide); el.style.pointerEvents = hide ? 'none' : '';
-    anim.current?.stop(); anim.current = null;
-    const settled = () => { if (!hidden.current) el.style.transform = ''; // shown: hand back to CSS (search hides it)
-      const c = el.closest('.chrome-top'), top = c && (hidden.current ? c.querySelector('.topbar') : c); if (top) document.documentElement.style.setProperty('--back-top', top.getBoundingClientRect().bottom + 'px'); };
-    const to = { transform: hide ? 'translateY(-100%)' : 'translateY(0%)' };
-    if (instant || reduce()) { el.style.transform = to.transform; settled(); return; }
-    const a = animate(el, to, spring(0, 0.38)); anim.current = a; a.finished.then(() => { if (anim.current === a) settled(); });
-  }, [wrap]);
-  useEffect(() => {
-    let last = scrollY, travel = 0;
-    const onScroll = () => {
-      const root = document.documentElement, c = wrap.current?.closest('.chrome-top');
-      if (root.classList.contains('sheet-open') || c?.classList.contains('searching')) { last = scrollY; return; }
-      const y = scrollY, d = y - last; last = y; if (!d) return;
-      travel = Math.sign(d) === Math.sign(travel) ? travel + d : d; // distance moved in the current direction
-      if (y < 60) set(false); else if (travel > 12) set(true); else if (travel < -12) set(false);
-    };
-    addEventListener('scroll', onScroll, { passive: true });
-    return () => { removeEventListener('scroll', onScroll); anim.current?.stop(); };
-  }, [set, wrap]);
-  useEffect(() => { set(false, true); }, [pathname, set]);
-}
-
 export function FrameHost({ initial, children }: { initial: Frame; children: ReactNode }) {
   const [frame, setFrame] = useState(initial);
-  const { tab } = useK();
+  const tab = useKS((s) => s.tab);
   const set = useCallback((f: Frame) => setFrame((was) => (was.wide === f.wide && was.noLoc === f.noLoc && was.withFilters === f.withFilters ? was : f)), []);
   const showLoc = hasLocBar(tab, frame.noLoc);
-  const locWrap = useRef<HTMLDivElement>(null);
-  useChromeFold(locWrap);
   // one CSS variable for the sticky header's full height: every sticky column (sidebar, right rail, place card) sits below it in either scroll direction
   useLayoutEffect(() => {
     const top = document.querySelector('.chrome-top'); if (!top) return;
@@ -131,9 +96,7 @@ export function FrameHost({ initial, children }: { initial: Frame; children: Rea
   }, []);
   // one showing tracker for the frame (search results in the top bar); each page opens its own inside (one visit = one scope)
   return <FrameCtx.Provider value={set}><ShowingScope>
-    <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap" ref={locWrap}><div className="locbar-in"><LocBar withFilters={frame.withFilters} /></div></div> : null}</div>
-    {/* phones: the top chrome is fixed (it never moves with the scroll); this holds its place in the page */}
-    <div className="chrome-spacer" aria-hidden="true" />
+    <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={frame.withFilters} /></div></div> : null}</div>
     {/* desktop: a page without the location bar keeps its height, so the sidebar and the page start at the same place on every page */}
     {showLoc ? null : <div className="locbar-space" aria-hidden="true" />}
     <div className={`layout ${frame.wide ? 'wide' : ''}`}>
@@ -192,12 +155,58 @@ function Sidebar({ cur }: { cur: Tab }) {
 }
 
 /** The phone tab bar (GlassTabBar: Liquid Glass, compositor-only motion). It lives in the layout, so it never remounts. */
+// iOS Safari (owner 2026-11-14): glisse's bar, which runs smooth there; everywhere else the own GlassTabBar (60 fps on
+// Android). Both are drawn from the server; the head script marks iOS before the first paint and CSS shows only one, so
+// nothing swaps in.
+const PrefetchLink = (props: React.ComponentProps<typeof Link>) => <Link prefetch {...props} />;
+
+/**
+ * Dragging the glass tab bar (owner 2026-11-14): glisse already carries its selection 1:1 from where it was grabbed and clicks
+ * the tab it settles on. On top of it: a stretch along the movement while the finger moves, and a fling projected to the
+ * tab it is heading for (velocity hand-off, deceleration 0.99) instead of the one under the finger.
+ */
+function useGlassDrag() {
+  useEffect(() => {
+    const host = document.getElementById('glass-tabs'); if (!host) return;
+    type Drag = { x0: number; x: number; t: number; vx: number; moved: boolean };
+    let drag: Drag | null = null, fling: number | null = null;
+    const lens = () => host.querySelector<HTMLElement>('.lg-tab-lens');
+    const tabs = () => [...host.querySelectorAll<HTMLElement>('.lg-tab')];
+    const down = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.lg-tab')) return; drag = { x0: e.clientX, x: e.clientX, t: e.timeStamp, vx: 0, moved: false }; fling = null; };
+    const move = (e: PointerEvent) => {
+      if (!drag) return; const dt = e.timeStamp - drag.t;
+      if (dt > 0) drag.vx = 0.8 * ((e.clientX - drag.x) / dt) + 0.2 * drag.vx; // px/ms, smoothed
+      drag.x = e.clientX; drag.t = e.timeStamp; if (Math.abs(e.clientX - drag.x0) > 6) drag.moved = true;
+      const l = lens(); if (l && drag.moved && !reduce()) { const st = Math.min(0.14, Math.abs(drag.vx) * 0.08); l.style.scale = `${1 + st} ${1 - st * 0.4}`; }
+    };
+    const up = (e: PointerEvent) => {
+      if (!drag) return; const d = drag; drag = null; const l = lens(); if (l) l.style.scale = '';
+      if (!l || !d.moved || e.type !== 'pointerup' || e.timeStamp - d.t > 80 || Math.abs(d.vx) < 0.3) return; // a resting finger hands off no velocity
+      const r = l.getBoundingClientRect(), to = r.left + r.width / 2 + d.vx * 99;
+      const centers = tabs().map((t) => { const b = t.getBoundingClientRect(); return b.left + b.width / 2; });
+      fling = centers.reduce((best, cx, i) => (Math.abs(cx - to) < Math.abs(centers[best] - to) ? i : best), 0);
+    };
+    // glisse clicks the tab under the selection right after pointerup; a fling swaps it for the projected one
+    const click = (e: MouseEvent) => {
+      if (fling == null || e.isTrusted) return; const list = tabs(), at = list.indexOf((e.target as Element).closest('.lg-tab') as HTMLElement), to = fling; fling = null;
+      if (at < 0 || to === at) return; e.preventDefault(); e.stopPropagation(); list[to].click();
+    };
+    host.addEventListener('pointerdown', down, true); addEventListener('pointermove', move, { passive: true });
+    addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true); host.addEventListener('click', click, true);
+    return () => { host.removeEventListener('pointerdown', down, true); removeEventListener('pointermove', move); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); host.removeEventListener('click', click, true); };
+  }, []);
+}
+
 export function TabNav() {
-  const { tab, lang, c } = useK();
+  const { setTab, lang, c } = useK(), tab = useKS((s) => s.tab);
   const items = useMemo(() => NAV.map(([key, href, icon]) => ({ key, href: `${langPrefix(lang)}${href}`, label: c.nav[key], icon })), [lang, c]);
+  useGlassDrag();
   return <>
     <div id="chrome" />
     <GlassTabBar items={items} current={tab} label={c.nav.tabsAria} dir={lang === 'ar' ? 'rtl' : 'ltr'} />
+    {/* glisse measures in LTR only: in Arabic the bar stays LTR inside and the items run reversed, so Home sits on the right (as the app does) */}
+    <div id="glass-tabs" dir="ltr"><Glass aria-label={c.nav.tabsAria} value={tab} onValueChange={(v) => setTab(v as Tab)} link={PrefetchLink}
+      items={(lang === 'ar' ? [...NAV].reverse() : NAV).map(([key, href, icon]) => ({ value: key, href: `${langPrefix(lang)}${href}`, label: <span dir={lang === 'ar' ? 'rtl' : undefined}>{c.nav[key]}</span>, icon: <span className="gl-ic"><Ic n={icon} /></span> }))} /></div>
   </>;
 }
 
@@ -303,7 +312,7 @@ function useSearchSettings() {
 
 /** The city suggestions speak about: the one chosen in the location bar, else the nearest to the person, else the default city. Never Egypt. */
 function useSuggestionCity() {
-  const { loc } = useK();
+  const loc = useKS((s) => s.loc);
   const { data: cities = [] } = useCities();
   const pos = usePosition();
   const s = useSearchSettings();
@@ -338,7 +347,7 @@ function SearchRow({ p, q, position, onGo, hl }: { p: KPlace; q: string; positio
 }
 
 function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
-  const { c, lang, setLoc, loc } = useK();
+  const { c, lang, setLoc } = useK(), loc = useKS((s) => s.loc);
   const sug = useSearchSettings(), sugCity = useSuggestionCity();
   const go = useGo(q);
   const cityName = sugCity ? (lang === 'ar' ? sugCity.name : sugCity.nameEn || sugCity.name) : '';
@@ -378,84 +387,60 @@ function useGroupViews(kind: 'city' | 'area', ids: string[]) {
   }).data;
 }
 /** A city or area row's numbers (proto Options): views in the last 30 days and how many places. Hidden until known. */
-function LocNums({ views, count }: { views?: { kind: 'city' | 'area'; ids: string[]; id: string }; count?: number | null }) {
+function LocNums({ v, count }: { v?: number | null; count?: number | null }) {
   const { c } = useK();
-  const agg = useGroupViews(views?.kind ?? 'city', views?.ids ?? []);
-  const v = views ? agg?.[views.id] : undefined;
   return <>{v != null ? <span className="gv" title={c.stats.viewsGroup}><Ic n="eye" />{k(v)}</span> : null}{count != null ? <span className="t-small">{count}</span> : null}</>;
 }
-
-/**
- * The city and area dropdowns (owner 2026-11-14): scale and fade out of the pill that opened them on a critically damped spring,
- * closing on the same path; transform and opacity only. A new animation starts from the value on screen, so a second tap
- * mid-motion reverses it. Reduced motion: a short fade.
- */
-function LocMenu({ open, anchor, onClose, children }: { open: boolean; anchor: React.RefObject<HTMLElement | null>; onClose: () => void; children: ReactNode }) {
-  const [shown, setShown] = useState(open);
-  if (open && !shown) setShown(true);
-  const el = useRef<HTMLDivElement>(null);
-  const openNow = useRef(open); openNow.current = open;
-  useLayoutEffect(() => {
-    const m = el.current, a = anchor.current; if (!m) return;
-    if (open && a) { // place under the pill, origin at the pill
-      const r = a.getBoundingClientRect(), w = Math.min(340, innerWidth - 24), rtl = getComputedStyle(a).direction === 'rtl';
-      const left = Math.max(12, Math.min(rtl ? r.right - w : r.left, innerWidth - w - 12));
-      Object.assign(m.style, { top: r.bottom + 6 + 'px', left: left + 'px', width: w + 'px', maxHeight: `calc(100dvh - ${r.bottom + 22}px)` });
-      m.style.transformOrigin = `${r.left + r.width / 2 - left}px 0px`;
-    }
-    const calm = reduce();
-    const to = open ? { opacity: 1, transform: 'scale(1)' } : { opacity: 0, transform: calm ? 'scale(1)' : 'scale(.92)' };
-    const run = animate(m, to, calm ? { duration: 0.15 } : spring(0, 0.32));
-    run.finished.then(() => { if (!openNow.current) setShown(false); }, () => {});
-  }, [open, shown]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); }, [open, onClose]);
-  if (!shown) return null;
-  return createPortal(<>
-    <div className="loc-menu-scrim" onPointerDown={onClose} />
-    <div className="loc-menu" role="radiogroup" ref={el} style={{ opacity: 0, transform: reduce() ? 'none' : 'scale(.92)' }}>{children}</div>
-  </>, document.body);
+type City = NonNullable<ReturnType<typeof useCities>['data']>[number];
+const cityLabel = (x: City, lang: string) => (lang === 'ar' ? x.name : x.nameEn || x.name);
+function LocOption({ on, icon, label, act, then, nums }: { on: boolean; icon: ReactNode; label: string; act: string; then: () => void; nums?: ReactNode }) {
+  const { closeTop } = useK();
+  // a choice closes the sheet at once, then applies
+  return <button className="option press" role="radio" aria-checked={on} data-act={act} onClick={() => { haptic(); closeTop(); then(); }}>{icon}<span className="grow">{label}</span>{nums}<Ic n="check" cls="check" /></button>;
 }
-
-/** ONE location bar, pinned under the top bar on Home, Explore and Marketplace; Filters joins it on Explore only. */
-function LocBar({ withFilters }: { withFilters: boolean }) {
-  const { loc, setLoc, c, lang, toast, go } = useK();
-  const { data: cities = [] } = useCities();
-  const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
-  // the city sheet lists cities by most places, as the prototype does: the cities carry their counts, so the order never changes
+/** The Area sheet of one city: places per area in one request, areas with the most places first. */
+function AreaSheet({ city }: { city: City }) {
+  const { setLoc, c, lang } = useK(), loc = useKS((s) => s.loc);
+  const counts = useAreaCounts(city.id), ids = city.areaKeys ?? [], views = useGroupViews('area', ids);
+  const keys = [...ids].sort((a, b) => (counts?.[b] ?? -1) - (counts?.[a] ?? -1)), here = loc.city === city.slug ? loc.area : null;
+  return <div role="radiogroup">
+    <LocOption on={!here} icon={<L n="layers" />} label={c.location.allAreas} act="pick-area" then={() => setLoc({ city: city.slug, area: null })} nums={<LocNums count={city.visiblePlacesCount} />} />
+    {keys.map((key) => { const n = regionLabel(key, lang, city.nameEn || city.name) || key; return <LocOption key={key} on={here === n} icon={<L n="map-pin" />} label={n} act="pick-area" then={() => setLoc({ city: city.slug, area: n })} nums={<LocNums v={views?.[key]} count={counts ? counts[key] ?? 0 : null} />} />; })}
+  </div>;
+}
+/** The City sheet: cities by most places (they carry their counts, so the order never changes). Opened from the Area pill
+ *  with no city yet (`thenArea`), a pick opens that city's areas next. */
+function CitySheet({ thenArea }: { thenArea: boolean }) {
+  const { setLoc, c, lang, toast, openSheet } = useK(), loc = useKS((s) => s.loc);
+  const { data: cities = [] } = useCities(), views = useGroupViews('city', cities.map((x) => x.id));
   const byCount = [...cities].sort((a, b) => (b.visiblePlacesCount ?? -1) - (a.visiblePlacesCount ?? -1));
   const egypt = cities.length && cities.every((x) => typeof x.visiblePlacesCount === 'number') ? cities.reduce((a, x) => a + x.visiblePlacesCount!, 0) : null;
-  // the area sheet: places per area in one request, areas with the most places first
-  const areaCounts = useAreaCounts(city?.id);
-  const areaKeys = [...(city?.areaKeys ?? [])].sort((a, b) => (areaCounts?.[b] ?? -1) - (areaCounts?.[a] ?? -1));
-  const cityName = city ? (lang === 'ar' ? city.name : city.nameEn || city.name) : null;
-  // the dropdown closes at once with its exit motion; a city pick then opens that city's areas (owner 2026-11-14)
-  const [menu, setMenu] = useState<'city' | 'area' | null>(null);
-  const cityPill = useRef<HTMLButtonElement>(null), areaPill = useRef<HTMLButtonElement>(null);
-  const pick = (_el: HTMLElement, after: () => void) => { haptic(); setMenu(null); after(); };
-  const opt = (key: string, on: boolean, icon: ReactNode, label: string, act: string, then: () => void, nums?: ReactNode) => <button key={key} className="option press" role="radio" aria-checked={on} data-act={act} onClick={(e) => pick(e.currentTarget, then)}>{icon}<span className="grow">{label}</span>{nums}<Ic n="check" cls="check" /></button>;
-  const cityIds = cities.map((x) => x.id), areaIds = city?.areaKeys ?? [];
-  useGroupViews('city', cityIds); useGroupViews('area', areaIds); // asked now, so the sheets open with their numbers
-  const viaArea = useRef(false); // the Area pill with no city asks for the city first, then opens its areas
-  const openCity = () => { viaArea.current = false; setMenu('city'); };
-  const cityBody = <>
-    {opt('all', !loc.city, <L n="map" />, c.location.allEgypt, 'pick-city', () => setLoc({ city: null, area: null }), <LocNums count={egypt} />)}
-    {byCount.map((x) => { const n = lang === 'ar' ? x.name : x.nameEn || x.name; return opt(x.id, x.slug === loc.city, <Gov name={x.slug} fallback={<Ic n="pin" />} />, n, 'pick-city', () => { setLoc({ city: x.slug, area: null }); toast(fill(c.location.cityPicked, { city: n })); if (viaArea.current) setMenu('area'); }, <LocNums views={{ kind: 'city', ids: cityIds, id: x.id }} count={x.visiblePlacesCount} />); })}
-  </>;
-  const openArea = () => { if (city) setMenu('area'); };
-  const areaBody = !city ? null : <>
-    {opt('all', !loc.area, <L n="layers" />, c.location.allAreas, 'pick-area', () => setLoc({ city: loc.city, area: null }), <LocNums count={city.visiblePlacesCount} />)}
-    {areaKeys.map((key) => { const n = regionLabel(key, lang, city.nameEn || city.name) || key; return opt(key, loc.area === n, <L n="map-pin" />, n, 'pick-area', () => setLoc({ city: loc.city, area: n }), <LocNums views={{ kind: 'area', ids: areaIds, id: key }} count={areaCounts ? areaCounts[key] ?? 0 : null} />); })}
-  </>;
+  return <div role="radiogroup">
+    <LocOption on={!loc.city} icon={<L n="map" />} label={c.location.allEgypt} act="pick-city" then={() => setLoc({ city: null, area: null })} nums={<LocNums count={egypt} />} />
+    {byCount.map((x) => { const n = cityLabel(x, lang); return <LocOption key={x.id} on={x.slug === loc.city} icon={<Gov name={x.slug} fallback={<Ic n="pin" />} />} label={n} act="pick-city"
+      then={() => { setLoc({ city: x.slug, area: null }); if (thenArea) openSheet(fill(c.location.areaSheet, { city: n }), <AreaSheet city={x} />); else toast(fill(c.location.cityPicked, { city: n })); }}
+      nums={<LocNums v={views?.[x.id]} count={x.visiblePlacesCount} />} />; })}
+  </div>;
+}
+
+/** ONE location bar, pinned under the top bar on Home, Explore and Marketplace; Filters joins it on Explore only.
+ *  City and Area are sheets (owner 2026-11-14, "all sheets"). */
+function LocBar({ withFilters }: { withFilters: boolean }) {
+  const { setLoc, c, lang, toast, go, openSheet } = useK(), loc = useKS((s) => s.loc);
+  const { data: cities = [] } = useCities();
+  const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
+  const cityName = city ? cityLabel(city, lang) : null;
+  useGroupViews('city', cities.map((x) => x.id)); useGroupViews('area', city?.areaKeys ?? []); useAreaCounts(city?.id); // asked now, so the sheets open with their numbers
+  const openCity = (thenArea: boolean) => openSheet(c.location.citySheet, <CitySheet thenArea={thenArea} />);
+  const openArea = (cty: City) => openSheet(fill(c.location.areaSheet, { city: cityLabel(cty, lang) }), <AreaSheet city={cty} />);
   const reset = (e: React.MouseEvent<HTMLButtonElement>) => { const ic = e.currentTarget.querySelector('.lucide'); if (ic) animate(ic, { transform: ['rotate(0deg)', 'rotate(-360deg)'] }, spring(0, 0.5)); haptic(); setTimeout(() => { setLoc({ city: null, area: null }); if (n) { const keep = new URLSearchParams(location.search); ['intent', 'cat', 'when', 'f'].forEach((k) => keep.delete(k)); go(`${location.pathname}${keep.toString() ? '?' + keep : ''}`); } toast(c.location.cleared); }, 220); };
   const openFilters = useOpenFilters();
   const sp = useSearchParams();
   const n = withFilters ? nF(readF(sp)) : 0;
   return (
     <div className="locbar" role="group" aria-label={c.location.aria}>
-      <button ref={cityPill} className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" aria-haspopup="true" aria-expanded={menu === 'city'} onClick={openCity}>{loc.city ? <Gov name={loc.city} fallback={<L n="map-pin" />} /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
-      <button ref={areaPill} className={`loc-pill press ${loc.area ? 'on' : ''}`} data-act="area" aria-haspopup="true" aria-expanded={menu === 'area'} onClick={city ? openArea : () => { viaArea.current = true; setMenu('city'); }}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
-      <LocMenu open={menu === 'city'} anchor={cityPill} onClose={() => setMenu(null)}>{cityBody}</LocMenu>
-      <LocMenu open={menu === 'area' && !!city} anchor={areaPill} onClose={() => setMenu(null)}>{areaBody}</LocMenu>
+      <button className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" aria-haspopup="dialog" onClick={() => openCity(false)}>{loc.city ? <Gov name={loc.city} fallback={<L n="map-pin" />} /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
+      <button className={`loc-pill press ${loc.area ? 'on' : ''}`} data-act="area" aria-haspopup="dialog" onClick={() => (city ? openArea(city) : openCity(true))}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
       {withFilters ? <button className={`loc-pill filters press ${n ? 'on' : ''}`} data-act="filters" onClick={openFilters}><L n="sliders-horizontal" /><b>{c.location.filters}</b>{n ? <em className="n-badge">{n}</em> : null}</button> : null}
       {loc.city || loc.area || n ? <button className="icon-btn reset-btn press" data-act="reset-all" aria-label={c.location.reset} onClick={reset}><L n="rotate-ccw" /></button> : null}
     </div>

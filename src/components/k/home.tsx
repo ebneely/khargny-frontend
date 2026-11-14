@@ -20,7 +20,7 @@ import { INTENTS, moment, t12, k, openState as openStateOf, type Intent } from '
 import { placeHref, toK, type KPlace } from './data';
 import { Post, PostSkel, Tile, TileSkel, Go5, StatePill, Meta, BadgeTags, useShowing, usePlaceStats, catIcon, type CardTrack } from './place';
 import { Shell, usePlaceName, useLocKeys } from './Shell';
-import { useK, haptic, reduce, spring } from './KProvider';
+import { useK, useKS, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
 import { MarketCard } from './market';
 import { usePosition, askPosition, useNearPlaces, useNearQuery, readPosition, nearParam, surpriseQuery, NearAsk } from './near';
@@ -317,7 +317,7 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
 const WINDOWS = ['live', '24h', '7d', '30d'] as const;
 type Win = (typeof WINDOWS)[number];
 export function TrendCard({ list }: { list: KPlace[] }) {
-  const { c, lang, loc } = useK();
+  const { c, lang } = useK(), loc = useKS((s) => s.loc);
   const where = usePlaceName();
   const [win, setWin] = useState<Win>('24h');
   // ranked for the chosen window in the chosen place: the trending route for 24 h and 7 days (Live reads the last 24 h),

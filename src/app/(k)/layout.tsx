@@ -25,7 +25,7 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, maxi
 
 // Light, Dark or Auto from kh.theme, set before the first paint so there is no flash. A phone landing on a sheet address
 // hides the server-drawn page until the sheet comes up over Home (no desktop page flashing first).
-const THEME = `(function(){try{var t=localStorage.getItem('kh.theme')||'auto';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d?'#14100D':'#FBF6EE');var p=location.pathname.split('/').filter(Boolean);if(p[0]==='ar')p.shift();if(innerWidth<1024&&((p[0]==='explorer'&&p.length===3)||(['c','marketplace','host'].indexOf(p[0])>=0&&p.length===2)))document.documentElement.classList.add('landing')}catch(e){}})()`;
+const THEME = `(function(){try{var t=localStorage.getItem('kh.theme')||'auto';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d?'#14100D':'#FBF6EE');var p=location.pathname.split('/').filter(Boolean);if(p[0]==='ar')p.shift();if(innerWidth<1024&&((p[0]==='explorer'&&p.length===3)||(['c','marketplace','host'].indexOf(p[0])>=0&&p.length===2)))document.documentElement.classList.add('landing');if(/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))document.documentElement.classList.add('ios')}catch(e){}})()`;
 
 const tabOf = (path: string): Tab => {
   const first = path.split('/').filter(Boolean)[0] ?? '';

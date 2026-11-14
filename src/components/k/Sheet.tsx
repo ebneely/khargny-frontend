@@ -5,48 +5,80 @@ import { useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from '
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import { animate } from 'motion';
-import { useK, spring, reduce, type SheetEntry } from './KProvider';
+import { useK, useKS, spring, reduce, type SheetEntry } from './KProvider';
 import { IconBtn } from './bits';
 import { renderSheet } from './sheets';
 
 type Anim = { stop: () => void } | null;
-type El = HTMLDivElement & { _pos?: number; _anim?: Anim };
+type El = HTMLDivElement & { _pos?: number; _anim?: Anim; _wa?: Animation | null };
+
+// a lightly damped spring (bounce 0.1, response 0.42 s) sampled once into a CSS linear() easing: present and dismiss run on the
+// compositor through the Web Animations API, so the sheet moves at 60 fps even while the page under it is busy
+const SHEET = (() => {
+  const zeta = 0.9, w = (2 * Math.PI) / 0.42, wd = w * Math.sqrt(1 - zeta * zeta), end = 7 / (zeta * w), pts: string[] = [];
+  for (let i = 0; i <= 48; i++) { const t = (end * i) / 48; pts.push((1 - Math.exp(-zeta * w * t) * (Math.cos(wd * t) + ((zeta * w) / wd) * Math.sin(wd * t))).toFixed(4)); }
+  return { easing: `linear(${pts.join(', ')})`, ms: Math.round(end * 1000) };
+})();
 
 // progress 0..1 of the bottom-most sheet drives the page recede + scrim
 function depth(prog: number, animated: boolean) {
   const app = document.getElementById('app'), sc = document.querySelector<HTMLElement>('.scrim');
   // desktop (no touch): the page stays exactly where it was, only dimmed; the recede is a phone gesture
   if (app && !reduce() && touchLock()) {
-    if (prog > 0 && !app.dataset.origin) { app.style.transformOrigin = `50% ${(lockedAt ?? scrollY) + innerHeight / 2}px`; app.dataset.origin = '1'; }
+    if (prog > 0 && !app.dataset.origin) { app.style.transformOrigin = `50% ${(lockedAt ?? scrollY) + innerHeight / 2}px`; app.style.willChange = 'transform'; app.dataset.origin = '1'; } // its own layer before it moves: no first-frame raster
     const to = prog > 0 ? `translateY(${(prog * 6).toFixed(2)}px) scale(${(1 - prog * 0.045).toFixed(4)})` : 'translateY(0px) scale(1)';
     // start from the same function list as the target: from `none` the animation library interpolates a matrix and the page dips to ~10% mid-way
     if (animated) { if (!app.style.transform) app.style.transform = 'translateY(0px) scale(1)'; animate(app, { transform: to }, spring(0, 0.42)); } else app.style.transform = to;
-    if (prog === 0 && !animated) { app.style.transform = ''; delete app.dataset.origin; }
+    if (prog === 0 && !animated) { app.style.transform = ''; app.style.willChange = ''; delete app.dataset.origin; }
   }
-  if (sc) { sc.style.opacity = String(prog); const b = reduce() ? 'none' : `blur(${(prog * 3).toFixed(2)}px)`; sc.style.backdropFilter = b; sc.style.setProperty('-webkit-backdrop-filter', b); }
+  // the scrim's blur is set once when it is made (a constant 3px); only its opacity follows the sheet, so the screen is never re-blurred at a new radius each frame
+  if (sc) sc.style.opacity = String(prog);
 }
 
-// the page behind a sheet is pinned where it was (proto lockPage): no scroll-through, same place after.
-// Touch phones (iOS Safari ignores overflow:hidden): body position:fixed at -scrollY, and the sticky top chrome is moved
-// down by the same amount so it stays on screen. Desktop: overflow:hidden on <html> with a stable scrollbar gutter, nothing
-// repositioned, so sticky and fixed columns (top bar, sidebar, side rail) stay exactly where they were.
-let lockedAt: number | null = null;
+// the page behind a sheet stays where it was (proto lockPage): overflow:hidden on <html> (html.sheet-open), nothing moved or
+// re-laid out, so the sticky top bar, sidebar and side rail stay exactly where they were. Touch phones also place the sheets
+// in page coordinates (html.sheet-abs, see web.css), because iOS 26 Safari draws no fixed content under its bottom bar.
+let lockedAt: number | null = null, restTop = 0; // restTop: where a fixed bottom:0 sheet would rest, in page coordinates
+// the page's looping decorations (live rings, route line, dice, hints) hold still under an open sheet: they sit behind the
+// scrim and would repaint every frame while it moves. Paused one by one (a class on <html> would re-style the whole page).
+let held: Animation[] = [];
 const touchLock = () => typeof window !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 function lockPage(on: boolean) {
   const b = document.body, h = document.documentElement;
   if (on && lockedAt === null) {
     lockedAt = scrollY; h.classList.add('sheet-open');
-    if (touchLock()) { h.classList.add('lock-fixed'); h.style.setProperty('--lock-y', lockedAt + 'px'); Object.assign(b.style, { position: 'fixed', top: -lockedAt + 'px', left: '0', right: '0', width: '100%' }); }
+    const app = document.getElementById('app');
+    held = app ? document.getAnimations().filter((a) => { const t = (a.effect as KeyframeEffect | null)?.target; return a.playState === 'running' && 'animationName' in a && !!t && app.contains(t); }) : [];
+    held.forEach((a) => a.pause());
+    if (touchLock()) {
+      // where a fixed bottom:0 sheet would rest (above Safari's bottom bar), measured once when the sheet opens
+      const probe = document.createElement('i'); probe.style.cssText = 'position:fixed;bottom:0;left:0;height:0'; b.append(probe);
+      const rest = probe.getBoundingClientRect().top; probe.remove();
+      // no body pinning (position:fixed re-laid out and repainted the whole page on every open: the first-open stutter);
+      // iOS 16+ and Android honour overflow:hidden on <html> (html.sheet-open), so the page simply stays where it is
+      // kept in variables and written on the sheets and the scrim themselves: a custom property on <html> would re-style every element of the page
+      h.classList.add('sheet-abs'); restTop = lockedAt + rest;
+    }
   } else if (!on && lockedAt !== null) {
-    const y = lockedAt, fixed = h.classList.contains('lock-fixed'); lockedAt = null; h.classList.remove('sheet-open', 'lock-fixed'); h.style.removeProperty('--lock-y');
-    if (fixed) { Object.assign(b.style, { position: '', top: '', left: '', right: '', width: '' }); scrollTo({ top: y, behavior: 'instant' }); }
+    lockedAt = null; h.classList.remove('sheet-open'); held.forEach((a) => a.play()); held = [];
   }
 }
 
 function setPos(sh: El, y: number) { sh._pos = y; sh.style.transform = `translateY(${y}px)`; }
+/** Stop whatever moves the sheet and leave it where it is on screen (a running compositor animation is read once, here). */
+function halt(sh: El) {
+  sh._anim?.stop(); sh._anim = null;
+  if (sh._wa) { if (sh._wa.playState === 'running') setPos(sh, new DOMMatrix(getComputedStyle(sh).transform).m42); sh._wa.cancel(); sh._wa = null; }
+}
 function springTo(sh: El, y: number, velocity = 0) {
-  if (reduce()) { setPos(sh, y); return; }
-  sh._anim?.stop();
+  if (reduce()) { halt(sh); setPos(sh, y); return; }
+  halt(sh);
+  if (Math.abs(velocity) < 50) { // no fling to carry: the compositor runs it
+    const from = sh._pos || 0; setPos(sh, y); if (Math.abs(from - y) < 0.5) return;
+    sh._wa = sh.animate([{ transform: `translateY(${from}px)` }, { transform: `translateY(${y}px)` }], { duration: SHEET.ms, easing: SHEET.easing });
+    return;
+  }
+  // a release with momentum: hand the finger's velocity to the spring (main thread, gesture-driven)
   sh._anim = animate(sh._pos || 0, y, { type: 'spring', bounce: 0.1, duration: 0.42, velocity, onUpdate: (v: number) => setPos(sh, v) });
 }
 
@@ -57,15 +89,20 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
 
   // present
   useLayoutEffect(() => {
-    const sh = ref.current!; setPos(sh, sh.offsetHeight); springTo(sh, 0, 0);
+    // lock first: a child's layout effect runs before SheetHost's, and the sheet needs the lock's measurements to place itself
+    lockPage(true);
+    const sh = ref.current!; const abs = document.documentElement.classList.contains('sheet-abs'); if (abs) sh.style.top = restTop + 'px';
+    setPos(sh, sh.offsetHeight); springTo(sh, 0, 0);
     if (first) {
       let scrim = document.querySelector<HTMLElement>('.scrim');
       if (!scrim) { scrim = document.createElement('div'); scrim.className = 'scrim'; document.body.append(scrim); scrim.addEventListener('click', () => scrim && scrim.dispatchEvent(new CustomEvent('k-close-top', { bubbles: true }))); }
-      scrim.style.transition = 'opacity .3s, backdrop-filter .3s';
+      if (abs) { scrim.style.top = (lockedAt ?? scrollY) + 'px'; scrim.style.height = restTop - (lockedAt ?? scrollY) + 200 + 'px'; }
+      scrim.style.transition = 'opacity .3s';
       requestAnimationFrame(() => depth(1, true));
     }
-    const app = document.getElementById('app'); if (app) app.inert = true;
-    sh.focus({ preventScroll: true });
+    // after it arrives: inert re-styles the whole page and focus forces a layout pass; the scrim already takes every tap
+    const f = setTimeout(() => { const app = document.getElementById('app'); if (app && sh.isConnected) app.inert = true; sh.focus({ preventScroll: true }); }, SHEET.ms);
+    return () => clearTimeout(f);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // scrim stays just under the top sheet
@@ -82,11 +119,13 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
     springTo(sh, sh.offsetHeight + 24, entry.closing > 1 ? entry.closing : 0);
     const t = setTimeout(() => removeSheet(entry.id), 420);
     if (first) {
-      const app = document.getElementById('app'); if (app) app.inert = false;
+      const app = document.getElementById('app');
       const sc = document.querySelector<HTMLElement>('.scrim');
-      if (sc) { sc.style.transition = 'opacity .3s, backdrop-filter .3s'; sc.style.opacity = '0'; sc.style.backdropFilter = 'blur(0px)'; setTimeout(() => sc.remove(), 320); }
-      if (app && app.dataset.origin && !reduce()) animate(app, { transform: 'translateY(0px) scale(1)' }, spring(0, 0.4)).finished.then(() => { app.style.transform = ''; delete app.dataset.origin; });
-      else if (app) app.style.transform = '';
+      // the page takes input again when the scrim is gone (it blocks taps until then), not in the middle of the exit motion
+      if (sc) { sc.style.transition = 'opacity .3s'; sc.style.opacity = '0'; }
+      setTimeout(() => { sc?.remove(); if (app && !document.documentElement.classList.contains('sheet-open')) app.inert = false; }, 320);
+      if (app && app.dataset.origin && !reduce()) animate(app, { transform: 'translateY(0px) scale(1)' }, spring(0, 0.4)).finished.then(() => { app.style.transform = ''; app.style.willChange = ''; delete app.dataset.origin; });
+      else if (app) { app.style.transform = ''; app.style.willChange = ''; }
     }
     return () => clearTimeout(t);
   }, [entry.closing, entry.id, first, removeSheet]);
@@ -96,7 +135,7 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
     const sh = ref.current!; const handles = [sh.querySelector('.grabber'), sh.querySelector('.sheet-head')].filter(Boolean) as HTMLElement[];
     let y0 = 0, start = 0, hist: [number, number][] = [], on = false;
     const rubber = (o: number, d: number, c = 0.55) => (o * d * c) / (d + c * Math.abs(o));
-    const down = (e: PointerEvent) => { if ((e.target as Element).closest('button')) return; on = true; sh._anim?.stop(); y0 = e.clientY; start = sh._pos || 0; hist = [[e.clientY, e.timeStamp]]; (e.currentTarget as Element).setPointerCapture(e.pointerId); };
+    const down = (e: PointerEvent) => { if ((e.target as Element).closest('button')) return; on = true; halt(sh); y0 = e.clientY; start = sh._pos || 0; hist = [[e.clientY, e.timeStamp]]; (e.currentTarget as Element).setPointerCapture(e.pointerId); };
     const move = (e: { clientY: number; timeStamp: number }) => {
       if (!on) return; hist.push([e.clientY, e.timeStamp]); if (hist.length > 5) hist.shift();
       let y = start + (e.clientY - y0); if (y < 0) y = -rubber(-y, sh.offsetHeight); // resist above the top
@@ -109,7 +148,7 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
       const y = sh._pos || 0, proj = y + ((v / 1000) * 0.998) / (1 - 0.998); // Apple's momentum projection
       if (proj > sh.offsetHeight * 0.25 || (v > 700 && y >= 24)) { closeTop(v); return; }
       springTo(sh, 0, v);
-      if (first) { const sc = document.querySelector<HTMLElement>('.scrim'); if (sc) sc.style.transition = 'opacity .3s, backdrop-filter .3s'; depth(1, true); }
+      if (first) { const sc = document.querySelector<HTMLElement>('.scrim'); if (sc) sc.style.transition = 'opacity .3s'; depth(1, true); }
     };
     const pm = (e: PointerEvent) => move(e);
     handles.forEach((h) => { h.addEventListener('pointerdown', down); h.addEventListener('pointermove', pm); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up); });
@@ -117,7 +156,7 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
     const ts = (e: TouchEvent) => { ty0 = e.touches[0].clientY; pulling = false; };
     const tm = (e: TouchEvent) => {
       const y = e.touches[0].clientY;
-      if (!pulling) { if (!bodyEl || bodyEl.scrollTop > 0 || y - ty0 < 6) return; pulling = true; on = true; sh._anim?.stop(); y0 = y; start = sh._pos || 0; hist = [[y, performance.now()]]; }
+      if (!pulling) { if (!bodyEl || bodyEl.scrollTop > 0 || y - ty0 < 6) return; pulling = true; on = true; halt(sh); y0 = y; start = sh._pos || 0; hist = [[y, performance.now()]]; }
       e.preventDefault(); move({ clientY: y, timeStamp: performance.now() });
     };
     const te = () => { if (pulling) { pulling = false; up(); } };
@@ -141,15 +180,19 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
 
 /** Renders the stack; the content sheet (a place, collection, listing or host on a phone) draws itself from renderSheet. */
 export function SheetHost() {
-  const { sheets, content, closeTop, c, lang } = useK();
+  const { closeTop, c, lang } = useK();
+  const sheets = useKS((s) => s.sheets), content = useKS((s) => s.content);
   const qc = useQueryClient();
   // the content sheet's label is the name its query brings, so redraw when a query lands
   const [, redraw] = useReducer((x: number) => x + 1, 0);
-  useEffect(() => qc.getQueryCache().subscribe((e) => { if (e.type === 'updated' && e.action.type === 'success') redraw(); }), [qc]);
+  const hasContent = sheets.some((x) => x.kind === 'content');
+  useEffect(() => (hasContent ? qc.getQueryCache().subscribe((e) => { if (e.type === 'updated' && e.action.type === 'success') redraw(); }) : undefined), [qc, hasContent]);
   useEffect(() => { const f = () => closeTop(); document.addEventListener('k-close-top', f); return () => document.removeEventListener('k-close-top', f); }, [closeTop]);
   const open = sheets.filter((x) => !x.closing);
   const anyOpen = open.length > 0;
   useLayoutEffect(() => { lockPage(anyOpen); }, [anyOpen]);
+  // the sheets stay in page coordinates until the last one has slid out (after the page is unpinned), so a closing sheet leaves through the bottom of the screen
+  useLayoutEffect(() => { if (!sheets.length) document.documentElement.classList.remove('sheet-abs'); }, [sheets.length]);
   if (typeof document === 'undefined' || !sheets.length) return null;
   return createPortal(sheets.map((entry, index) => {
     const top = open[open.length - 1]?.id === entry.id;

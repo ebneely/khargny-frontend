@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { langPrefix } from '@5argny/core/rules/locale';
 import { usePathname, useRouter } from 'next/navigation';
 import { animate } from 'motion';
+import { createStore, useStore, type StoreApi } from 'zustand';
 import { copy } from '@5argny/core/copy';
 import { nowIn, type Lang, type Now } from './rules';
 import { isSheetPath } from './data';
@@ -13,18 +14,21 @@ export type Tab = 'home' | 'explore' | 'market' | 'saved' | 'profile';
 export type SheetEntry = { id: number; kind: 'action' | 'content'; label: string; head?: ReactNode; body: ReactNode; foot?: ReactNode; closing?: number };
 type Content = { keys: string[]; dir: 1 | -1; landed?: boolean } | null;
 
+type Loc = { city: string | null; area: string | null };
+/** What changes while the site is open lives in a zustand store: each component subscribes to the one slice it shows, so a
+ *  new tab, a location pick or a sheet opening re-renders only what shows it (the old single context re-rendered the page). */
+export type KState = { tab: Tab; loc: Loc; sheets: SheetEntry[]; content: Content; setTab: (t: Tab) => void; setLoc: (l: Loc) => void };
 type Ctx = {
   lang: Lang; c: (typeof copy)['en']; now: Now; time: string | null;
-  tab: Tab; setTab: (t: Tab) => void;
-  loc: { city: string | null; area: string | null }; setLoc: (l: { city: string | null; area: string | null }) => void;
+  setTab: (t: Tab) => void;
+  setLoc: (l: Loc) => void;
   toast: (msg: string) => void;
-  sheets: SheetEntry[]; openSheet: (label: string, body: ReactNode, foot?: ReactNode) => void; closeTop: (velocity?: number) => void;
+  openSheet: (label: string, body: ReactNode, foot?: ReactNode) => void; closeTop: (velocity?: number) => void;
   removeSheet: (id: number) => void;
   /** close every sheet, the content sheet's history steps included (proto closeContent), then run `then` on the page underneath */
   dismissAll: (then?: () => void) => void;
   /** close the action sheets only, leaving a content sheet open (proto report-send) */
   dismissActions: () => void;
-  content: Content;
   /** open a site link: a place on a phone becomes a sheet over this page, anything else navigates */
   go: (href: string) => void;
   /** phone, landed on a place: the place comes up as a sheet over Home, as the prototype does */
@@ -32,6 +36,9 @@ type Ctx = {
 };
 const K = createContext<Ctx | null>(null);
 export const useK = () => { const v = useContext(K); if (!v) throw new Error('useK outside KProvider'); return v; };
+const KStore = createContext<StoreApi<KState> | null>(null);
+/** One slice of the live state: `useKS((s) => s.loc)`. Re-renders only when that slice changes. */
+export function useKS<T>(pick: (s: KState) => T): T { const st = useContext(KStore); if (!st) throw new Error('useKS outside KProvider'); return useStore(st, pick); }
 
 export const reduce = () => typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const spring = (bounce = 0, duration = 0.38) => (reduce() ? { duration: 0.15 } : { type: 'spring' as const, bounce, duration });
@@ -41,13 +48,14 @@ export const haptic = () => { try { navigator.vibrate?.(8); } catch {} };
 let nextId = 1;
 
 export function KProvider({ lang, time, initialTab, children }: { lang: Lang; time: string | null; initialTab: Tab; children: ReactNode }) {
-  const [tab, setTab] = useState<Tab>(initialTab);
-  const [loc, setLoc] = useState<{ city: string | null; area: string | null }>({ city: null, area: null });
-  const [sheets, setSheets] = useState<SheetEntry[]>([]);
-  const [content, setContent] = useState<Content>(null);
-  const sheetsRef = useRef(sheets);
-  const contentRef = useRef(content);
-  useEffect(() => { sheetsRef.current = sheets; contentRef.current = content; }, [sheets, content]);
+  // one store per provider (never module-level: on the server it would be shared between requests)
+  const [store] = useState(() => createStore<KState>()((set) => ({ tab: initialTab, loc: { city: null, area: null }, sheets: [], content: null, setTab: (tab) => set({ tab }), setLoc: (loc) => set({ loc }) })));
+  const { setTab, setLoc } = store.getState();
+  const setSheets = useCallback((f: (s: SheetEntry[]) => SheetEntry[]) => store.setState((st) => ({ sheets: f(st.sheets) })), [store]);
+  const setContent = useCallback((content: Content) => store.setState({ content }), [store]);
+  // the refs the handlers read are the store itself: always current, no render needed
+  const sheetsRef = useMemo(() => ({ get current() { return store.getState().sheets; } }), [store]);
+  const contentRef = useMemo(() => ({ get current() { return store.getState().content; }, set current(v: Content) { store.setState({ content: v }); } }), [store]);
   const now = useMemo(() => nowIn(time), [time]);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -186,7 +194,7 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     mq.addEventListener('change', apply); return () => mq.removeEventListener('change', apply);
   }, []);
 
-  const value = useMemo<Ctx>(() => ({ lang, c: copy[lang] as (typeof copy)['en'], now, time, tab, setTab, loc, setLoc, toast, sheets, openSheet, closeTop, removeSheet, dismissAll, dismissActions, content, go, openLanded }),
-    [lang, now, time, tab, loc, toast, sheets, openSheet, closeTop, removeSheet, dismissAll, dismissActions, content, go, openLanded]);
-  return <K.Provider value={value}>{children}</K.Provider>;
+  const value = useMemo<Ctx>(() => ({ lang, c: copy[lang] as (typeof copy)['en'], now, time, setTab, setLoc, toast, openSheet, closeTop, removeSheet, dismissAll, dismissActions, go, openLanded }),
+    [lang, now, time, setTab, setLoc, toast, openSheet, closeTop, removeSheet, dismissAll, dismissActions, go, openLanded]);
+  return <KStore.Provider value={store}><K.Provider value={value}>{children}</K.Provider></KStore.Provider>;
 }
