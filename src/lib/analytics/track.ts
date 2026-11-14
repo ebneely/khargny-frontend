@@ -19,7 +19,13 @@ type AnalyticsEvent =
   | { type: "city_view"; cityId: string }
   | { type: "search" }
   | { type: "search_click"; term: string; placeId: string; position: number; cityId?: string; locale: 'ar' | 'en' }
-  | { type: "directions" | "save" | "share"; placeId: string };
+  | { type: "directions" | "save" | "share"; placeId: string }
+  // decision 0006: what was shown, and what a search showed and got tapped
+  | { type: "place_showing"; placeId: string; surface: ShowingSurface; position: number }
+  | { type: "search_results"; term: string; placeIds: string[] }
+  | { type: "search_tap"; term: string; placeId: string; position: number };
+
+export type ShowingSurface = "social" | "stories" | "explore" | "search" | "near" | "similar" | "takeme" | "collection";
 
 type Queued = AnalyticsEvent & { occurredAt: string; locale?: "ar" | "en" };
 
@@ -132,4 +138,22 @@ export function trackPlaceAction(
   placeId: string | undefined | null,
 ): void {
   if (placeId && UUID.test(placeId)) enqueue({ type, placeId });
+}
+
+/** A card was at least half on screen for 1 s (once per card per screen visit; the rule lives in rules/showing.ts). */
+export function trackPlaceShowing(placeId: string, surface: ShowingSurface, position: number): void {
+  if (UUID.test(placeId) && Number.isInteger(position) && position >= 1) enqueue({ type: "place_showing", placeId, surface, position });
+}
+
+/** A search answer was shown: the term and the places, in order. */
+export function trackSearchResults(term: string, placeIds: string[]): void {
+  const ids = placeIds.filter((id) => UUID.test(id)).slice(0, 50);
+  if (term.trim() && ids.length) enqueue({ type: "search_results", term: term.trim().slice(0, 256), placeIds: ids });
+}
+
+/** A place was tapped from search results (a lead). The page is about to change, so the batch leaves now. */
+export function trackSearchTap(term: string, placeId: string, position: number): void {
+  if (!term.trim() || !UUID.test(placeId) || !Number.isInteger(position) || position < 1) return;
+  enqueue({ type: "search_tap", term: term.trim().slice(0, 256), placeId, position });
+  flushAnalytics(true);
 }

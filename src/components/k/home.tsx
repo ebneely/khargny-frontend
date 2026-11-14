@@ -18,7 +18,7 @@ import { L, Ic } from './icons';
 import { Brand, Btn, Tag, Bit } from './bits';
 import { INTENTS, moment, t12, k, openState as openStateOf, type Intent } from './rules';
 import { placeHref, toK, type KPlace } from './data';
-import { Post, PostSkel, Tile, TileSkel, Go5, StatePill, Meta, BadgeTags, usePlaceStats, catIcon } from './place';
+import { Post, PostSkel, Tile, TileSkel, Go5, StatePill, Meta, BadgeTags, MarkChip, useShowing, usePlaceStats, catIcon, type CardTrack } from './place';
 import { Shell, usePlaceName, useLocKeys } from './Shell';
 import { useK, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
@@ -91,27 +91,51 @@ function useBlend(pool: KPlace[], city: string | null, area: string | null) {
   return out;
 }
 
+/**
+ * Decision 0006: Stories and 5argny Social come from GET /v1/feed (hype, fair-chance and ad slots filled by the backend).
+ * Until it answers, or when it fails or is not deployed (404), the client-side blend above fills in, so Home never breaks.
+ * Each item's `mark` ("rising" / "new") becomes the small chip; scores never reach the client.
+ */
+type FeedMark = CardTrack['mark'];
+function useFeed(surface: 'stories' | 'social', limit: number, fallback: KPlace[]): { list: KPlace[]; marks: Record<string, FeedMark> } {
+  const { lang } = useK();
+  const { city, areaKey } = useLocKeys();
+  const { data: cities = [] } = useCities();
+  const { data: categories = [] } = useCategories();
+  const near = nearParam(usePosition());
+  const { data } = useQuery({
+    queryKey: ['feed', surface, city?.id ?? '', areaKey ?? '', near ?? ''], staleTime: 60_000, retry: false,
+    queryFn: () => apiRequest<{ items: { place: unknown; mark?: FeedMark }[] }>('GET', '/v1/feed', { params: { surface, limit, cityId: city?.id, region: areaKey, near } }).then((r) => r.items),
+  });
+  return useMemo(() => {
+    const rows = (data ?? []).map((it) => ({ p: toK(it.place as never, { cities, categories }, lang), mark: it.mark ?? null })).filter((x) => x.p.photos.length);
+    if (!rows.length) return { list: fallback, marks: {} };
+    return { list: rows.map((x) => x.p), marks: Object.fromEntries(rows.map((x) => [x.p.id, x.mark])) };
+  }, [data, cities, categories, lang, fallback]);
+}
+
 export function HomeView({ data }: { data: HomeData }) {
   const { c, lang } = useK();
   const here = useHere(data);
   const pool = here.pool;
-  const { stories, social } = useBlend(pool, here.city, here.areaKey);
+  const blended = useBlend(pool, here.city, here.areaKey);
+  const stories = useFeed('stories', 8, blended.stories), social = useFeed('social', 14, blended.social);
   const near = useNearPlaces(); // null until the person shares their location (a tap, never on load)
   return (
     <Shell cur="home" right={<><TrendCard list={data.trending} /><MarketCard /></>}>
-      <Stories list={stories} />
+      <Stories {...stories} />
       <TakeMe data={data} totalByCategory={here.totalByCategory} coverByCategory={here.coverByCategory} pool={pool} />
       <NearYou list={near} />
       <Earned />
       <TeamCollections list={data.collections} />
       <h1 className="t-display page-pad social-h" style={{ margin: '6px 0 10px' }}>{withBrand(c.home.social)}</h1>
-      <Social list={social} near={near} />
+      <Social {...social} near={near} />
     </Shell>
   );
 }
 
 // the feed after a city is picked: its skeleton, what failed, or a city with nothing yet and a way back to all of Egypt
-function Social({ list, near }: { list: KPlace[]; near: KPlace[] | null }) {
+function Social({ list, marks, near }: { list: KPlace[]; marks: Record<string, FeedMark>; near: KPlace[] | null }) {
   const { c, setLoc } = useK();
   const where = usePlaceName();
   const st = usePoolState();
@@ -119,18 +143,26 @@ function Social({ list, near }: { list: KPlace[]; near: KPlace[] | null }) {
   if (st.loading) return <><PostSkel /><PostSkel /></>;
   if (st.error) return <Failed error={st.error} retry={st.retry} busy={st.busy} />;
   if (st.empty) return <StateBlock icon="map-pin-off" title={fill(c.states.feed.empty, { place: where })} body={c.states.feed.emptyBody} action={<Btn label={c.states.feed.allEgypt} kind="primary" act="all-egypt" onClick={() => setLoc({ city: null, area: null })} />} />;
-  return <div className={reveal}>{list.map((p, i) => <Fragment key={p.id}><Post p={p} />{i === 3 ? <div className="desk-only"><NearYou list={near} desk /></div> : null}</Fragment>)}</div>;
+  return <div className={reveal}>{list.map((p, i) => <Fragment key={p.id}><Post p={p} surface="social" position={i + 1} mark={marks[p.id]} />{i === 3 ? <div className="desk-only"><NearYou list={near} desk /></div> : null}</Fragment>)}</div>;
 }
 
-function Stories({ list }: { list: KPlace[] }) {
+function Stories({ list, marks }: { list: KPlace[]; marks: Record<string, FeedMark> }) {
   const { lang } = useK();
   if (usePoolState().loading) return <div className="rail-row stories skel" aria-hidden="true" style={{ paddingTop: 4, paddingBottom: 12 }}>{Array.from({ length: 8 }, (_, i) => <Sk key={i} w={96} h={150} r={16} style={{ flex: 'none' }} />)}</div>;
-  return <div className="rail-row stories" style={{ paddingTop: 4, paddingBottom: 12 }}>{list.map((p) => (
-    <Link key={p.id} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
+  return <div className="rail-row stories" style={{ paddingTop: 4, paddingBottom: 12 }}>{list.map((p, i) => <Story key={p.id} p={p} position={i + 1} mark={marks[p.id]} />)}</div>;
+}
       
+function Story({ p, position, mark }: { p: KPlace; position: number; mark: FeedMark }) {
+  const { lang } = useK();
+  const ref = useRef<HTMLAnchorElement>(null);
+  useShowing(ref, 'stories', p.id, position);
+  return (
+    <Link ref={ref} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
+      {mark ? <MarkChip mark={mark} over /> : null}
       <img src={p.photos[0]?.s} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <b dir="auto" style={{ position: 'absolute', left: 8, right: 8, bottom: 7, color: '#fff', fontSize: 12, fontWeight: 750, lineHeight: 1.2, textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{p.name}</b>
-    </Link>))}</div>;
+    </Link>
+  );
 }
 
 
@@ -148,7 +180,7 @@ function NearYou({ list, desk }: { list: KPlace[] | null; desk?: boolean }) {
   if (q.isError) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} /></section>;
   if (!list?.length) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><StateBlock compact icon="map-pin-off" title={c.states.near.empty} body={c.states.near.emptyBody} action={<Link className="btn secondary press" href={`${langPrefix(lang)}/explorer/`}>{c.states.near.seeEgypt}</Link>} /></section>;
   return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}<Link className="btn plain press" href={`${langPrefix(lang)}/explorer/?sort=near`}>{c.common.seeAll}</Link></div>
-    {desk ? null : <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearestFirst}</p>}<div className="rail-row">{list.slice(0, desk ? 6 : 7).map((p) => <Tile key={p.id} p={p} />)}</div></section>;
+    {desk ? null : <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearestFirst}</p>}<div className="rail-row">{list.slice(0, desk ? 6 : 7).map((p, i) => <Tile key={p.id} p={p} surface="near" position={i + 1} />)}</div></section>;
 }
 
 // Earned on 5argny: the places holding a badge in the location bar (asked of the API: they are rarely in Home's pool)
@@ -266,8 +298,10 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
   const { c, lang, now } = useK();
   const st = openStateOf(p, now, lang);
   const href = placeHref(p, lang);
+  const ref = useRef<HTMLDivElement>(null);
+  useShowing(ref, 'takeme', p.id, 1);
   // the photo and the name open the place like every other card; the buttons keep their own actions
-  return <div className="tm-deal"><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img src={p.photos[0]?.m} alt="" /></Link><span className="tm-fade" />
+  return <div className="tm-deal" ref={ref}><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img src={p.photos[0]?.m} alt="" /></Link><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
     <div className="tm-deal-text"><Link className="tm-deal-name press" href={href}><b dir="auto">{p.name}</b></Link><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;

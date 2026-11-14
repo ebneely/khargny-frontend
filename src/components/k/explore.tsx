@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { useSearchParams } from 'next/navigation';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
 import { matchesWhen } from '@5argny/core/rules';
@@ -19,13 +19,14 @@ import { Failed, StateBlock, useReveal } from './states';
 import { INTENTS, openState } from './rules';
 import { toK, type KPlace } from './data';
 import { Tile, TileSkel, BadgeTags } from './place';
+import { trackSearchResults } from '@/lib/analytics/track';
 import { Shell, usePlaceName } from './Shell';
 import { readF, useCatIds, useLocIds, useCounts, usePriceBands, useListQuery, useEarned, totalKey, type When } from './filters';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { useK, reduce } from './KProvider';
 import { usePosition, askPosition, askFail, nearParam } from './near';
 
-type Sort = 'popular' | 'near' | 'open';
+type Sort = 'popular' | 'near' | 'open' | 'rising';
 const PAGE = 24;
 type Cursors = Record<string, string | null>; // per category ('all' without one): '' = first page, null = no more
 type Page = { items: unknown[]; total: number; next: Cursors };
@@ -35,7 +36,7 @@ type Page = { items: unknown[]; total: number; next: Cursors };
  * search route by skip for ?q=, or the places that earned a badge. The first page's total is the count line, and it also
  * answers the Filters sheet's "Show N" for the same filters (no second request).
  */
-function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near: string | null, byDistance: boolean, popular: boolean) {
+function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near: string | null, byDistance: boolean, popular: boolean, rising: boolean) {
   const { lang } = useK();
   const qc = useQueryClient();
   const L = useListQuery(f);
@@ -44,7 +45,8 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
   // Popular is the dashboard's hype order (owner 2026-11-14): the API orders the list and each card carries only its position
-  const apiSort = byDistance ? 'distance' : popular ? 'hype' : undefined;
+  // Rising is the API's own order (rising and trial places by interest rate, decision 0006)
+  const apiSort = rising ? 'rising' : byDistance ? 'distance' : popular ? 'hype' : undefined;
   const list = useInfiniteQuery({
     queryKey: ['explore', ...L.key, near ?? '', apiSort ?? ''], enabled: !q && !badge && L.ready && !L.none, staleTime: 60_000,
     initialPageParam: Object.fromEntries(L.catIds.map((id) => [id ?? 'all', ''])) as Cursors,
@@ -103,10 +105,14 @@ export function ExploreView() {
   const sp = kept.current;
   const f = readF(sp);
   const q = (sp.get('q') || '').trim(), badge = sp.get('badge') === '1';
-  const sort = (['near', 'open'].includes(sp.get('sort') || '') ? sp.get('sort') : 'popular') as Sort;
+  // the Rising option exists only while the API answers it (the route may not be deployed yet): one small probe, hidden on any error
+  const { data: risingOk } = useQuery({ queryKey: ['explore', 'rising-probe'], staleTime: 10 * 60_000, retry: false,
+    queryFn: () => apiRequest('GET', '/v1/places', { params: { sort: 'rising', limit: 1 } }).then(() => true, () => false) });
+  const asked = sp.get('sort') || '';
+  const sort = (asked === 'rising' ? (risingOk === false ? 'popular' : 'rising') : ['near', 'open'].includes(asked) ? asked : 'popular') as Sort;
   const where = usePlaceName();
   const pos = usePosition();
-  const res0 = useResults(f, q, badge, nearParam(pos), sort === 'near' && !!pos, sort === 'popular'); // list cards carry their week of hours, so Open first works on them
+  const res0 = useResults(f, q, badge, nearParam(pos), sort === 'near' && !!pos, sort === 'popular', sort === 'rising' && !q); // list cards carry their week of hours, so Open first works on them
   // warm what the Filters sheet shows (category counts, price bands, amenities), so it opens complete
   useCounts(''); usePriceBands(); useAmenities();
   // "Nearest" is the person's own choice, so it may ask for the location then; the list then comes nearest first from the API
@@ -115,12 +121,15 @@ export function ExploreView() {
   // shortcut: search results (q) carry no distanceKm (the search route takes no near=), so Nearest orders them by the cards' own coordinates
   const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
   // hype position first (merged category lists keep one order); search results carry no position and keep their 30-day views
-  const score = { popular: (p: KPlace) => (p.popularRank != null ? 1e9 - p.popularRank : p.d30?.views ?? 0), near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
+  const score = { popular: (p: KPlace) => (p.popularRank != null ? 1e9 - p.popularRank : p.d30?.views ?? 0), near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0), rising: () => 0 }[sort];
   // the list route filters by When itself; search does not, so its pages are filtered here (and the count is what is listed)
   const fit = (pg: KPlace[]) => (q && f.when ? pg.filter((p) => matchesWhen(p.hours, f.when as When, now.date)) : pg);
   // shortcut: each page is ordered on its own and appended, so loading more never reshuffles what is on screen
-  const res = res0.pages.flatMap((pg) => [...fit(pg)].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a))); // paid places first inside a match, looking like any other
+  const res = res0.pages.flatMap((pg) => sort === 'rising' && !q ? fit(pg) : [...fit(pg)].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a))); // paid places first inside a match, looking like any other
   const total = q && f.when ? (res0.more ? null : res.length) : res0.total;
+  // a search answer is shown (its first page, in the order listed)
+  const listed = q && !res0.loading ? res.slice(0, 20).map((p) => p.id).join() : '';
+  useEffect(() => { if (listed) trackSearchResults(q, listed.split(',')); }, [q, listed]); // eslint-disable-line react-hooks/exhaustive-deps
   const reveal = useReveal(res0.loading);
   const intent = INTENTS.find((x) => x.key === f.intent);
   const { data: categories = [] } = useCategories();
@@ -144,10 +153,10 @@ export function ExploreView() {
     <Shell cur="explore" wide withFilters>
       <h1 className="t-display page-pad" style={{ margin: '2px 0 10px' }}>{head} <span style={{ color: 'var(--ink3)', fontWeight: 800 }}>{c.explore.in} <PlaceWord word={where} key={loc.city + '|' + loc.area} /></span></h1>
       <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{total == null ? (res0.error ? null : <span className="sk" aria-hidden="true"><b>000</b> {fill(c.explore.results, { n: '' }).trim()}</span>) : <><b style={{ color: 'var(--ink)' }}>{total}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
-        <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open]] as [Sort, string][]} val={sort} onPick={setSort} /></div>
+        <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open], ...(risingOk ? [['rising', c.explore.sort.rising]] : [])] as [Sort, string][]} val={sort} onPick={setSort} /></div>
       {busy ? <div className="grid" aria-busy="true">{skel(8)}</div>
         : res0.error && !res.length ? <Failed error={res0.error} retry={res0.retry} busy={res0.retrying} />
-        : res.length ? <><div className={`grid ${reveal}`}>{res.map((p) => <Tile key={p.id} p={p} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>
+        : res.length ? <><div className={`grid ${reveal}`}>{res.map((p, i) => <Tile key={p.id} p={p} surface={q ? 'search' : 'explore'} position={i + 1} term={q || undefined} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>
           {res0.moreError ? <div className="more-fail" role="alert">{c.states.moreFailed}<button className="btn secondary press" data-act="retry-more" onClick={res0.retryMore}><L n="rotate-ccw" />{c.states.retry}</button></div> : null}<div ref={end} aria-hidden="true" /></>
         : <StateBlock icon="search" title={fill(c.explore.empty, { what: headText.toLowerCase(), when: whenText.toLowerCase(), place: where }).replace(/\s+/g, ' ')}
           action={<Btn label={filtered ? c.states.explore.clear : c.states.explore.everything} kind="primary" act="empty-reset" onClick={() => { setLoc({ city: null, area: null }); go(`${langPrefix(lang)}/explorer/`); }} />} />}

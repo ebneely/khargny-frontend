@@ -19,7 +19,8 @@ import { slidePill } from './bits';
 import { INTENTS, moment, k } from './rules';
 import { intentFor, highlightRange } from '@5argny/core/rules';
 import { toK, placeHref, type KPlace } from './data';
-import { Meta, Stats } from './place';
+import { Meta, Stats, ShowingScope, useShowing } from './place';
+import { trackSearchResults, trackSearchTap } from '@/lib/analytics/track';
 import { Failed, Sk } from './states';
 import { useK, haptic, reduce, spring, type Tab } from './KProvider';
 import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
@@ -73,7 +74,7 @@ export function Shell({ cur, wide, right, noLoc, withFilters, actionbar, childre
   const chrome = useSyncExternalStore(noop, () => document.getElementById('chrome'), () => null);
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const showLoc = ['home', 'explore', 'market'].includes(cur) && !noLoc;
-  return <>
+  return <ShowingScope>
     <div className="chrome-top"><TopBar />{showLoc ? <div className="locbar-wrap"><div className="locbar-in"><LocBar withFilters={withFilters ?? cur === 'explore'} /></div></div> : null}</div>
     {/* desktop: a page without the location bar keeps its height, so the sidebar and the page start at the same place on every page */}
     {showLoc ? null : <div className="locbar-space" aria-hidden="true" />}
@@ -83,7 +84,7 @@ export function Shell({ cur, wide, right, noLoc, withFilters, actionbar, childre
       {wide ? null : <aside className="rail-right">{right}</aside>}
     </div>
     {actionbar && chrome ? createPortal(<div className="actionbar">{actionbar}</div>, chrome) : null}
-  </>;
+  </ShowingScope>;
 }
 
 function Sidebar({ cur }: { cur: Tab }) {
@@ -270,6 +271,13 @@ function useGo(q: string) {
   return { key: it.key, icon: INTENTS.find((x) => x.key === it.key)!.icon, total: total ?? null, open: open ? cats.reduce((a, cat) => a + (open.byCategory[cat.slug] ?? 0), 0) : null };
 }
 
+function SearchRow({ p, q, position, onGo, hl }: { p: KPlace; q: string; position: number; onGo: (term: string) => void; hl: (text: string) => ReactNode }) {
+  const { lang } = useK();
+  const ref = useRef<HTMLAnchorElement>(null);
+  useShowing(ref, 'search', p.id, position);
+  return <Link ref={ref} className="sg-row press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => { trackSearchTap(q, p.id, position); onGo(q); }}><span className="tile-media sg-thumb"><img src={p.photos[0]?.s} alt="" /></span><span className="grow"><b dir="auto">{hl(p.name)}</b><Meta p={p} /></span><Stats p={p} /></Link>;
+}
+
 function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   const { c, lang, setLoc, loc } = useK();
   const where = usePlaceName();
@@ -277,7 +285,7 @@ function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   const comp = go ? ([[fill(c.search.results.intentIn, { intent: c.intents[go.key], place: where }), `${langPrefix(lang)}/explorer/?intent=${go.key}`, go.icon, go.total], [fill(c.search.results.intentOpenNow, { intent: c.intents[go.key] }), `${langPrefix(lang)}/explorer/?intent=${go.key}&when=now`, 'clock', go.open]] as [string, string, string, number | null][]).filter((r) => (r[3] ?? 0) > 0) : [];
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
-  const { data, isFetching, isError, error, refetch } = useSearchPlaces({ q, limit: 20 }, { locale: lang });
+  const { data, isFetching, isPlaceholderData, isError, error, refetch } = useSearchPlaces({ q, limit: 20 }, { locale: lang });
   // the location bar first, then paid places, then the 30-day views (proto results())
   const inLoc = (p: KPlace) => (!loc.city || p.citySlug === loc.city) && (!loc.area || p.area === loc.area);
   const places = (data?.items ?? []).map((raw) => toK(raw as never, { cities, categories }, lang))
@@ -285,13 +293,16 @@ function Results({ q, onGo }: { q: string; onGo: (term: string) => void }) {
   const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
   const s = norm(q);
   const areas = cities.flatMap((city) => (city.areaKeys ?? []).map((key) => ({ city, key, n: regionLabel(key, lang, city.nameEn || city.name) || key }))).filter((a) => norm(a.n).includes(s)).slice(0, 3);
+  // a search answer is shown: the term and the places in order (once per term and answer)
+  const shown = data && !isPlaceholderData ? places.map((x) => x.id).join() : '';
+  useEffect(() => { if (shown) trackSearchResults(q, shown.split(',')); }, [q, shown]); // eslint-disable-line react-hooks/exhaustive-deps
   const hl = (text: string) => { const r = highlightRange(text, q); return !r ? text : <>{text.slice(0, r[0])}<mark>{text.slice(r[0], r[1])}</mark>{text.slice(r[1])}</>; };
   // the first answer for this query: rows in the result rows' own markup; failed: what failed and Try again (the typed query stays)
   if (!data && isFetching) return <><div className="sg-sec skel" aria-hidden="true"><span className="sk">{c.search.results.places}</span></div>{[0, 1, 2].map((i) => <div key={i} className="sg-row skel" aria-hidden="true"><span className="tile-media sg-thumb"><Sk w={36} h={36} r={9} /></span><span className="grow"><b><span className="sk">Place name here</span></b><span className="meta"><span className="cat-bubble sk">Restaurants</span><span className="cat-bubble sk">Area name here</span></span></span><span className="stats">{(['eye', 'heart', 'saved'] as const).map((n) => <span key={n} className="views sk"><Ic n={n} /><span className="n">00</span></span>)}</span></div>)}</>;
   if (!data && isError) return <Failed compact error={error} retry={refetch} />;
   return <>
     {comp.length ? <><div className="sg-sec"><L n="navigation" /> {c.search.results.go}</div>{comp.map(([l, h, i, n]) => <Link key={h} className="sg-row sg-comp press" href={h} data-act="sg-go" onClick={() => onGo(q)}><span className="sg-ic"><L n={i} /></span><b className="grow">{l}</b><em className="sg-n"><i className="live" />{n}</em></Link>)}</> : null}
-    {places.length ? <><div className="sg-sec"><L n="map-pin" /> {c.search.results.places}</div>{places.map((p) => <Link key={p.id} className="sg-row press" href={placeHref(p, lang)} data-act="sg-go" onClick={() => onGo(q)}><span className="tile-media sg-thumb"><img src={p.photos[0]?.s} alt="" /></span><span className="grow"><b dir="auto">{hl(p.name)}</b><Meta p={p} /></span><Stats p={p} /></Link>)}</> : null}
+    {places.length ? <><div className="sg-sec"><L n="map-pin" /> {c.search.results.places}</div>{places.map((p, i) => <SearchRow key={p.id} p={p} q={q} position={i + 1} onGo={onGo} hl={hl} />)}</> : null}
     {areas.length ? <><div className="sg-sec"><L n="map" /> {c.search.results.areas}</div>{areas.map((a) => <Link key={a.city.id + a.key} className="sg-row press" href={`${langPrefix(lang)}/explorer/`} data-act="sg-area" onClick={() => { onGo(a.n); setLoc({ city: a.city.slug, area: a.n }); }}><span className="sg-ic"><Gov name={a.city.slug} fallback={<L n="map-pin" />} /></span><span className="grow"><b>{hl(a.n)}</b><span className="t-small">{lang === 'ar' ? a.city.name : a.city.nameEn || a.city.name}</span></span></Link>)}</> : null}
     {places.length || areas.length || comp.length
       ? <Link className="sg-row sg-all press" href={`${langPrefix(lang)}/explorer/?q=${encodeURIComponent(q.trim())}`} data-act="sg-go" onClick={() => onGo(q)}><L n="search" /><span className="grow">{fill(c.search.results.seeEverything, { q: q.trim() })}</span><L n="arrow-right" /></Link>

@@ -161,7 +161,7 @@ export function CollectionView({ slug, sheet }: { slug: string; sheet?: boolean 
   return wrap(<>{back}
     <div className="col-head page-pad"><Cover col={col} /><div><h1 className="t-display">{col.title}</h1><p className="t-small col-meta"><ColMeta col={col} views={views} /></p></div></div>
     <div className="col-actions page-pad">{actions}</div>
-    {col.places.length ? <div className="grid">{col.places.map((p) => <Tile key={p.id} p={p} />)}</div>
+    {col.places.length ? <div className="grid">{col.places.map((p, i) => <Tile key={p.id} p={p} surface="collection" position={i + 1} />)}</div>
       : <div className="group empty"><L n="bookmark-plus" /><p className="t-head">{c.collections.emptyTitle}</p><p className="t-small">{before}<L n="ellipsis" />{fill(after ?? '', { title: col.title })}</p><Btn label={c.common.findPlaces} kind="primary" act="go-explore" onClick={() => go(`${langPrefix(lang)}/explorer/`)} /></div>}
   </>, col.own);
 }
