@@ -901,14 +901,12 @@ html,body{overflow-anchor:none}
 
 /* Liquid Glass tab bar (glisse): one floating bar on every screen size; it replaces the plain tab bar and the sidebar's main links */
 #glass-tabs{position:fixed;z-index:45;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:center;pointer-events:none}
-#glass-tabs > *{pointer-events:auto;--lg-fill:var(--accent);--lg-foreground:var(--ink);--lg-muted:var(--ink2);font-family:inherit}
+#glass-tabs > *{pointer-events:auto} /* glisse's own TabBar look, unstyled (owner 2026-11-14) */
 #glass-tabs .gl-ic{display:inline-grid;place-items:center}
 #glass-tabs .gl-ic svg{width:22px;height:22px}
 #chrome .tabbar{display:none} /* glisse is the only phone bar (owner 2026-11-14) */
 @media (min-width:1024px){ #glass-tabs{display:none} }
 @media (min-width:1024px){ #glass-tabs{bottom:20px} }
-#glass-tabs .lg-tab-label{font-weight:650}
-#glass-tabs .lg-tab-bar{box-shadow:0 8px 28px rgba(36,28,22,.18),0 1px 2px rgba(36,28,22,.08)}
 
 /* dark mode: same warm world at night (owner, 2026-11-13); every surface reads the tokens */
 :root[data-theme=dark]{
@@ -1200,10 +1198,6 @@ html{scrollbar-gutter:stable}
 html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
 /* the tab bar is glisse's Liquid Glass TabBar, tinted. The selection lens moves as a plain tinted pill: no backdrop filter or
    refraction on the moving piece, so sliding between tabs costs only a transform (owner 2026-11-14: it stuttered) */
-#glass-tabs .lg-tab-lens.lg-glass{background-color:transparent!important;background-image:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important}
-#glass-tabs .lg-tab-lens::before{opacity:1!important}
-#glass-tabs .lg-tab-lens .lg-drawn,#glass-tabs .lg-tab-lensed{display:none!important}
-#glass-tabs .lg-tab-bar[data-lensing] .lg-tab-tint{visibility:visible}
 /* the brand mark in the top bar (owner 2026-11-14): the خرجني pin with the 5argny! arrow at its top right, like the app's splash.
    A mark, not text: the arrow stays top right in Arabic too. */
 .brand-mark{position:relative;display:inline-flex;align-items:center;flex:none;direction:ltr;padding:2px 16px 2px 0;margin-block:-2px}
