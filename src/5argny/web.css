@@ -1237,11 +1237,13 @@ html.lock-fixed .chrome-top{transform:translateY(var(--lock-y,0px))}
    gradient and one clock (OfflineBar syncs the animations). */
 :root{--sk-delay:150ms;--sk-fade:200ms;--sk-hi:rgba(255,253,249,.72)}
 :root[data-theme=dark]{--sk-hi:rgba(255,255,255,.06)}
-.sk{border-radius:6px;color:transparent!important;text-shadow:none!important;-webkit-box-decoration-break:clone;box-decoration-break:clone;background-color:var(--fill);
+/* On 5argny loading is On 5argny itself with zeros: its lines and its plot take the skeleton look (placeview OverviewSlot) */
+.sk,.ov-skel :is(.group-title,p > b,p > .t-small,.hype-say,.hype-plot,.hype-help,.row .grow,.row > b,.row > .t-small,.row.t-micro > span:not(.grow)){border-radius:6px;color:transparent!important;text-shadow:none!important;-webkit-box-decoration-break:clone;box-decoration-break:clone;background-color:var(--fill);
   background-image:linear-gradient(100deg,transparent 38%,var(--sk-hi) 50%,transparent 62%);background-size:100vw 100%;background-repeat:no-repeat;background-attachment:fixed;
   animation:skIn var(--sk-fade) var(--sk-delay) both,skSweep 1.4s linear infinite}
 i.sk{display:block}
-.sk svg,.sk img{visibility:hidden}
+.sk svg,.sk img,.ov-skel svg,.ov-skel .hype-dot,.ov-skel .hype-tag{visibility:hidden}
+.ov-skel :is(.group-title,.hype-say,.hype-help){width:fit-content}
 .skel{pointer-events:none}
 .sk-reveal{animation:skIn var(--sk-fade) ease-out both}
 @keyframes skIn{from{opacity:0}to{opacity:1}}

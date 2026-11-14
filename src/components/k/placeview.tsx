@@ -18,16 +18,37 @@ import { Carousel, Meta, OpenPiece, Actions, Go5, Tile, placeStatsQuery, badgeIc
 import { useQuery } from '@tanstack/react-query';
 import { Shell, putOpened } from './Shell';
 import { withBrand, HomeView, type HomeData } from './home';
+import { failKind } from '@5argny/core/rules';
+import { Failed, Sk, StateBlock, useReveal } from './states';
 import { useK, spring, desk } from './KProvider';
 import { PlaceMoreBody } from './collections';
 import { useOpenCorrection } from './settings';
 
-export function useKPlace(slug: string) {
+export function useKPlace(slug: string) { return useKPlaceQ(slug).p; }
+/** The place and its query, for the screens that draw its loading and failed states. */
+export function useKPlaceQ(slug: string) {
   const { lang } = useK();
-  const { data: raw } = usePlace(slug);
+  const q = usePlace(slug);
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
-  return raw ? toK(raw as never, { cities, categories }, lang) : null;
+  return { p: q.data ? toK(q.data as never, { cities, categories }, lang) : null, q };
+}
+
+/** The place's skeleton: its photo, name, category and area, opening pill and actions, in the place's own markup. */
+export function PlaceSkel() {
+  return <div className="skel" aria-hidden="true">
+    <div className="place-media"><Sk style={{ position: 'absolute', inset: 0, borderRadius: 0 }} /></div>
+    <div className="place-head"><h1 className="t-display"><span className="sk">Place name</span></h1>
+      <p style={{ marginTop: 6 }}><span className="meta"><span className="cat-bubble sk">Category</span><span className="cat-bubble sk">Area name</span></span></p>
+      <div className="open-tl"><span className="live-pill sk">Open now</span></div></div>
+    <div className="place-tools">{(['heart', 'saved', 'share'] as const).map((n) => <span key={n} className="icon-btn act-btn sk"><Ic n={n} /><span className="n">00</span></span>)}<span className="act-views sk"><Ic n="eye" /><span className="n">0.0k</span></span><span className="grow" /><span className="icon-btn sk" /></div>
+  </div>;
+}
+/** A place that did not load: gone (with a way on), or what failed with Try again. */
+function PlaceFailed({ error, retry, busy }: { error: unknown; retry: () => unknown; busy: boolean }) {
+  const { c, lang, go } = useK();
+  if (failKind(error) === 'gone') return <div style={{ paddingTop: 16 }}><StateBlock icon="map-pin-off" title={c.states.placeGone} body={c.states.placeGoneBody} action={<Btn label={c.common.findPlaces} kind="primary" act="go-explore" onClick={() => go(`/${lang}/explorer/`)} />} /></div>;
+  return <div style={{ paddingTop: 16 }}><Failed error={error} retry={retry} busy={busy} /></div>;
 }
 
 /** The hype line: one smooth curve of daily views, dated, with the busiest day and today marked; slide over it to read any day. */
@@ -81,8 +102,11 @@ const ZERO = { views: 0, likes: 0, saves: 0, shares: 0, goes: 0 };
 const HOLD: KStats = { d30: { ...ZERO, days: Array(30).fill(0) }, all: ZERO };
 function OverviewSlot({ id }: { id: string }) {
   const q = useQuery(placeStatsQuery(id));
-  if (q.isPending) return <div aria-hidden="true" style={{ visibility: 'hidden' }}><Overview s={HOLD} id={id} /></div>;
-  return q.data ? <Overview s={q.data} id={id} /> : null;
+  const reveal = useReveal(q.isPending);
+  // loading: On 5argny itself with zeros, drawn as its skeleton (web.css .ov-skel), so the page below never jumps
+  if (q.isPending) return <div className="skel ov-skel" aria-hidden="true"><Overview s={HOLD} id={id} /></div>;
+  if (q.isError) return <section className="group" style={{ padding: 0 }}><Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} /></section>;
+  return q.data ? <div className={reveal}><Overview s={q.data} id={id} /></div> : null;
 }
 
 function Badges({ p }: { p: KPlace }) {
@@ -102,10 +126,11 @@ function Amenities({ p, all }: { p: KPlace; all?: boolean }) {
 
 function Similar({ p }: { p: KPlace }) {
   const { c, lang, setLoc } = useK();
-  const { data = [] } = useSimilarPlaces(p.id);
+  const { data = [], isError, error, refetch, isFetching } = useSimilarPlaces(p.id);
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
   const list = data.filter((x) => x.id !== p.id).slice(0, 8).map((x) => toK(x as never, { cities, categories }, lang));
+  if (isError) return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2></div><Failed compact error={error} retry={refetch} busy={isFetching} /></section>;
   if (!list.length) return null;
   return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`/${lang}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x) => <Tile key={x.id} p={x} />)}</div></section>;
 }
@@ -150,10 +175,14 @@ function useSeen(p: KPlace | null) {
 
 /** Desktop, or a place landed on directly: a page with the back pin, the side column and (phone) the action bar. */
 export function PlacePage({ slug }: { slug: string }) {
-  const p = useKPlace(slug);
+  const { p, q } = useKPlaceQ(slug);
   useSeen(p);
-  if (!p) return <Shell cur="explore" wide>{null}</Shell>;
+  if (!p) return <PlaceLoading failed={q.isError ? <PlaceFailed error={q.error} retry={q.refetch} busy={q.isFetching} /> : null} />;
   return <PlacePageBody p={p} />;
+}
+/** Desktop: the place page while it loads (also the route's loading.tsx), or the place that failed in its place. */
+export function PlaceLoading({ failed }: { failed?: ReactNode }) {
+  return <Shell cur="explore" wide><div className="place-wrap"><div>{failed ?? <PlaceSkel />}</div><aside className="place-side" /></div></Shell>;
 }
 function PlacePageBody({ p }: { p: KPlace }) {
   const { c, go, lang } = useK();
@@ -167,7 +196,7 @@ function PlacePageBody({ p }: { p: KPlace }) {
 
 /** Phone, opened from inside the site: the content of the place sheet; a push inside it slides from the side it goes back to. */
 export function PlaceSheetBody({ slug }: { slug: string }) {
-  const p = useKPlace(slug);
+  const { p, q } = useKPlaceQ(slug);
   const { content, lang } = useK();
   useSeen(p);
   const ref = useRef<HTMLDivElement>(null);
@@ -179,7 +208,7 @@ export function PlaceSheetBody({ slug }: { slug: string }) {
     const dir = (content?.dir ?? 1) * (lang === 'ar' ? -1 : 1);
     animate(body, { opacity: [0, 1], transform: [`translateX(${36 * dir}px)`, 'translateX(0)'] }, spring(0, 0.4));
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <div ref={ref} style={{ display: 'contents' }}>{p ? <SheetParts p={p} part="body" /> : null}</div>;
+  return <div ref={ref} style={{ display: 'contents' }}>{p ? <SheetParts p={p} part="body" /> : q.isError ? <PlaceFailed error={q.error} retry={q.refetch} busy={q.isFetching} /> : <PlaceSkel />}</div>;
 }
 export function PlaceSheetFoot({ slug }: { slug: string }) {
   const p = useKPlace(slug);

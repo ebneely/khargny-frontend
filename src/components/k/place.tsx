@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { animate } from 'motion';
 import { categoryIcons, categoryIconFallback, badgeIcons, badgeIconFallback } from '@5argny/core/icons';
 import { fill } from '@5argny/core/copy';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, ApiError } from '@/lib/api/client';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { regionLabel } from '@/lib/egypt-regions';
@@ -28,7 +28,8 @@ import { Sk } from './states';
 /** 30-day windows from GET /v1/places/:id/stats; null until that route answers (counts stay hidden). */
 export const placeStatsQuery = (id: string, enabled = true) => ({
   queryKey: ['places', 'stats', id],
-  queryFn: async () => { try { return await apiRequest<KStats>('GET', `/v1/places/${id}/stats`); } catch { return null; } },
+  // no stats route or no such place (404): null, the counts stay hidden; any other failure is shown where the stats are drawn
+  queryFn: () => apiRequest<KStats>('GET', `/v1/places/${id}/stats`).catch((e) => { if (e instanceof ApiError && e.status === 404) return null; throw e; }),
   staleTime: 5 * 60 * 1000, retry: false, enabled,
 });
 export function usePlaceStats(id: string, enabled = true) {
