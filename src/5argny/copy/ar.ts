@@ -116,7 +116,7 @@ export const ar: Copy = {
   settings: {
     title: 'الإعدادات', preferences: 'التفضيلات', appearance: 'الشكل', light: 'فاتح', dark: 'غامق', auto: 'تلقائي', language: 'اللغة', english: 'English', arabic: 'العربية',
     notify: { near: 'أماكن جديدة قريبة مني', saved: 'جديد الأماكن اللي حفظتها', weekend: 'اقتراحات الويك إند يوم الخميس' },
-    help: 'المساعدة', report: 'بلغ عن مشكلة',
+    help: 'المساعدة', report: 'بلغ عن مشكلة', privacy: 'سياسة الخصوصية',
   },
   report: {
     title: 'بلغ عن مشكلة', whatHappened: 'إيه اللي حصل؟',

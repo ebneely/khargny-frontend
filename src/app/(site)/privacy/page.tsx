@@ -24,6 +24,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function PrivacyPolicy() {
-  return <PrivacyPolicyContent />;
+export default async function PrivacyPolicy() {
+  return <PrivacyPolicyContent locale={await currentLocale()} />;
 }

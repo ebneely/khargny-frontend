@@ -54,7 +54,7 @@ export function SettingsView() {
       <div className="row"><span className="grow">{c.settings.appearance}</span><Seg opts={[['light', c.settings.light], ['dark', c.settings.dark], ['auto', c.settings.auto]]} val={theme} onPick={pickTheme} /></div>
       <div className="row"><span className="grow">{c.settings.language}</span><Seg opts={[['en', c.settings.english], ['ar', c.settings.arabic]]} val={lang} onPick={pickLang} /></div>
     </Group>
-    <Group title={c.settings.help}><Link className="row press" href={`${langPrefix(lang)}/settings/report/`} data-act="report-open" onClick={(e) => { if (desk()) return; e.preventDefault(); report(); }}><Ic n="flag" /><span className="grow">{c.settings.report}</span><L n="chevron-right" /></Link></Group>
+    <Group title={c.settings.help}><Link className="row press" href={`${langPrefix(lang)}/settings/report/`} data-act="report-open" onClick={(e) => { if (desk()) return; e.preventDefault(); report(); }}><Ic n="flag" /><span className="grow">{c.settings.report}</span><L n="chevron-right" /></Link><Link className="row press" href={`${langPrefix(lang)}/privacy/`}><L n="lock" /><span className="grow">{c.settings.privacy}</span><L n="chevron-right" /></Link></Group>
   </Shell>;
 }
 
