@@ -8,6 +8,7 @@ import { TabNav } from './Shell';
 import { Gestures } from './Gestures';
 import { PageMotion } from './PageMotion';
 import { OfflineBar } from './states';
+import { GetAppSheet } from './getapp';
 import type { Lang } from './rules';
 
 export function KChrome({ lang, time, tab, children }: { lang: Lang; time: string | null; tab: Tab; children: ReactNode }) {
@@ -20,6 +21,7 @@ export function KChrome({ lang, time, tab, children }: { lang: Lang; time: strin
       <Gestures />
       <PageMotion />
       <OfflineBar />
+      <GetAppSheet />
     </KProvider>
   );
 }

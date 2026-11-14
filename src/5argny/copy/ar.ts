@@ -154,6 +154,7 @@ export const ar: Copy = {
     inOneLine: 'في سطر واحد', whereAppeared: 'شوف ظهرت فين', homeFeed: 'فيد الرئيسية', storiesRow: 'صف الستوريز', exploreIn: 'استكشف، {intent}',
     weekly: 'ملخص الأسبوع', weeklyWhatsApp: 'ابعتهولي كل حد على WhatsApp', weeklyAria: 'ملخص الأسبوع على WhatsApp',
   },
+  getApp: { title: 'خرجني أحلى على التطبيق', body: 'أسرع، وفيه أماكنك المحفوظة واللي جنبك.', appStore: 'حمله من App Store', googlePlay: 'نزله من Google Play', notNow: 'مش دلوقتي' },
   states: {
     retry: 'جرب تاني', offline: 'إنت مش متصل. هنكمل أول ما النت يرجع',
     failed: { offline: 'إنت مش متصل. ده هيظهر أول ما النت يرجع', gone: 'ده مبقاش موجود على خرجني', slow: 'ده بياخد وقت أكتر من اللازم', server: 'في حاجة باظت عندنا', network: 'مقدرناش نوصل لخرجني' },

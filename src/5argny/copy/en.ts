@@ -154,6 +154,8 @@ export const en = {
     inOneLine: 'In one line', whereAppeared: 'See where you appeared', homeFeed: 'Home feed', storiesRow: 'Stories row', exploreIn: 'Explore, {intent}',
     weekly: 'Weekly summary', weeklyWhatsApp: 'Send me this every Sunday on WhatsApp', weeklyAria: 'Weekly WhatsApp summary',
   },
+  // the first-visit sheet that points web visitors at the apps (owner 2026-11-14)
+  getApp: { title: '5argny is better in the app', body: 'Faster, with your saved places and what is near you.', appStore: 'Download on the App Store', googlePlay: 'Get it on Google Play', notNow: 'Not now' },
   // loading, empty and failing (owner 2026-11-14): one short line in the 5argny voice, one action
   states: {
     retry: 'Try again', offline: "You're offline. We'll pick up when you're back",
