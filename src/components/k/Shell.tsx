@@ -42,18 +42,26 @@ function NavItems({ cur }: { cur: Tab }) {
 }
 
 /**
- * The brand mark (the خرجني pin, as the app's splash draws it) with the 5argny! arrow at its top right. On hover (a mouse)
- * or keyboard focus the arrow takes a short 5argny! flight and comes home; reduced motion keeps it still.
+ * The brand mark (the خرجني pin, as the app's splash draws it) with the 5argny! arrow at its top right. On hover (a mouse),
+ * a keyboard focus, or a phone tap and a pen press the arrow takes a short 5argny! flight and comes home (as the app's logo
+ * does); reduced motion keeps it still.
  */
 function BrandMark({ href, label }: { href: string; label: string }) {
   const go = useRef<HTMLSpanElement>(null);
   const run = useRef<{ stop: () => void } | null>(null);
   const fly = () => {
     const el = go.current; if (!el || reduce()) return;
-    run.current?.stop(); // interruptible: a new hover restarts from where the arrow is
-    run.current = animate(el, { transform: ['translate(0px,0px) scale(1)', 'translate(7px,-7px) scale(1.15)', 'translate(-3px,3px) scale(.7)', 'translate(0px,0px) scale(1)'], opacity: [1, 0, 0, 1], offset: [0, 0.45, 0.5, 1] } as never, { duration: 0.45, ease: [0.3, 0.7, 0.2, 1] });
+    // interruptible: a new press (or hover) restarts from where the arrow is, never from home
+    const live = run.current ? getComputedStyle(el) : null;
+    run.current?.stop();
+    const m = live && live.transform !== 'none' ? new DOMMatrixReadOnly(live.transform) : null;
+    const at = { x: m?.e ?? 0, y: m?.f ?? 0, s: m ? Math.hypot(m.a, m.b) : 1, o: live ? Number(live.opacity) : 1 };
+    const a = animate(el, { x: [at.x, 7, -3, 0], y: [at.y, -7, 3, 0], scale: [at.s, 1.15, 0.7, 1], opacity: [at.o, 0, 0, 1] }, { duration: 0.45, ease: [0.3, 0.7, 0.2, 1] });
+    run.current = a;
+    a.finished.then(() => { if (run.current === a) run.current = null; }, () => {}); // a stop rejects: the newer flight owns it
   };
   return <Link className="wordmark brand-mark press" href={href} aria-label={label}
+    onPointerDown={(e) => { if (e.pointerType === 'touch' || e.pointerType === 'pen') fly(); }}
     onPointerEnter={(e) => { if (e.pointerType === 'mouse') fly(); }} onFocus={(e) => { if (e.currentTarget.matches(':focus-visible')) fly(); }}>
     <img src="/brand/khargny-mark.svg" alt="" width={27} height={34} draggable={false} /><span className="mark-go" ref={go}><L n="navigation" /></span></Link>;
 }
