@@ -56,7 +56,8 @@ function BrandMark({ href, label }: { href: string; label: string }) {
     run.current?.stop();
     const m = live && live.transform !== 'none' ? new DOMMatrixReadOnly(live.transform) : null;
     const at = { x: m?.e ?? 0, y: m?.f ?? 0, s: m ? Math.hypot(m.a, m.b) : 1, o: live ? Number(live.opacity) : 1 };
-    const a = animate(el, { x: [at.x, 7, -3, 0], y: [at.y, -7, 3, 0], scale: [at.s, 1.15, 0.7, 1], opacity: [at.o, 0, 0, 1] }, { duration: 0.45, ease: [0.3, 0.7, 0.2, 1] });
+    const a = animate(el, { x: [at.x, 7, -3, 0], y: [at.y, -7, 3, 0], scale: [at.s, 1.15, 0.7, 1], opacity: [at.o, 0, 0, 1] },
+      { duration: 0.45, ease: [0.3, 0.7, 0.2, 1], times: [0, 0.45, 0.5, 1] });
     run.current = a;
     a.finished.then(() => { if (run.current === a) run.current = null; }, () => {}); // a stop rejects: the newer flight owns it
   };

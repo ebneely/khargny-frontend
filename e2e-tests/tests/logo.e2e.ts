@@ -5,6 +5,13 @@ test('a touch tap flies the logo arrow and still goes home, and hover still flie
   // a returning visitor: the first-visit "better in the app" sheet would cover the page while this test runs
   await browser.addInitScript(() => { try { localStorage.setItem('kh.getApp', String(Date.now())); } catch { /* storage blocked */ } });
   const flying = () => browser.evaluate(() => document.querySelector('.mark-go')!.getAnimations().length);
+  // the flight's four stops: gone at 45-50% of the 0.45 s, then home
+  const stops = () => browser.evaluate(() => {
+    const want = '0,0.45,0.5,1';
+    const got = document.querySelector('.mark-go')!.getAnimations()
+      .map((a) => ((a.effect as KeyframeEffect | null)?.getKeyframes() ?? []).map((k) => k.offset).join(','));
+    return got.length > 0 && got.every((o) => o === want) ? 'ok' : `got ${JSON.stringify(got)}`;
+  });
   await app.open('/explorer/');
   const logo = screen.getByRole('link', '5argny home');
   await expect(logo).toBeVisible();
@@ -18,6 +25,7 @@ test('a touch tap flies the logo arrow and still goes home, and hover still flie
     }
   });
   await expect.poll(flying, { message: 'the arrow did not fly on a touch press' }).toBeGreaterThan(0);
+  await expect.poll(stops, { message: 'the flight keys are not at 0, 0.45, 0.5 and 1' }).toBe('ok');
 
   // the same tap still navigates Home as it always did
   await logo.tap();
@@ -29,5 +37,6 @@ test('a touch tap flies the logo arrow and still goes home, and hover still flie
   await expect.poll(flying).toBe(0);
   await logo.hover();
   await expect.poll(flying, { message: 'the arrow did not fly on hover' }).toBeGreaterThan(0);
+  await expect.poll(stops, { message: 'the hover flight keys are not at 0, 0.45, 0.5 and 1' }).toBe('ok');
   await expect(browser).toHaveURL('/');
 });
