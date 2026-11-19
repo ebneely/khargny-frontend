@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "e2e": "npm --prefix e2e-tests run test:e2e",
-    "test": "vitest run src/5argny"
+    "test": "vitest run src/5argny src/lib/analytics"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
