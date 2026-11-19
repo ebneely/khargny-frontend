@@ -1,14 +1,16 @@
 "use client";
 
 import { fetchApi } from "@/lib/api/transport";
+import { getApiBaseUrl } from "@/lib/config";
+import { visitorBatchAccepted, visitorFields } from "./visitor-id";
 import { geoCell } from "@5argny/core/rules";
 
 /**
  * Audience analytics for the web: page, place and city views plus intent actions.
  *
- * Privacy: the browser is identified only by the backend's own HttpOnly guest cookie (sent
- * with `credentials: "include"`), which the backend hashes on arrival. This code sends no
- * id or personal data. Search result clicks include the searched term. Events are batched (every 5 s, at 10 events,
+ * Privacy: the browser is identified by an anonymous random id it keeps for a year (visitor-id.ts, decision 0007) and
+ * by the backend's own HttpOnly guest cookie; the backend hashes both on arrival. No name, email or account is sent.
+ * Search result clicks include the searched term. Events are batched (every 5 s, at 10 events,
  * and when the tab is hidden) and failures are dropped silently: analytics never affects
  * the page.
  */
@@ -55,7 +57,7 @@ export function isTrackingAllowed(): boolean {
     !(navigator as { globalPrivacyControl?: boolean }).globalPrivacyControl;
 }
 
-export function sendTrackingBatch(path: string, body: unknown, keepalive: boolean): Promise<boolean> {
+export function sendTrackingBatch(path: string, body: unknown, keepalive: boolean, onAnswer?: (data: unknown) => void): Promise<boolean> {
   try {
     return fetchApi(path, {
       method: "POST",
@@ -63,7 +65,10 @@ export function sendTrackingBatch(path: string, body: unknown, keepalive: boolea
       credentials: "include",
       keepalive,
       body: JSON.stringify(body),
-    }).then((response) => response.ok).catch(() => false);
+    }).then((response) => {
+      if (response.ok && onAnswer) void response.json().then((payload) => onAnswer(payload?.data ?? null)).catch(() => onAnswer(null));
+      return response.ok;
+    }).catch(() => false);
   } catch {
     // Never let analytics throw into the page.
     return Promise.resolve(false);
@@ -74,7 +79,19 @@ function send(events: Queued[], keepalive: boolean): void {
   const cell = geo ? `${geo.lat},${geo.lng}` : null;
   const attach = cell && (geoSent?.cell !== cell || Date.now() - geoSent.at > VISIT_MS) ? geo : null;
   if (attach) geoSent = { cell: cell!, at: Date.now() };
-  sendTrackingBatch("/v1/analytics/events", { platform: "web", events, ...(attach ? { geo: attach } : {}) }, keepalive).then((ok) => {
+  let who: ReturnType<typeof visitorFields> | null = null;
+  let apiHost: string | null = null;
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const base = getApiBaseUrl();
+    apiHost = base.startsWith("http") ? new URL(base).hostname : null;
+    who = visitorFields(apiHost, today);
+  } catch {
+    // storage and cookies blocked: the batch still goes, identified by the guest cookie
+  }
+  sendTrackingBatch("/v1/analytics/events", { platform: "web", ...who, events, ...(attach ? { geo: attach } : {}) }, keepalive,
+    (answer) => visitorBatchAccepted(apiHost, today, Boolean(who?.softSignal), answer as { visitorIdDays?: unknown; softRelink?: unknown } | null),
+  ).then((ok) => {
     if (attach && !ok) geoSent = null; // try again with the next batch
   });
 }
