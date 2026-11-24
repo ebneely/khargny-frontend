@@ -32,8 +32,9 @@ export const BLOCKED_SCRAPERS: string[] = ['Diffbot', 'omgili', 'Bytespider'];
 
 /**
  * Private pages, listed in both languages because /saved and /ar/saved are different prefixes to a
- * crawler. /api/ is not a page. Query strings are withdrawn on every path: the filter and search
- * variants of the listing are endless, while the clean page stays crawlable.
+ * crawler. /api/ is not a page, but the IndexNow key file under it must stay fetchable. Query
+ * strings are not disallowed: a blocked page cannot show its noindex, so the proxy sends
+ * `X-Robots-Tag: noindex, follow` on GET pages with a search/filter query instead.
  */
 export const DISALLOWED_PATHS: string[] = [
   '/api/',
@@ -51,8 +52,10 @@ export const DISALLOWED_PATHS: string[] = [
   '/ar/trips/qr',
   '/trips/sign-in',
   '/ar/trips/sign-in',
-  '/*?*',
 ];
+
+/** `/api/` stays closed, except the IndexNow key file Bing must fetch. */
+export const ALLOWED_API_PATHS: string[] = ['/api/indexnow/'];
 
 type Rule = {
   userAgent: string | string[];
@@ -61,7 +64,7 @@ type Rule = {
 };
 
 function openRule(userAgent: string | string[]): Rule {
-  return { userAgent, allow: '/', disallow: DISALLOWED_PATHS };
+  return { userAgent, allow: ['/', ...ALLOWED_API_PATHS], disallow: DISALLOWED_PATHS };
 }
 
 /**
