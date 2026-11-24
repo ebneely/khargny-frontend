@@ -41,7 +41,7 @@ export function PlaceSkel() {
   // the gesture hint keeps its room (unseen), so the name and the bubbles wrap where the place's own do
   return <div className="skel" aria-hidden="true">
     <div className="place-media"><Sk style={{ position: 'absolute', inset: 0, borderRadius: 0 }} /></div>
-    <div className="place-head"><span className="gesture-hint" style={{ visibility: 'hidden' }}><span>{c.place.loveHint}</span><span>{c.place.shareHint}</span></span><h1 className="t-display"><span className="sk">Place name here</span></h1>
+    <div className="place-head"><span className="gesture-hint" style={{ visibility: 'hidden' }}><span>{c.place.loveHint}</span><span>{c.place.shareHint}</span></span><div className="t-display"><span className="sk">Place name here</span></div>
       <p style={{ marginTop: 6 }}><span className="meta"><span className="cat-bubble sk">Hotels & Resorts</span><span className="cat-bubble sk">Area name here</span></span></p>
       <div className="open-tl"><span className="live-pill sk">Open now</span></div></div>
     <div className="place-tools">{(['heart', 'saved', 'share'] as const).map((n) => <span key={n} className="icon-btn act-btn sk"><Ic n={n} /><span className="n">00</span></span>)}<span className="act-views sk"><Ic n="eye" /><span className="n">0.0k</span></span><span className="grow" /><span className="icon-btn sk" /></div>

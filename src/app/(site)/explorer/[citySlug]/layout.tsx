@@ -99,10 +99,8 @@ export async function generateMetadata({
     image: city?.imageUrl ? { url: city.imageUrl, alt: name } : undefined,
     noindex: !city || hasBrowseFilters(search),
   });
-  if (page > 1 && metadata.alternates) {
-    metadata.alternates.canonical = `${urlFor(path, locale)}?page=${page}`;
-    metadata.alternates.languages = Object.fromEntries(Object.entries(metadata.alternates.languages ?? {}).map(([language, url]) => [language, `${url}?page=${page}`]));
-  }
+  // Canonicals and hreflang stay on the clean city URL for every page; the page number is a
+  // pagination link, never part of a canonical.
   const pages = Math.ceil((count ?? 0) / CITY_PAGE_SIZE);
   metadata.pagination = {
     previous: page > 1 ? `${urlFor(path, locale)}${page > 2 ? `?page=${page - 1}` : ''}` : null,

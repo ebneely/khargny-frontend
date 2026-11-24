@@ -66,12 +66,6 @@ const securityHeaders = [
     : []),
 ];
 
-// Anything that is not a person's browser. Deliberately broad: an unknown fetcher that names
-// itself with any of these words is treated as a crawler. Ordinary and in-app browsers (Chrome,
-// Safari, Firefox, Samsung, Instagram, Facebook's FBAN/FBAV) match none of them.
-const CRAWLERS =
-  /bot|crawl|spider|slurp|preview|fetch|scrap|facebookexternalhit|facebookcatalog|meta-external|whatsapp|telegram|discord|slack|skype|linkedin|pinterest|vkshare|embed|validator|lighthouse|pagespeed|headless|monitor|uptime|curl|wget|python|java|go-http|okhttp|axios|node|ruby|perl|php|libwww|httpclient|postman|insomnia|seo|check|google|bing|yandex|baidu|duckduck|applebot|ia_archiver/i;
-
 const nextConfig: NextConfig = {
   env: { SEO_BUILD_DATE: new Date().toISOString() },
   devIndicators: false, // dev only: keeps the Next badge out of the prototype screenshots
@@ -81,11 +75,10 @@ const nextConfig: NextConfig = {
   },
   // SSR mode enabled (no static export)
   trailingSlash: true,
-  // Crawlers and link-preview fetchers get every meta tag in <head> before any content
-  // (they do not run scripts, and many read only the head). People's browsers do not: for
-  // them metadata streams, so a tap shows the loading placeholder at once instead of waiting
-  // for the place to be fetched for its title. This was /.*/, which made every visitor wait.
-  htmlLimitedBots: CRAWLERS,
+  // Every user agent gets metadata inside <head>. Without this, Next streams title,
+  // description and canonical into the body for browsers and unrecognised bots; a crawler
+  // that reads only the head then sees no canonical or hreflang at all.
+  htmlLimitedBots: /.*/,
   poweredByHeader: false,
   // a page opened a moment ago is shown at once (its data refreshes quietly): coming back to a tab never waits for the server again
   experimental: { staleTimes: { dynamic: 30, static: 180 } },
