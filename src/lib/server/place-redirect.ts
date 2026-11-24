@@ -26,6 +26,12 @@ function origin(): string | null {
   return getApiBaseUrl({ browser: false }) || null;
 }
 
+/** The address route's own 404 for a known route; only this body means the place is gone. */
+function isPlaceMissing(body: unknown): boolean {
+  const message = (body as { error?: { message?: unknown } } | null)?.error?.message;
+  return typeof message === 'string' && message.startsWith('Place with slug');
+}
+
 async function lookupPlace(slug: string): Promise<Lookup> {
   if (missing.get(slug)) return { status: 'missing' };
   const cached = found.get(slug);
@@ -39,18 +45,22 @@ async function lookupPlace(slug: string): Promise<Lookup> {
       signal: AbortSignal.timeout(2000),
     });
     if (res.status === 404) {
+      let body: unknown;
+      try {
+        body = await res.json();
+      } catch {
+        return { status: 'error' };
+      }
+      if (!isPlaceMissing(body)) return { status: 'error' };
       missing.set(slug, true);
       return { status: 'missing' };
     }
     if (!res.ok) return { status: 'error' };
     const data = (await res.json())?.data;
-    if (data?.slug && data?.citySlug) {
-      const place: PlaceAddress = { slug: String(data.slug), citySlug: String(data.citySlug) };
-      found.set(slug, place);
-      return { status: 'ok', place };
-    }
-    missing.set(slug, true);
-    return { status: 'missing' };
+    if (!data?.slug || !data?.citySlug) return { status: 'error' };
+    const place: PlaceAddress = { slug: String(data.slug), citySlug: String(data.citySlug) };
+    found.set(slug, place);
+    return { status: 'ok', place };
   } catch {
     // A backend hiccup must not become a redirect or a 404; the page handles it.
     return { status: 'error' };
