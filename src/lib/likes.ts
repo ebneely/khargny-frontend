@@ -45,6 +45,9 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
   };
   const off = () => {
     status = 'off';
+    // The controls go away with the service, so any pending message about a
+    // single failed tap would contradict what is on screen.
+    message = null;
     if (pollTimer) clearTimeout(pollTimer);
     entries.forEach(current => { if (current.timer) clearTimeout(current.timer); });
     try { browserStorage()?.setItem(OFF_KEY, '1'); } catch {}
@@ -56,7 +59,11 @@ export function createLikeStore(request: typeof apiRequest = apiRequest, storage
     const seconds = failure.retryAfter ?? (failure.status === 503 ? 2 : failure.status === 429 ? 60 : 0);
     if (current) current.retryAt = Date.now() + seconds * 1000;
     if (current && seconds) setTimeout(() => { if (status === 'on') emit(); }, seconds * 1000);
-    message = { kind: failure.status === 429 ? 'rate' : failure.status === 503 ? 'busy' : 'unavailable', seconds };
+    // Only a write the visitor started earns a message (#33). A failed startup
+    // probe or a background refresh leaves the control quietly inert instead:
+    // an error for an action nobody took is noise, and on a slow or down likes
+    // service it would greet every visitor.
+    if (current) message = { kind: failure.status === 429 ? 'rate' : failure.status === 503 ? 'busy' : 'unavailable', seconds };
   };
   const schedule = (placeId: string, current: Entry) => {
     if (current.timer) clearTimeout(current.timer);
