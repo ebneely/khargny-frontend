@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { bare, langOf, redirectFor } from "@5argny/core/rules/locale";
 import { forwardBrowserApi } from "@/lib/server/api-forwarder";
+import { SITE_URL } from "@/lib/config";
 import { PLACE_REDIRECT_STATUS, placeSegments } from "@/lib/place-address";
 import { resolvePlaceAddress } from "@/lib/server/place-redirect";
 
@@ -62,7 +63,9 @@ export async function proxy(req: NextRequest) {
       });
     }
     if (resolved.status === 'ok' && resolved.canonical) {
-      return NextResponse.redirect(new URL(resolved.canonical, req.url), PLACE_REDIRECT_STATUS);
+      // The standalone server's internal origin is localhost; the public redirect must use the
+      // configured site origin, not the origin of the process serving the request.
+      return NextResponse.redirect(new URL(resolved.canonical, SITE_URL), PLACE_REDIRECT_STATUS);
     }
   }
 
