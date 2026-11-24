@@ -20,3 +20,9 @@ export function frameOf(path: string): Frame {
 }
 
 export const hasLocBar = (tab: Tab, noLoc: boolean) => !noLoc && ['home', 'explore', 'market'].includes(tab);
+
+/** Which tab the tab bar marks as current, from the address (the layout reads it from the router, not from a header). */
+export function tabOf(path: string): Tab {
+  const first = path.split('/').filter(Boolean)[0] ?? '';
+  return first === 'explorer' ? 'explore' : first === 'marketplace' || first === 'trips' ? 'market' : first === 'plan' || first === 'saved' ? 'saved' : first === 'settings' ? 'profile' : 'home';
+}

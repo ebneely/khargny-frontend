@@ -25,6 +25,11 @@ import { isPreviewDeployment } from '@/lib/seo-environment';
 export { isPreviewDeployment } from '@/lib/seo-environment';
 export { urlFor } from './site-url';
 
+/** The locale a URL segment names: `ar` is Arabic, anything else (plain, `en`) English. */
+export function localeOf(lang: string | string[] | undefined): Locale {
+  return (Array.isArray(lang) ? lang[0] : lang) === 'ar' ? 'ar' : 'en';
+}
+
 /** The locale this request is being served in: the URL's, as the middleware read it (the URL only, owner 2026-11-14). */
 export async function currentLocale(): Promise<Locale> {
   return (await headers()).get('x-khargny-locale') === 'ar' ? 'ar' : 'en';

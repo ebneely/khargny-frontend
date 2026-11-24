@@ -7,13 +7,13 @@ import { ApiError } from '@/lib/api/client';
 import { CITY_PAGE_SIZE, cityPageNumber } from '@/lib/city-pagination';
 import { SEARCH_PAGE_SIZE } from '@/lib/place-search';
 import { cityRedirect } from '@/lib/city-address';
-import { currentLocale } from '@/lib/seo';
+import { localeOf } from '@/lib/seo';
 
 export default async function CityPage({ params, searchParams }: {
-  params: Promise<{ citySlug: string }>;
+  params: Promise<{ lang: string; citySlug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { citySlug } = await params;
+  const { lang, citySlug } = await params;
   const values = await searchParams;
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) {
@@ -21,11 +21,11 @@ export default async function CityPage({ params, searchParams }: {
   }
   const search = query.toString();
   const page = cityPageNumber(values.page);
-  const data = await getCityPage(citySlug, page, search).catch((error: unknown) => {
+  const locale = localeOf(lang);
+  const data = await getCityPage(citySlug, page, search, locale).catch((error: unknown) => {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
   });
-  const locale = await currentLocale();
   const target = cityRedirect({ citySlug, locale, search: (await headers()).get('x-khargny-search') ?? '' }, data.city);
   if (target) permanentRedirect(target);
   if (page > 1 && data.places.total !== undefined && (page - 1) * (data.searching ? SEARCH_PAGE_SIZE : CITY_PAGE_SIZE) >= data.places.total) notFound();

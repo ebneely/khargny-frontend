@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/config";
-import { currentLocale, homeTitle, pageMetadata } from "@/lib/seo";
+import { localeOf, homeTitle, pageMetadata } from "@/lib/seo";
 
 // The root metadata, shared by both root layouts: (site) for the pages not yet rebuilt and (k) for the 5argny redesign.
 const TITLE_AR = "خرجني — اكتشف أحلى أماكن تخرج فيها في مصر";
@@ -11,14 +11,14 @@ const DESC_EN =
   "5argny (Khargny) is a curated guide to Egypt's best places: restaurants, cafes, beaches, hotels and landmarks in Cairo, Alexandria, Luxor and Aswan.";
 
 /**
- * Root metadata is per-request because the canonical depends on the locale segment the
- * middleware matched. As a static object it hardcoded `canonical: "/"`, and since Next
- * inherits metadata wholesale into any route that exports none, EVERY page without its own
- * metadata — the home page, /explorer, every city page, /plan, /contact, /privacy — told
- * search engines its canonical was the site root. That is an instruction to drop them.
+ * Root metadata is per-language because the canonical depends on the `[lang]` segment the middleware rewrote the URL
+ * onto. Reading it from `params` (not a header/cookie) is what keeps Home, Explore and the place pages renderable once
+ * and cacheable. As a static object it hardcoded `canonical: "/"`, and since Next inherits metadata wholesale into any
+ * route that exports none, EVERY page without its own metadata — the home page, /explorer, every city page, /plan,
+ * /contact, /privacy — told search engines its canonical was the site root. That is an instruction to drop them.
  */
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await currentLocale();
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const locale = localeOf((await params).lang);
   const isAr = locale === "ar";
   const title = isAr ? TITLE_AR : TITLE_EN;
   const description = isAr ? DESC_AR : DESC_EN;

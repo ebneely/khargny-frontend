@@ -10,7 +10,6 @@ import { normalizeFeaturedPlaces, normalizeTopPlaces } from '@/lib/ads/placement
 import { CITY_PAGE_SIZE, cityPageNumber } from '@/lib/city-pagination';
 import type { Category, CityWithAreas, Place, PlaceDetail, PlaceFilters, SearchPlacesQuery } from '@/lib/api/types';
 import type { HomeSection } from '@/lib/api/hooks/use-home';
-import { currentLocale } from '@/lib/seo';
 import type { Locale } from '@/i18n/dictionaries';
 import { browseQueries, readBrowseAddress } from '@/lib/browse-address';
 import { catTotals } from '@/components/k/data';
@@ -21,11 +20,11 @@ export function markPublicError(error: unknown, locale: Locale) {
   return Object.assign(failure, { digest: `khargny-public-${locale}` });
 }
 
-const read = cache(async (path: string, fresh = false, locale?: Locale): Promise<unknown> => {
+const read = cache(async (path: string, locale?: Locale): Promise<unknown> => {
   try {
     if (!getApiBaseUrl({ browser: false })) throw new ApiError(503, null);
     const response = await fetch(`${getApiBaseUrl({ browser: false })}${path}`, {
-      ...(fresh ? { cache: 'no-store' as const } : { next: { revalidate: 300, tags: ['public-discovery', path.split('?')[0]] } }),
+      next: { revalidate: 300, tags: ['public-discovery', path.split('?')[0]] },
       signal: AbortSignal.timeout(10000),
       ...(locale ? { headers: { 'Accept-Language': locale } } : {}),
     });
@@ -35,7 +34,7 @@ const read = cache(async (path: string, fresh = false, locale?: Locale): Promise
     return json.data;
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) throw error;
-    throw markPublicError(error, await currentLocale());
+    throw markPublicError(error, locale ?? 'en');
   }
 });
 
@@ -75,14 +74,17 @@ export const getPlaceList = cache(async (cityId: string, page = 1, categoryId = 
 
 export const getHomeSections = cache(async () => list<HomeSection>(await read('/v1/home'))
   .map((section) => ({ ...section, places: (section.places ?? []).map(normalizePlaceFlags) })));
-export const getFeatured = cache(async () => normalizeFeaturedPlaces(await read('/v1/home/featured', true)));
-export const getTopPlaces = cache(async () => normalizeTopPlaces(await read('/v1/home/top-places', true)));
+export const getFeatured = cache(async () => normalizeFeaturedPlaces(await read('/v1/home/featured')));
+// Every read here is cached for 300 s (tagged, so POST /api/revalidate can refresh one on demand). A fetch with
+// `cache: 'no-store'` would turn any page that renders it into a per-request render, which is what kept Home and the
+// place pages out of the cache (issue #37). Freshness comes from the revalidate window and the revalidate endpoint.
+export const getTopPlaces = cache(async () => normalizeTopPlaces(await read('/v1/home/top-places')));
 // Home (spec 002): the pool the blended rows read from, ordered (and promoted) by the server.
 export const getHomePool = cache(async () => placeList(await read('/v1/places?limit=40')));
 /** How many places each category has Egypt-wide, with one photo each (components/k/data catTotals); hydrated by the (k) layout. */
 export const getCategoryTotals = cache(async () => catTotals(await Promise.all((await getCategories()).map(async (c) => [c.slug, await optional(read(`/v1/places?categoryId=${c.id}&limit=1`), null)] as [string, unknown]))));
 /** GET /v1/places/counts (contracts/api.md): open places per category for a time window. */
-export const getPlaceCounts = cache(async (when: 'now' | 'tonight' | 'weekend') => await read(`/v1/places/counts?when=${when}`, true) as { byCategory: Record<string, number>; total: number });
+export const getPlaceCounts = cache(async (when: 'now' | 'tonight' | 'weekend') => await read(`/v1/places/counts?when=${when}`) as { byCategory: Record<string, number>; total: number });
 export const getMenu = cache(async (slug: string) => normalizeMenu(await read(`/v1/places/${encodeURIComponent(slug)}/menu`)));
 export const getSimilar = cache(async (id: string) => list<Place>(await read(`/v1/places/${encodeURIComponent(id)}/similar`)).map(normalizePlaceFlags));
 
@@ -101,12 +103,12 @@ export const getCatalog = cache(async () => {
   return { cities, categories };
 });
 
-export const getCityPage = cache(async (slug: string, page: number, search = '') => {
+export const getCityPage = cache(async (slug: string, page: number, search = '', requestedLocale?: Locale) => {
   const [city, catalog] = await Promise.all([getCity(slug), getCatalog()]);
   const state = readBrowseAddress(search);
   state.page = page;
   const queries = browseQueries(city.id, state, city.areaKeys);
-  const locale = await currentLocale();
+  const locale = requestedLocale ?? 'en';
   const searching = Boolean(queries.search.q);
   const dataset = hasLocalSearchFilters(queries.local) ? { ...queries.search, skip: 0 } : queries.search;
   const searchQuery = hasLocalSearchFilters(queries.local) ? { ...dataset, limit: Number.MAX_SAFE_INTEGER } : dataset;
@@ -115,7 +117,7 @@ export const getCityPage = cache(async (slug: string, page: number, search = '')
     for (const [key, value] of Object.entries(params ?? {})) {
       if (value !== undefined && value !== null) query.set(key, Array.isArray(value) ? value.join(',') : String(value));
     }
-    return read(`${path}${query.size ? `?${query}` : ''}`, false, searching ? locale : undefined);
+    return read(`${path}${query.size ? `?${query}` : ''}`, searching ? locale : undefined);
   };
   const places = searching
     ? await loadSearchPage(searchQuery, queries.local, request)

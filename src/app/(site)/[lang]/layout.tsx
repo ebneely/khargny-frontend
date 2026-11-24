@@ -1,15 +1,14 @@
-import "../globals.css";
+import "../../globals.css";
 import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { NavProgress } from "@/components/NavProgress";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
-import { headers } from "next/headers";
+import { localeOf } from "@/lib/seo";
 import type { Locale } from "@/i18n/dictionaries";
 import { getSiteSettings } from '@/lib/api/site-settings';
 import { SiteSettingsProvider } from '@/lib/api/hooks/use-site-settings';
-import { primePublicRoute, markPublicError } from '@/lib/server/public-data';
 
 /**
  * Root layout — single light theme (no `next-themes` / dark mode).
@@ -25,22 +24,20 @@ export { generateMetadata } from '@/lib/root-metadata';
 
 export default async function RootLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode;
+  params: Promise<{ lang: string }>;
 }>) {
   // The language is decided SERVER-SIDE so the very first paint — <html lang/dir> and every
   // string — is already correct. Without this the server rendered the default (ar) and the
   // client flipped on mount: the ar→en→ar flash on refresh.
   //
-  // The URL is the only source (owner 2026-11-14): /ar/... is Arabic, a plain URL English. Middleware puts the language
-  // it read on this header.
-  const locale: Locale = (await headers()).get("x-khargny-locale") === "ar" ? "ar" : "en";
+  // The URL is the only source (owner 2026-11-14): /ar/... is Arabic, a plain URL English. The middleware rewrites the
+  // address onto this `[lang]` segment, so the render reads the language from the URL itself.
+  const locale: Locale = localeOf((await params).lang);
   const dir = locale === "ar" ? "rtl" : "ltr";
-  const requestHeaders = await headers();
-  const [settings] = await Promise.all([
-    getSiteSettings(),
-    primePublicRoute(requestHeaders.get('x-khargny-path') ?? '', requestHeaders.get('x-khargny-search') ?? '').catch((error: unknown) => { throw markPublicError(error, locale); }),
-  ]);
+  const settings = await getSiteSettings();
 
   return (
     // Scrollbars are hidden globally in globals.css. The `scrollbar-hide` class that used to

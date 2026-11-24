@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // The shell from proto/app.js shell(): one top chrome (top bar with the search, the location bar folding under it),
 // the sidebar on desktop, the page, the right rail; the tab bar lives in the layout (TabNav) so it persists across pages.
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
@@ -180,13 +180,26 @@ let barQ = '';
 let searchOrigin: string | null = null;
 const onExplore = () => /^(\/ar)?\/explorer\/?$/.test(location.pathname);
 
+/**
+ * The address's ?q=, read on the client. Home and Explore are cached pages (ISR): their render must not depend on the
+ * request, and `useSearchParams` asks for a Suspense boundary under that rule. The word in the bar only ever mattered
+ * after the page was interactive, so this tiny boundary (it draws nothing) keeps the behaviour and the cache.
+ */
+function UrlQuerySync({ onQuery }: { onQuery: (urlQ: string | null) => void }) {
+  const urlQ = useSearchParams().get('q');
+  useEffect(() => { onQuery(urlQ); }, [urlQ, onQuery]);
+  return null;
+}
+
 function TopBar() {
   const { c, lang, go } = useK();
-  const urlQ = useSearchParams().get('q');
+  const [urlQ, setUrlQ] = useState<string | null>(null);
   const [q, setQ] = useState(() => barQ);
   // an Explore deep link (or a new ?q= on it) puts its word in the bar; the server render starts empty, so no mismatch
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- issue #34 deferred: the bar follows a URL change after mount; computing it during render would mismatch the server HTML
-  useEffect(() => { if (onExplore()) { barQ = (urlQ ?? '').trim(); setQ(barQ); } else { setQ(barQ); searchOrigin = null; } }, [urlQ]);
+  const applyUrlQuery = useCallback((next: string | null) => {
+    setUrlQ(next);
+    if (onExplore()) { barQ = (next ?? '').trim(); setQ(barQ); } else { setQ(barQ); searchOrigin = null; }
+  }, []);
   const commit = (v: string) => { barQ = v.trim(); setQ(barQ); };
   const [searching, setSearching] = useState(false);
   const [hint, setHint] = useState(0);
@@ -216,6 +229,7 @@ function TopBar() {
   const hints = c.search.hints;
   return <>
     <header className="topbar"><BrandMark href={`${langPrefix(lang)}/`} label={c.nav.homeAria} />
+      <Suspense fallback={null}><UrlQuerySync onQuery={applyUrlQuery} /></Suspense>
       <label className={`search gsearch ${q ? 'has-text' : ''}`}><Ic n="search" /><span className="gs-hint" aria-hidden="true"><span ref={hintEl}>{hints[hint % hints.length]}</span></span>
         <input ref={input} type="search" placeholder={c.search.placeholder} data-act="gsearch" value={q} aria-label={c.search.placeholder} autoComplete="off" enterKeyHint="search"
           onFocus={enter} onChange={(e) => setQ(e.target.value)}
@@ -388,6 +402,14 @@ function CitySheet({ thenArea }: { thenArea: boolean }) {
   </div>;
 }
 
+/** How many filters the address asks for, read on the client (a cached page cannot read the request; see UrlQuerySync). */
+function FilterCountSync({ withFilters, onChange }: { withFilters: boolean; onChange: (n: number) => void }) {
+  const sp = useSearchParams();
+  const n = withFilters ? nF(readF(sp)) : 0;
+  useEffect(() => { onChange(n); }, [n, onChange]);
+  return null;
+}
+
 /** ONE location bar, pinned under the top bar on Home, Explore and Marketplace; Filters joins it on Explore only.
  *  City and Area are sheets (owner 2026-11-14, "all sheets"). */
 function LocBar({ withFilters }: { withFilters: boolean }) {
@@ -400,10 +422,10 @@ function LocBar({ withFilters }: { withFilters: boolean }) {
   const openArea = (cty: City) => openSheet(fill(c.location.areaSheet, { city: cityLabel(cty, lang) }), <AreaSheet city={cty} />);
   const reset = (e: React.MouseEvent<HTMLButtonElement>) => { const ic = e.currentTarget.querySelector('.lucide'); if (ic) animate(ic, { transform: ['rotate(0deg)', 'rotate(-360deg)'] }, spring(0, 0.5)); haptic(); setTimeout(() => { setLoc({ city: null, area: null }); if (n) { const keep = new URLSearchParams(location.search); ['intent', 'cat', 'when', 'f'].forEach((k) => keep.delete(k)); go(`${location.pathname}${keep.toString() ? '?' + keep : ''}`); } toast(c.location.cleared); }, 220); };
   const openFilters = useOpenFilters();
-  const sp = useSearchParams();
-  const n = withFilters ? nF(readF(sp)) : 0;
+  const [n, setN] = useState(0);
   return (
     <div className="locbar" role="group" aria-label={c.location.aria}>
+      <Suspense fallback={null}><FilterCountSync withFilters={withFilters} onChange={setN} /></Suspense>
       <button className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" aria-haspopup="dialog" onClick={() => openCity(false)}>{loc.city ? <Gov name={loc.city} fallback={<L n="map-pin" />} /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
       <button className={`loc-pill press ${loc.area ? 'on' : ''}`} data-act="area" aria-haspopup="dialog" onClick={() => (city ? openArea(city) : openCity(true))}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
       {withFilters ? <button className={`loc-pill filters press ${n ? 'on' : ''}`} data-act="filters" onClick={openFilters}><L n="sliders-horizontal" /><b>{c.location.filters}</b>{n ? <em className="n-badge">{n}</em> : null}</button> : null}

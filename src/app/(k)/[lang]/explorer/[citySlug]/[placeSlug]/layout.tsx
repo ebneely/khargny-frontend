@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { placePath, placeRedirect } from '@/lib/place-address';
 import { regionLabel } from '@/lib/egypt-regions';
@@ -9,7 +8,7 @@ import { SITE_URL } from '@/lib/config';
 import {
   breadcrumbSchema,
   clampDescription,
-  currentLocale,
+  localeOf,
   fitPlaceTitle,
   graph,
   jsonLdScript,
@@ -94,8 +93,8 @@ async function resolvePlace(params: Params, locale: Locale) {
   const place = await fetchPlace(params.placeSlug);
   if (!place) return { place: null, citySlug: params.citySlug };
   const citySlug = await fetchPlaceCity(place, params.citySlug);
-  const search = (await headers()).get('x-khargny-search') ?? '';
-  const target = placeRedirect({ ...params, locale, search }, { slug: place.slug, citySlug, redirectedFrom: place.redirectedFrom });
+  // The page is cached per address, so it reads no request header; a moved address still answers one 308 (no query).
+  const target = placeRedirect({ ...params, locale, search: '' }, { slug: place.slug, citySlug, redirectedFrom: place.redirectedFrom });
   if (target) permanentRedirect(target);
   return { place, citySlug };
 }
@@ -125,10 +124,10 @@ function pickName(place: Place, locale: Locale): string {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<Params>;
+  params: Promise<Params & { lang: string }>;
 }): Promise<Metadata> {
-  const requested = await params;
-  const locale = await currentLocale();
+  const { lang, ...requested } = await params;
+  const locale = localeOf(lang);
   const isAr = locale === 'ar';
   const { place, citySlug } = await resolvePlace(requested, locale);
   const path = placePath(citySlug, place?.slug || requested.placeSlug);
@@ -175,10 +174,10 @@ export default async function PlaceDetailLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<Params>;
+  params: Promise<Params & { lang: string }>;
 }) {
-  const requested = await params;
-  const locale = await currentLocale();
+  const { lang, ...requested } = await params;
+  const locale = localeOf(lang);
   const isAr = locale === 'ar';
   const { place, citySlug } = await resolvePlace(requested, locale);
   if (!place) return <>{children}</>;

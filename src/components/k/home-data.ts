@@ -1,12 +1,14 @@
 import 'server-only';
 import { getCatalog, getHomePool, getHomeSections, getPlaceCounts, getTopPlaces, optional } from '@/lib/server/public-data';
-import { currentLocale } from '@/lib/seo';
+import type { Locale } from '@/i18n/dictionaries';
 import { toK } from './data';
 import type { HomeData } from './home';
 
-/** Every Home row from the real API (Home, and the page behind a place sheet on a phone landing). */
-export async function getHomeData(): Promise<HomeData> {
-  const lang = await currentLocale();
+/**
+ * Every Home row from the real API (Home, and the page behind a place sheet on a phone landing).
+ * The language is passed in, never read from the request: Home renders once per language and is cached (ISR).
+ */
+export async function getHomeData(lang: Locale): Promise<HomeData> {
   const [catalog, pool, top, sections, counts] = await Promise.all([
     getCatalog(), optional(getHomePool(), { items: [], skip: 0, limit: 0 }), optional(getTopPlaces(), null), optional(getHomeSections(), []), optional(getPlaceCounts('now'), null),
   ]);

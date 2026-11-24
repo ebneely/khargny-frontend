@@ -2,7 +2,7 @@ import { dark, light } from '@5argny/core/tokens';
 import type { Locale } from '@/i18n/dictionaries';
 
 /**
- * The proxy rewrites an unknown place here. This is a route handler, not a page calling
+ * The proxy rewrites an unknown place here (`/<lang>/not-found-place/view/`, never linked or sitemapped). This is a route handler, not a page calling
  * notFound(): Next 16 renders the app's not-found boundary outside the site providers and falls
  * back to the global error shell, which has no <h1> and no site UI. A handler can return the
  * real 404 status and a complete, styled document reliably.

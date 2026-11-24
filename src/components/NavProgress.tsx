@@ -8,10 +8,15 @@
  * the wait cannot be hidden behind a placeholder page. Instead the wait is shown: the moment
  * a link is pressed, a thin bar starts across the top and the pressed link dims; both clear
  * when the address changes. Nothing here touches the response.
+ *
+ * Cached pages now answer at once, so a bar that has run this long means the client-side navigation is stuck: the
+ * server render failed, the RSC request was dropped, or the router is waiting on something. After 8 s the browser takes
+ * over and loads the address itself (a real document request), and a second tap on the same link does it immediately —
+ * that is the "a refresh and a second tap don't help" case from issue #37.
  */
 import * as React from "react";
 
-const GIVE_UP_AFTER = 12_000;
+const GIVE_UP_AFTER = 8_000;
 
 export function NavProgress() {
   const [state, setState] = React.useState<"idle" | "running" | "done">("idle");
@@ -22,15 +27,26 @@ export function NavProgress() {
     let settle: ReturnType<typeof setTimeout> | undefined;
     let pressed: HTMLAnchorElement | null = null;
     let from = "";
+    let pending: string | null = null;
 
-    const finish = () => {
+    const clear = () => {
       cancelAnimationFrame(frame);
       clearTimeout(giveUp);
+      clearTimeout(settle);
       pressed?.removeAttribute("data-nav-pending");
       pressed = null;
+      pending = null;
+    };
+    const finish = () => {
+      clear();
       setState("done");
-      clearTimeout(settle);
       settle = setTimeout(() => setState("idle"), 260);
+    };
+    // The client-side navigation never arrived: ask the browser for the page as a document instead of leaving the
+    // visitor on the old one. The bar stays running until the new document replaces this one.
+    const hardLoad = (href: string) => {
+      clear();
+      window.location.assign(href);
     };
     const watch = () => {
       if (window.location.href !== from) return finish();
@@ -45,16 +61,16 @@ export function NavProgress() {
       if (to.origin !== window.location.origin) return;
       // Same page (or only its #anchor): nothing will load.
       if (to.pathname === window.location.pathname && to.search === window.location.search) return;
-      cancelAnimationFrame(frame);
-      clearTimeout(giveUp);
-      clearTimeout(settle);
-      pressed?.removeAttribute("data-nav-pending");
+      // A second tap while a navigation is still pending: stop waiting and load the address for real.
+      if (pending) return hardLoad(to.href);
+      clear();
       pressed = link;
       link.setAttribute("data-nav-pending", "true");
       from = window.location.href;
+      pending = to.href;
       setState("running");
       frame = requestAnimationFrame(watch);
-      giveUp = setTimeout(finish, GIVE_UP_AFTER);
+      giveUp = setTimeout(() => hardLoad(to.href), GIVE_UP_AFTER);
     };
     // After the click's own handlers, so a handler that cancels the navigation is respected.
     document.addEventListener("click", onClick);
@@ -62,9 +78,7 @@ export function NavProgress() {
     return () => {
       document.removeEventListener("click", onClick);
       window.removeEventListener("pageshow", finish);
-      cancelAnimationFrame(frame);
-      clearTimeout(giveUp);
-      clearTimeout(settle);
+      clear();
     };
   }, []);
 

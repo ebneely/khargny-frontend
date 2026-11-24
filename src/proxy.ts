@@ -9,14 +9,15 @@ import { resolvePlaceAddress } from "@/lib/server/place-redirect";
  * The language comes from the URL only (owner 2026-11-14): a plain path is English, /ar/... is Arabic. No cookie,
  * Accept-Language or saved setting overrides it, so a crawler and a person see the same page at the same address.
  *
- * Why a middleware rewrite rather than an app/[locale] segment: the routes keep their file paths, while the language is
- * known to the SERVER before the first byte. The layouts read it off the header set here, so <html lang/dir> and every
- * string are right on first paint.
+ * The language is carried by a real `[lang]` segment: the page reads it from `params`, never from the request, which is
+ * what lets Home, Explore and the place pages be rendered once per language and kept (ISR, `src/app/api/revalidate`).
  *
  * Flow:
- *   /ar/explorer/  -> rewrite to /explorer/, header x-khargny-locale: ar   (URL stays /ar/explorer/)
- *   /explorer/     -> served as is, header x-khargny-locale: en
+ *   /explorer/     -> rewrite to /en/explorer/  (the URL stays /explorer/: English is the plain address)
+ *   /ar/explorer/  -> rewrite to /ar/explorer/  (the URL is unchanged; Arabic lives under /ar)
  *   /en/explorer/  -> 308 to /explorer/ (the retired English prefix), old addresses 308 to their new one in the same hop
+ *   old place slug -> 301 to the current address, query string kept
+ *   unknown place  -> rewrite to the site-styled 404 document with a real 404
  */
 
 const LOCALE_HEADER = "x-khargny-locale";
@@ -25,14 +26,15 @@ const SEARCH_HEADER = "x-khargny-search";
 const INTERNAL_REWRITE_HEADER = "x-khargny-internal-rewrite";
 
 // A client must never be able to forge the headers the layouts trust. The marker carries a
-// per-process secret, and every external request has all four headers removed before the proxy
+// per-process secret, and every external request has all of them removed before the proxy
 // reads anything else. (A rewrite's second pass carries the secret, so it keeps its headers.)
 const INTERNAL_REWRITE_TOKEN = crypto.randomUUID();
-const TRUSTED_HEADERS = [LOCALE_HEADER, PATH_HEADER, SEARCH_HEADER, INTERNAL_REWRITE_HEADER];
 
 function externalHeaders(req: NextRequest): Headers {
   const headers = new Headers(req.headers);
-  for (const name of TRUSTED_HEADERS) headers.delete(name);
+  for (const name of [...headers.keys()]) {
+    if (name.startsWith('x-khargny-')) headers.delete(name);
+  }
   return headers;
 }
 
@@ -63,7 +65,7 @@ const EXEMPT = /^\/(api|_next|monitoring|\.well-known)(\/|$)|^\/(robots\.txt|sit
 
 export async function proxy(req: NextRequest) {
   // A rewrite re-enters this function in Next 16. The secret marker keeps the headers decided
-  // before the rewrite; every external request is stripped of the same headers below.
+  // before the rewrite (and the language); every external request is stripped of them below.
   if (isInternalRewrite(req)) return NextResponse.next();
 
   const incoming = externalHeaders(req);
@@ -83,30 +85,34 @@ export async function proxy(req: NextRequest) {
   const rest = bare(pathname);
 
   // The router sees the path without /ar; "/ar" alone means the home page. Built before any
-  // rewrite so an internal not-found rewrite keeps the reader's language and path.
+  // rewrite so the language (and the styled 404) survive the second pass.
   const headers = new Headers(incoming);
   headers.set(LOCALE_HEADER, locale);
   headers.set(PATH_HEADER, rest);
   headers.set(SEARCH_HEADER, search);
 
-  // A place opened under an old slug answers 301 to its current address. The page can only
-  // emit Next's 308, so the permanent 301 is decided here, before the page renders. Client-side
-  // navigations (RSC / prefetch) skip the lookup and keep the page's own redirect.
+  // A place opened under an old slug answers 301 to its current address, keeping the query string
+  // (a shared link's utm_* parameters). The page renders once per address and cannot read the
+  // query, so the permanent 301 is decided here, before the page renders. A client-side navigation
+  // (RSC / prefetch) without a query skips the lookup and keeps the page's own redirect.
   const place = placeSegments(rest);
   const documentRequest = (req.method === 'GET' || req.method === 'HEAD')
     && incoming.get('rsc') !== '1'
     && incoming.get('next-router-prefetch') !== '1'
     && incoming.get('sec-fetch-dest') !== 'empty';
-  if (place && documentRequest) {
+  const carriesQuery = search.length > 1;
+  if (place && (documentRequest || carriesQuery)) {
     const resolved = await resolvePlaceAddress({ ...place, locale, search });
     if (resolved.status === 'missing') {
       // Serve the site-styled 404 document, not a bare string, while keeping the real 404 and
-      // noindex. The internal route is (site)/not-found-place/view; it is never linked or sitemapped.
+      // noindex. The internal route is (site)/[lang]/not-found-place/view; never linked or sitemapped.
       headers.set(INTERNAL_REWRITE_HEADER, INTERNAL_REWRITE_TOKEN);
       const url = req.nextUrl.clone();
-      url.pathname = '/not-found-place/view/';
+      url.pathname = `/${locale}/not-found-place/view/`;
       url.search = '';
-      return noindexForQuery(req, NextResponse.rewrite(url, { status: 404, request: { headers } }));
+      const missing = NextResponse.rewrite(url, { status: 404, request: { headers } });
+      missing.headers.set('X-Robots-Tag', 'noindex, follow');
+      return missing;
     }
     if (resolved.status === 'ok' && resolved.canonical) {
       // The standalone server's internal origin is localhost; the public redirect must use the
@@ -115,12 +121,10 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  if (locale === 'en') {
-    return noindexForQuery(req, NextResponse.next({ request: { headers } }));
-  }
+  // Both languages route through the `[lang]` segment, so the address in the bar never shows /en and Arabic keeps /ar.
   headers.set(INTERNAL_REWRITE_HEADER, INTERNAL_REWRITE_TOKEN);
   const url = req.nextUrl.clone();
-  url.pathname = rest;
+  url.pathname = `/${locale}${rest === '/' ? '' : rest}`;
   url.search = search;
   return noindexForQuery(req, NextResponse.rewrite(url, { request: { headers } }));
 }
