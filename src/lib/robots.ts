@@ -1,18 +1,96 @@
-import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/config";
+import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/config';
 import { isPreviewDeployment } from '@/lib/seo-environment';
+
+/**
+ * AI crawlers that train models on what they read. Being in the models helps the place data
+ * spread, so these are allowed by default. To switch every training crawler off, set this to [].
+ */
+export const AI_TRAINING_BOTS: string[] = [
+  'GPTBot',
+  'ClaudeBot',
+  'Google-Extended',
+  'Applebot-Extended',
+  'CCBot',
+];
+
+/** Search engines and AI search/answer bots whose crawls can bring a visitor or a citation. */
+export const SEARCH_AND_AI_ANSWER_BOTS: string[] = [
+  'Googlebot',
+  'Bingbot',
+  'Applebot',
+  'OAI-SearchBot',
+  'ChatGPT-User',
+  'PerplexityBot',
+  'Perplexity-User',
+  'Claude-SearchBot',
+  'Claude-User',
+];
+
+/** Scrapers that give nothing back: no search result, no answer, no citation. */
+export const BLOCKED_SCRAPERS: string[] = ['Diffbot', 'omgili', 'Bytespider'];
+
+/**
+ * Private pages, listed in both languages because /saved and /ar/saved are different prefixes to a
+ * crawler. /api/ is not a page. Query strings are withdrawn on every path: the filter and search
+ * variants of the listing are endless, while the clean page stays crawlable.
+ */
+export const DISALLOWED_PATHS: string[] = [
+  '/api/',
+  '/saved',
+  '/ar/saved',
+  '/settings',
+  '/ar/settings',
+  '/plan',
+  '/ar/plan',
+  '/trips/me',
+  '/ar/trips/me',
+  '/trips/cash',
+  '/ar/trips/cash',
+  '/trips/qr',
+  '/ar/trips/qr',
+  '/trips/sign-in',
+  '/ar/trips/sign-in',
+  '/*?*',
+];
+
+type Rule = {
+  userAgent: string | string[];
+  allow?: string | string[];
+  disallow?: string | string[];
+};
+
+function openRule(userAgent: string | string[]): Rule {
+  return { userAgent, allow: '/', disallow: DISALLOWED_PATHS };
+}
+
+/**
+ * The whole policy as data, so the text builder and its tests need no deployment environment.
+ * Order is meaningful only for the reader: `*` first, then the named search/answer bots, then the
+ * training bots, and finally the scrapers that are refused everywhere.
+ */
+export function buildRobots({
+  siteUrl = SITE_URL,
+  trainingBots = AI_TRAINING_BOTS,
+}: {
+  siteUrl?: string;
+  trainingBots?: string[];
+} = {}): MetadataRoute.Robots {
+  const rules: Rule[] = [
+    openRule('*'),
+    openRule(SEARCH_AND_AI_ANSWER_BOTS),
+    ...(trainingBots.length ? [openRule(trainingBots)] : []),
+    ...BLOCKED_SCRAPERS.map((userAgent) => ({ userAgent, disallow: '/' })),
+  ];
+
+  return {
+    rules,
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
+  };
+}
 
 export default function robots(): MetadataRoute.Robots {
   if (isPreviewDeployment()) return { rules: { userAgent: '*', disallow: '/' } };
-  return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-      // The plan is guest-personal, not indexable content. English is the plain URL and Arabic is under /ar, so each
-      // private path is listed both ways ("/*/x" does not match "/x").
-      disallow: ["/plan", "/*/plan", "/trips/me", "/*/trips/me", "/trips/cash", "/*/trips/cash", "/trips/qr", "/*/trips/qr", "/trips/sign-in", "/*/trips/sign-in"],
-    },
-    sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
-  };
+  return buildRobots();
 }
