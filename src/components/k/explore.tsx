@@ -99,12 +99,14 @@ export function ExploreView() {
   }, [allCities.length]); // eslint-disable-line react-hooks/exhaustive-deps
   // a sheet over Explore changes the address; the page underneath keeps the query it was showing (no refetch, no reset)
   const live = useSearchParams();
+  /* eslint-disable react-hooks/refs -- issue #34 deferred: the ref holds the last query on purpose, so a sheet over Explore keeps showing the page it covered; restructuring needs visual verification */
   const kept = useRef(live);
   if (!content) kept.current = live;
   const sp = kept.current;
   const f = readF(sp);
   const q = (sp.get('q') || '').trim(), badge = sp.get('badge') === '1';
   const asked = sp.get('sort') || '';
+  /* eslint-enable react-hooks/refs */
   const sort = (['near', 'open'].includes(asked) ? asked : 'popular') as Sort;
   const where = usePlaceName();
   const pos = usePosition();
@@ -138,6 +140,7 @@ export function ExploreView() {
   const filtered = !!(loc.city || f.intent || f.cat || f.when || q || badge || f.filters.size);
   // the next page starts loading a screen before the end of the grid
   const end = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line react-hooks/refs -- issue #34 deferred: the observer needs the newest loadMore without re-creating it; moving this needs scroll verification
   const loadMore = useRef(res0.loadMore); loadMore.current = res0.loadMore;
   useEffect(() => {
     const el = end.current; if (!el || !('IntersectionObserver' in window)) return;

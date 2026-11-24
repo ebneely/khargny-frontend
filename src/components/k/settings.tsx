@@ -38,6 +38,7 @@ type Theme = 'light' | 'dark' | 'auto';
 export function SettingsView() {
   const { c, lang } = useK();
   const [theme, setTheme] = useState<Theme>('auto');
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- issue #34 deferred: the saved theme is read after mount to avoid a server/client mismatch
   useEffect(() => { setTheme((localStorage.getItem('kh.theme') as Theme) || 'auto'); }, []);
   const pickTheme = (t: Theme) => {
     haptic(); setTheme(t); localStorage.setItem('kh.theme', t);

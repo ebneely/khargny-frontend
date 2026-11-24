@@ -294,6 +294,7 @@ export function ShowingScope({ children }: { children: ReactNode }) {
 export type CardTrack = { surface?: ShowingSurface; position?: number; mark?: 'rising' | 'new' | null; term?: string };
 export function useShowing(ref: React.RefObject<HTMLElement | null>, surface: ShowingSurface | undefined, id: string, position = 1) {
   const tracker = useContext(ShowingCtx);
+  // eslint-disable-next-line react-hooks/refs -- issue #34 deferred: the effect reads the latest position without re-subscribing; restructuring needs scroll verification
   const at = useRef(position); at.current = position;
   useEffect(() => {
     const el = ref.current; if (!tracker || !surface || !el || !('IntersectionObserver' in window)) return;

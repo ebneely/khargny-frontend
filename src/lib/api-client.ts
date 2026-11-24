@@ -36,7 +36,7 @@ export const clientApi = {
      * used to return. Returns an empty list until the explorer surface is
      * rebuilt against the real Place/PlaceDetail contract.
      */
-    getPlaceDetailsSimple: async (_city: string): Promise<any[]> => {
+    getPlaceDetailsSimple: async (_city: string): Promise<unknown[]> => {
       return [];
     },
   },

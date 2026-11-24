@@ -23,7 +23,7 @@ export interface RESTError {
   status: number;
   message: string;
   code?: string;
-  details?: any;
+  details?: unknown;
 }
 
 /**
@@ -40,7 +40,7 @@ export interface GraphQLError {
     http?: {
       status: number;
     };
-    [key: string]: any;
+    [key: string]: unknown;
   };
   locations?: Array<{ line: number; column: number }>;
   path?: Array<string | number>;
@@ -53,20 +53,20 @@ export interface GraphQLError {
  * @returns Promise that resolves to error object or throws
  */
 export async function handleRESTError(response: Response): Promise<RESTError> {
-  let errorData: any = {};
-  
+  let body: { message?: string; error?: string; code?: string } = {};
+
   try {
-    errorData = await response.json();
+    body = (await response.json()) as typeof body;
   } catch {
     // If response is not JSON, use status text
-    errorData = { message: response.statusText };
+    body = { message: response.statusText };
   }
 
   const error: RESTError = {
     status: response.status,
-    message: errorData.message || errorData.error || 'An error occurred',
-    code: errorData.code,
-    details: errorData,
+    message: body.message || body.error || 'An error occurred',
+    code: body.code,
+    details: body,
   };
 
   return error;
@@ -101,15 +101,23 @@ export function handleGraphQLError(errors: GraphQLError[]): {
  * @param error - Network error
  * @returns Formatted error message
  */
-export function handleNetworkError(error: Error | any): string {
-  if (error.message) {
+export function handleNetworkError(error: unknown): string {
+  if (error instanceof Error && error.message) {
     return error.message;
   }
-  
-  if (error.networkError) {
+
+  const loose = (typeof error === 'object' && error !== null ? error : {}) as {
+    message?: unknown;
+    networkError?: unknown;
+  };
+  if (typeof loose.message === 'string' && loose.message) {
+    return loose.message;
+  }
+
+  if (loose.networkError) {
     return 'Network error: Unable to connect to the server';
   }
-  
+
   return 'An unexpected error occurred';
 }
 
@@ -119,8 +127,9 @@ export function handleNetworkError(error: Error | any): string {
  * @param error - Error object
  * @returns true if error has REST error structure
  */
-export function isRESTError(error: any): error is RESTError {
-  return error && typeof error.status === 'number' && typeof error.message === 'string';
+export function isRESTError(error: unknown): error is RESTError {
+  const value = typeof error === 'object' && error !== null ? (error as Partial<RESTError>) : null;
+  return !!value && typeof value.status === 'number' && typeof value.message === 'string';
 }
 
 /**
@@ -129,8 +138,11 @@ export function isRESTError(error: any): error is RESTError {
  * @param error - Error object
  * @returns true if error has GraphQL error structure
  */
-export function isGraphQLError(error: any): error is GraphQLError {
-  return error && typeof error.message === 'string' && !error.status;
+export function isGraphQLError(error: unknown): error is GraphQLError {
+  const value = typeof error === 'object' && error !== null
+    ? (error as Partial<GraphQLError> & { status?: unknown })
+    : null;
+  return !!value && typeof value.message === 'string' && !value.status;
 }
 
 /**
@@ -139,21 +151,22 @@ export function isGraphQLError(error: any): error is GraphQLError {
  * @param error - Error object (REST or GraphQL)
  * @returns User-friendly error message
  */
-export function formatErrorForUser(error: any): string {
+export function formatErrorForUser(error: unknown): string {
   if (isRESTError(error)) {
     // REST errors: Use the message directly
     return error.message;
   }
-  
+
   if (isGraphQLError(error)) {
     // GraphQL errors: Use the message
     return error.message;
   }
-  
-  if (error?.message) {
-    return error.message;
+
+  const message = typeof error === 'object' && error !== null ? (error as { message?: unknown }).message : undefined;
+  if (typeof message === 'string' && message) {
+    return message;
   }
-  
+
   return 'An unexpected error occurred';
 }
 
@@ -163,15 +176,15 @@ export function formatErrorForUser(error: any): string {
  * @param error - Error object (REST or GraphQL)
  * @returns HTTP status code or undefined
  */
-export function getErrorStatus(error: any): number | undefined {
+export function getErrorStatus(error: unknown): number | undefined {
   if (isRESTError(error)) {
     return error.status;
   }
-  
+
   if (isGraphQLError(error)) {
     return error.extensions?.http?.status;
   }
-  
+
   return undefined;
 }
 

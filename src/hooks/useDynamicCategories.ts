@@ -28,11 +28,12 @@ export function useDynamicCategories(location: string | null) {
     enabled: !!location, // Only fetch when location is selected
     staleTime: 1000 * 60 * 15, // 15 minutes - categories may update
     gcTime: 1000 * 60 * 60, // 1 hour cache
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // Don't retry on network errors (backend not running)
+      const message = typeof error === 'object' && error !== null ? (error as { message?: unknown }).message : undefined;
       if (
-        error?.message?.includes("Network Error") ||
-        error?.message?.includes("timeout")
+        typeof message === 'string' &&
+        (message.includes("Network Error") || message.includes("timeout"))
       ) {
         return false;
       }
