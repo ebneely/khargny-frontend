@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { bare, langOf, redirectFor } from "@5argny/core/rules/locale";
 import { forwardBrowserApi } from "@/lib/server/api-forwarder";
+import { PLACE_REDIRECT_STATUS, placeSegments } from "@/lib/place-address";
+import { resolvePlaceAddress } from "@/lib/server/place-redirect";
+
+const NOT_FOUND_HTML = (arabic: boolean) => `<!doctype html>
+<html lang="${arabic ? 'ar' : 'en'}" dir="${arabic ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>${arabic ? 'المكان ده مش موجود' : 'This place is not here'}</title></head>
+<body style="font:16px system-ui;padding:40px;max-width:40rem;margin:auto"><h1 style="font-size:1.25rem">${arabic ? 'المكان ده مش موجود' : 'This place is not here'}</h1><p><a href="${arabic ? '/ar' : ''}/explorer/">${arabic ? 'ارجع للأماكن' : 'Back to places'}</a></p></body></html>`;
 
 /**
  * The language comes from the URL only (owner 2026-11-14): a plain path is English, /ar/... is Arabic. No cookie,
@@ -23,7 +29,7 @@ const PATH_HEADER = "x-khargny-path";
 // asset (has a file extension).
 const EXEMPT = /^\/(api|_next|monitoring|\.well-known)(\/|$)|^\/(robots\.txt|sitemap\.xml|favicon\.ico)$|\.[a-zA-Z0-9]+$/;
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const forwarded = forwardBrowserApi(req);
   if (forwarded) return forwarded;
   const { pathname, search } = req.nextUrl;
@@ -37,8 +43,30 @@ export function proxy(req: NextRequest) {
   }
 
   const locale = langOf(pathname);
-  // The router sees the path without /ar; "/ar" alone means the home page.
   const rest = bare(pathname);
+
+  // A place opened under an old slug answers 301 to its current address. The page can only
+  // emit Next's 308, so the permanent 301 is decided here, before the page renders. Client-side
+  // navigations (RSC / prefetch) skip the lookup and keep the page's own redirect.
+  const place = placeSegments(rest);
+  const documentRequest = (req.method === 'GET' || req.method === 'HEAD')
+    && req.headers.get('rsc') !== '1'
+    && req.headers.get('next-router-prefetch') !== '1'
+    && req.headers.get('sec-fetch-dest') !== 'empty';
+  if (place && documentRequest) {
+    const resolved = await resolvePlaceAddress({ ...place, locale, search });
+    if (resolved.status === 'missing') {
+      return new Response(NOT_FOUND_HTML(locale === 'ar'), {
+        status: 404,
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'public, s-maxage=60' },
+      });
+    }
+    if (resolved.status === 'ok' && resolved.canonical) {
+      return NextResponse.redirect(new URL(resolved.canonical, req.url), PLACE_REDIRECT_STATUS);
+    }
+  }
+
+  // The router sees the path without /ar; "/ar" alone means the home page.
   const headers = new Headers(req.headers);
   headers.set(LOCALE_HEADER, locale);
   // The /ar segment is stripped before routing, so a layout can no longer tell which depth it is rendering at. A city
