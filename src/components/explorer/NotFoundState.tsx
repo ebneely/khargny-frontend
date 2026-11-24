@@ -9,9 +9,16 @@ import Link from "next/link";
 type NotFoundStateProps = {
   backHref: string;
   backLabel?: string;
+  title?: string;
+  description?: string;
 };
 
-export function NotFoundState({ backHref, backLabel = "Back" }: NotFoundStateProps) {
+export function NotFoundState({
+  backHref,
+  backLabel = "Back",
+  title = "Not found",
+  description = "This place isn't available — it may have been removed, or the link is from an older URL.",
+}: NotFoundStateProps) {
   return (
     <div
       role="status"
@@ -31,7 +38,7 @@ export function NotFoundState({ backHref, backLabel = "Back" }: NotFoundStatePro
           margin: "0 0 var(--space-2)",
         }}
       >
-        Not found
+        {title}
       </h1>
       <p
         style={{
@@ -41,7 +48,7 @@ export function NotFoundState({ backHref, backLabel = "Back" }: NotFoundStatePro
           margin: "0 0 var(--space-6)",
         }}
       >
-        This place isn&apos;t available — it may have been removed, or the link is from an older URL.
+        {description}
       </p>
       <Link
         href={backHref}

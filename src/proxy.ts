@@ -5,10 +5,6 @@ import { SITE_URL } from "@/lib/config";
 import { PLACE_REDIRECT_STATUS, placeSegments } from "@/lib/place-address";
 import { resolvePlaceAddress } from "@/lib/server/place-redirect";
 
-const NOT_FOUND_HTML = (arabic: boolean) => `<!doctype html>
-<html lang="${arabic ? 'ar' : 'en'}" dir="${arabic ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>${arabic ? 'المكان ده مش موجود' : 'This place is not here'}</title></head>
-<body style="font:16px system-ui;padding:40px;max-width:40rem;margin:auto"><h1 style="font-size:1.25rem">${arabic ? 'المكان ده مش موجود' : 'This place is not here'}</h1><p><a href="${arabic ? '/ar' : ''}/explorer/">${arabic ? 'ارجع للأماكن' : 'Back to places'}</a></p></body></html>`;
-
 /**
  * The language comes from the URL only (owner 2026-11-14): a plain path is English, /ar/... is Arabic. No cookie,
  * Accept-Language or saved setting overrides it, so a crawler and a person see the same page at the same address.
@@ -25,12 +21,30 @@ const NOT_FOUND_HTML = (arabic: boolean) => `<!doctype html>
 
 const LOCALE_HEADER = "x-khargny-locale";
 const PATH_HEADER = "x-khargny-path";
+const INTERNAL_REWRITE_HEADER = "x-khargny-internal-rewrite";
+
+// A rewrite must be absolute. Build it from the request's own host rather than the standalone
+// server's nextUrl (which says "localhost"), so the public deployment and local proof stay
+// same-origin.
+function internalRewrite(req: NextRequest, path: string): URL {
+  const host = req.headers.get('host')
+    || req.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+    || req.nextUrl.host;
+  const proto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+    || req.nextUrl.protocol.replace(/:$/, '');
+  return new URL(path, `${proto}://${host}`);
+}
 
 // Paths that never carry a language: API routes, Next internals, the SEO files, and anything that looks like a static
 // asset (has a file extension).
 const EXEMPT = /^\/(api|_next|monitoring|\.well-known)(\/|$)|^\/(robots\.txt|sitemap\.xml|favicon\.ico)$|\.[a-zA-Z0-9]+$/;
 
 export async function proxy(req: NextRequest) {
+  // A rewrite re-enters this function in Next 16. If it ran the language logic again, the
+  // rewritten path (no /ar) would reset the locale header to English. The marker keeps the
+  // headers decided before the rewrite.
+  if (req.headers.get(INTERNAL_REWRITE_HEADER) === '1') return NextResponse.next();
+
   const forwarded = forwardBrowserApi(req);
   if (forwarded) return forwarded;
   const { pathname, search } = req.nextUrl;
@@ -46,6 +60,13 @@ export async function proxy(req: NextRequest) {
   const locale = langOf(pathname);
   const rest = bare(pathname);
 
+  // The router sees the path without /ar; "/ar" alone means the home page. Built before any
+  // rewrite so an internal not-found rewrite keeps the reader's language and path.
+  const headers = new Headers(req.headers);
+  headers.set(LOCALE_HEADER, locale);
+  headers.set(PATH_HEADER, rest);
+  headers.set('x-khargny-search', search);
+
   // A place opened under an old slug answers 301 to its current address. The page can only
   // emit Next's 308, so the permanent 301 is decided here, before the page renders. Client-side
   // navigations (RSC / prefetch) skip the lookup and keep the page's own redirect.
@@ -57,10 +78,10 @@ export async function proxy(req: NextRequest) {
   if (place && documentRequest) {
     const resolved = await resolvePlaceAddress({ ...place, locale, search });
     if (resolved.status === 'missing') {
-      return new Response(NOT_FOUND_HTML(locale === 'ar'), {
-        status: 404,
-        headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'public, s-maxage=60' },
-      });
+      // Serve the site's own not-found UI, not a bare string, while keeping the real 404 and
+      // noindex. The internal route is (site)/not-found-place; it is never linked or sitemapped.
+      headers.set(INTERNAL_REWRITE_HEADER, '1');
+      return NextResponse.rewrite(internalRewrite(req, '/not-found-place/'), { status: 404, request: { headers } });
     }
     if (resolved.status === 'ok' && resolved.canonical) {
       // The standalone server's internal origin is localhost; the public redirect must use the
@@ -69,17 +90,9 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  // The router sees the path without /ar; "/ar" alone means the home page.
-  const headers = new Headers(req.headers);
-  headers.set(LOCALE_HEADER, locale);
-  // The /ar segment is stripped before routing, so a layout can no longer tell which depth it is rendering at. A city
-  // layout that emits breadcrumbs needs to know whether it is the city page or a place page nested inside it.
-  headers.set(PATH_HEADER, rest);
-  headers.set('x-khargny-search', search);
   if (locale === 'en') return NextResponse.next({ request: { headers } });
-  const url = req.nextUrl.clone();
-  url.pathname = rest;
-  return NextResponse.rewrite(url, { request: { headers } });
+  headers.set(INTERNAL_REWRITE_HEADER, '1');
+  return NextResponse.rewrite(internalRewrite(req, `${rest}${search}`), { request: { headers } });
 }
 
 export const config = {
