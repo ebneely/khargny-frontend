@@ -21,9 +21,23 @@ import type { Locale } from '@/i18n/dictionaries';
 import { hreflangFor } from '@5argny/core/rules/locale';
 import { normalizePhoto, type Photo } from '@/lib/place-photo';
 import { isPreviewDeployment } from '@/lib/seo-environment';
+import { clampDescription, fitTitle } from './seo-text';
 
 export { isPreviewDeployment } from '@/lib/seo-environment';
 export { urlFor } from './site-url';
+// Title/description fitting is pure string work: it lives in seo-text so a test (and the place
+// page's fact builders) can use it without Next's request context.
+export {
+  clampDescription,
+  fitCityTitle,
+  fitPlaceTitle,
+  fitText,
+  fitTitle,
+  joinWords,
+  titleBase,
+  titleSuffix,
+  trimDanglingText,
+} from './seo-text';
 
 /** The locale a URL segment names: `ar` is Arabic, anything else (plain, `en`) English. */
 export function localeOf(lang: string | string[] | undefined): Locale {
@@ -56,69 +70,6 @@ export function alternatesFor(path: string, locale: Locale): Metadata['alternate
 /** Open Graph wants a POSIX locale, not our two-letter code. */
 export const ogLocale = (locale: Locale) => (locale === 'ar' ? 'ar_EG' : 'en_US');
 export const ogAlternateLocale = (locale: Locale) => (locale === 'ar' ? ['en_US'] : ['ar_EG']);
-
-/** Trim to a length search engines actually display, without cutting mid-word. */
-export function fitText(text: string, max: number): string {
-  const clean = String(text ?? '').replace(/\s+/g, ' ').trim();
-  if (clean.length <= max) return clean;
-  const words: string[] = [];
-  for (const word of clean.split(' ')) {
-    if ([...words, word].join(' ').length > max - 1) break;
-    words.push(word);
-  }
-  return `${words.join(' ')}…`;
-}
-
-export function clampDescription(text: string, max = 155): string {
-  const clean = String(text ?? '').replace(/\s+/g, ' ').trim();
-  if (clean.length <= max) return trimDanglingText(clean);
-  const sentences = [...clean.matchAll(/[.!?؟](?=\s|$)/g)]
-    .map((match) => match.index + 1).filter((end) => end <= max);
-  if (sentences.length) return clean.slice(0, sentences[sentences.length - 1]);
-  const clauses = [...clean.matchAll(/[,،;؛:](?=\s)|\s[—–-](?=\s)/g)]
-    .filter((match) => !/&(?:#\d+|#x[\da-f]+|[a-z][\da-z]*);$/i.test(clean.slice(0, match.index + 1)))
-    .map((match) => match.index).filter((end) => end <= max - 1);
-  const fitted = clauses.length
-    ? clean.slice(0, clauses[clauses.length - 1])
-    : fitText(clean, max).replace(/…$/, '');
-  return `${trimDanglingText(fitted)}…`;
-}
-
-function trimDanglingText(text: string): string {
-  return text.replace(/(?:\s*[—–,،-]|\s+(?:and|or|but|و|أو|لكن))+$/gi, '').trim();
-}
-
-function titleBase(text: string): string {
-  return String(text ?? '').replace(/\s+/g, ' ').trim()
-    .replace(/(?:\s*[·—|]\s*(?:Khargny|5argny|خرجني))+$/i, '')
-    .replace(/^(?:Khargny|5argny|خرجني)\s*[·—|]\s*/i, '');
-}
-
-export function fitTitle(text: string, locale: Locale): string {
-  const suffix = locale === 'ar' ? ' | خرجني' : ' | 5argny'; // no "·" on screen (owner rule); the brand as written
-  const fitted = fitText(titleBase(text), 60 - suffix.length);
-  const truncated = fitted.endsWith('…');
-  return `${trimDanglingText(fitted.replace(/…$/, ''))}${truncated ? '…' : ''}${suffix}`;
-}
-
-export function fitPlaceTitle(parts: { name: string; category?: string | null; area?: string | null; city?: string | null }, locale: Locale): string {
-  const name = titleBase(parts.name);
-  const location = [parts.area, parts.city].filter(Boolean).join(', ');
-  const candidates = [
-    [name, parts.category, location],
-    [name, parts.category, parts.city],
-    [name, parts.city],
-    [name],
-  ].map((candidate) => candidate.filter(Boolean).join(' — '));
-  const suffix = locale === 'ar' ? ' | خرجني' : ' | 5argny'; // no "·" on screen (owner rule); the brand as written
-  return fitTitle(candidates.find((candidate) => candidate.length + suffix.length <= 60) ?? name, locale);
-}
-
-export function fitCityTitle(base: string, count: number | null, locale: Locale): string {
-  const counted = count ? `${base}${locale === 'ar' ? ` (${count} مكان)` : ` — ${count} ${count === 1 ? 'place' : 'places'}`}` : base;
-  const suffix = locale === 'ar' ? ' | خرجني' : ' | 5argny'; // no "·" on screen (owner rule); the brand as written
-  return fitTitle(titleBase(counted).length + suffix.length <= 60 ? counted : base, locale);
-}
 
 export const defaultShareImage = () => ({
   url: `${SITE_URL}/og/default.png`, width: 1200, height: 630, alt: 'خرجني · Khargny',
@@ -177,7 +128,7 @@ export function homeTitle(locale: Locale): string {
     : `Find your next outing in Egypt · ${BRAND_SPELLING} (Khargny)`;
 }
 
-export function pageMetadata({ path, locale, title, description, image = defaultShareImage(), type = 'website', noindex = false }: {
+export function pageMetadata({ path, locale, title, description, image = defaultShareImage(), type = 'website', noindex = false, titleFitted = false }: {
   path: string;
   locale: Locale;
   title: string;
@@ -185,8 +136,10 @@ export function pageMetadata({ path, locale, title, description, image = default
   image?: ShareImage;
   type?: 'website' | 'article';
   noindex?: boolean;
+  /** The caller already fitted the title to 60 (a place page builds it from facts): do not re-fit and truncate it. */
+  titleFitted?: boolean;
 }): Metadata {
-  const fittedTitle = fitTitle(title, locale);
+  const fittedTitle = titleFitted ? title : fitTitle(title, locale);
   const fittedDescription = clampDescription(description);
   const absoluteImage = { ...image, url: new URL(image.url, SITE_URL).href };
   return {
