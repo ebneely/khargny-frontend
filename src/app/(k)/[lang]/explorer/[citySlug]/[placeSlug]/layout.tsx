@@ -2,32 +2,43 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { placePath, placeRedirect } from '@/lib/place-address';
 import { regionLabel } from '@/lib/egypt-regions';
-import { priceBandLabel, type PriceLevel } from '@/lib/price-bands';
+import { priceBandLabel, formatMenuPrice, type PriceLevel } from '@/lib/price-bands';
 import type { PlaceFlags } from '@/lib/api/normalize-place';
 import { SITE_URL } from '@/lib/config';
 import {
   breadcrumbSchema,
   clampDescription,
   localeOf,
-  fitPlaceTitle,
   graph,
   jsonLdScript,
   pageMetadata,
   shareImageFor,
   urlFor,
 } from '@/lib/seo';
+import {
+  buildPlaceFacts,
+  placeDescription,
+  placeTitle,
+  schemaTypeFor,
+  shareAlt,
+  type MenuHighlight,
+  type PlaceSeoFacts,
+} from '@/lib/place-seo';
 import type { Locale } from '@/i18n/dictionaries';
 import { photoCandidates, photoSrcSet, PHOTO_SIZES, type Photo } from '@/lib/place-photo';
 
-// Server wrapper for the (client) place detail page. Its job is this place's search
-// presence: a title and description built from its own facts, and LocalBusiness structured
-// data carrying the address, coordinates, phone, hours and price band the API already
-// returns and the page previously threw away.
-import { getPlace, getCities, getCategories, getLandingIndex } from '@/lib/server/public-data';
+// Server wrapper for the (client) place detail page. Its job is this place's search presence: a
+// title and description written from its own facts (SEO Stage 3), the specific schema.org type it
+// really is, and server-rendered text (About, Nearby, questions) a crawler reads without running
+// any JavaScript.
+import {
+  getPlace, getCities, getCategories, getLandingIndex, getPlaceList, getPlaceListInArea, getMenu,
+} from '@/lib/server/public-data';
 import { areaKeyOf } from '@/lib/landing';
 import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { ApiError } from '@/lib/api/client';
+import { PlaceSeoSections, type NearbyGroup, type NearbyPlace } from './place-sections';
 
 type Params = { citySlug: string; placeSlug: string };
 
@@ -39,6 +50,7 @@ type Hour = {
 };
 
 type Place = Partial<PlaceFlags> & {
+  id?: string;
   slug?: string;
   redirectedFrom?: string;
   cityId?: string;
@@ -61,6 +73,10 @@ type Place = Partial<PlaceFlags> & {
   coverImageDimensions?: { width?: number | null; height?: number | null } | null;
   images?: Photo[];
   placeHours?: Hour[];
+  amenities?: { name?: string | null; nameEn?: string | null }[];
+  tags?: { name?: string | null; nameEn?: string | null }[];
+  viewCount?: number;
+  likeCount?: number;
   category?: { nameAr?: string; nameEn?: string | null };
   city?: { name?: string; nameEn?: string | null; slug?: string };
 };
@@ -118,11 +134,58 @@ function hoursSchema(hours?: Hour[]) {
   }));
 }
 
-/** A place's own name in the reader's language, falling back so it is never blank. */
-function pickName(place: Place, locale: Locale): string {
-  const ar = place.name?.trim();
-  const en = place.nameEn?.trim();
-  return (locale === 'ar' ? ar || en : en || ar) || 'Khargny';
+/** The place's photos as absolute URLs, in the order the backend returns them. */
+function photoUrls(place: Place): string[] {
+  const fromImages = (place.images ?? [])
+    .map((image) => photoCandidates(image).at(-1)?.url)
+    .filter((url): url is string => Boolean(url));
+  if (fromImages.length) return fromImages;
+  return place.coverImage ? [place.coverImage] : [];
+}
+
+/** Everything the page's own words are built from, and the name in the reader's language. */
+async function placeFactsFor(
+  place: Place,
+  {
+    locale, citySlug, cityName, categorySlug, categoryName, priceRangeLabel,
+  }: {
+    locale: Locale;
+    citySlug: string;
+    cityName: string;
+    categorySlug: string | null;
+    categoryName: string | null;
+    priceRangeLabel: string | null;
+  },
+): Promise<PlaceSeoFacts> {
+  const path = placePath(citySlug, place.slug || '');
+  const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || cityName) || '';
+  return buildPlaceFacts({
+    place: {
+      name: place.name,
+      nameEn: place.nameEn,
+      address: place.address,
+      phone: place.phone,
+      website: place.website,
+      instagram: place.instagram,
+      facebook: place.facebook,
+      mapsUrl: place.mapsUrl,
+      priceRange: place.priceRange,
+      hours: place.placeHours,
+      amenities: place.amenities,
+      tags: place.tags,
+      hasMenu: place.hasMenu,
+      images: place.images,
+      viewCount: place.viewCount,
+      likeCount: place.likeCount,
+    },
+    locale,
+    city: cityName,
+    area,
+    categorySlug,
+    categoryName,
+    priceRangeLabel,
+    url: urlFor(path, locale),
+  });
 }
 
 export async function generateMetadata({
@@ -148,30 +211,28 @@ export async function generateMetadata({
     });
   }
 
-  const name = pickName(place, locale);
   const [resolvedCity, category] = await Promise.all([
     fetchCityName(citySlug, isAr),
     fetchCategory(place.categoryId, isAr),
   ]);
-  const categoryName = category?.name ?? null;
-  const cityName =
-    resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
-  const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || resolvedCity || citySlug);
+  const cityName = resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
+  const facts = await placeFactsFor(place, {
+    locale, citySlug, cityName,
+    categorySlug: category?.slug ?? null,
+    categoryName: category?.name ?? null,
+    priceRangeLabel: priceBandLabel(place.priceRange, locale),
+  });
 
-  // Name, what it is, and where — the three things a search for this place contains.
-  const where = [area, cityName].filter(Boolean).join(', ');
-  const title = fitPlaceTitle({ name, category: categoryName, area, city: cityName }, locale);
+  // A title by search intent: the name first, then where it is, then only the words this place's
+  // own data can stand behind (menu / prices / hours / photos / location / contact).
+  const title = placeTitle(facts, locale);
 
-  const editorial = isAr ? place.description : place.descriptionEn;
-  const description =
-    clampDescription(editorial || '') ||
-    clampDescription(
-      isAr
-        ? `${name}${categoryName ? ` — ${categoryName}` : ''} في ${where || cityName}. العنوان ومواعيد الشغل والصور والطريق على خرجني.`
-        : `${name}${categoryName ? `, ${categoryName}` : ''} in ${where || cityName}. Address, opening hours, photos and directions on Khargny.`,
-    );
+  // The editorial sentence wins when a person really wrote one and it fits the snippet; otherwise
+  // the description is assembled from facts. Either way no two places share it.
+  const editorial = clampDescription((isAr ? place.description : place.descriptionEn) || '', 160);
+  const description = editorial.length >= 70 ? editorial : placeDescription(facts, locale);
 
-  return pageMetadata({ path, locale, title, description, type: 'article', image: { ...shareImageFor(place), alt: name } });
+  return pageMetadata({ path, locale, title, description, type: 'article', titleFitted: true, image: { ...shareImageFor(place), alt: shareAlt(facts, locale) } });
 }
 
 export default async function PlaceDetailLayout({
@@ -189,43 +250,54 @@ export default async function PlaceDetailLayout({
   const coverSrcSet = photoSrcSet(place.images?.[0] ?? {});
   const coverUrl = photoCandidates(place.images?.[0] ?? {}).at(-1)?.url || place.coverImage;
 
-  const name = pickName(place, locale);
-  const [resolvedCity, category] = await Promise.all([
+  const [resolvedCity, category, cities, categories] = await Promise.all([
     fetchCityName(citySlug, isAr),
     fetchCategory(place.categoryId, isAr),
+    getCities(),
+    getCategories(),
   ]);
+  const cityName = resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
   const categoryName = category?.name ?? null;
-  const cityName =
-    resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
   const path = placePath(citySlug, place.slug || requested.placeSlug);
   const url = urlFor(path, locale);
-  const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || resolvedCity || citySlug);
+  const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || resolvedCity || citySlug) || '';
+
+  const facts = await placeFactsFor(place, {
+    locale, citySlug, cityName,
+    categorySlug: category?.slug ?? null,
+    categoryName,
+    priceRangeLabel: priceBandLabel(place.priceRange, locale),
+  });
+
+  // The stored menu, when there is one: it becomes real text on the page (and the schema's `menu`
+  // target) instead of a URL pointing at nothing.
+  const menu = place.hasMenu && place.slug ? await getMenu(place.slug).catch(() => null) : null;
+  const menuItems = (menu?.sections ?? []).flatMap((section) =>
+    section.items.filter((item) => item.available).map((item) => ({
+      name: (isAr ? item.nameAr : item.nameEn || item.nameAr) || item.nameAr,
+      price: formatMenuPrice(item.price, locale),
+    })));
+  facts.menuHighlights = menuItems.slice(0, 6) as MenuHighlight[];
+
+  const nearby = await nearbyGroups(place, { locale, citySlug, cityName, area, category, categories, cities });
 
   const lat = Number(place.lat);
   const lng = Number(place.lng);
   const hasGeo = Number.isFinite(lat) && Number.isFinite(lng);
-  const social = [place.website, place.instagram, place.facebook, place.mapsUrl].filter(
-    Boolean,
-  ) as string[];
+  const social = [place.website, place.instagram, place.facebook].filter(Boolean) as string[];
   const hours = hoursSchema(place.placeHours);
+  const images = photoUrls(place);
 
-  // LocalBusiness rather than the generic Place: these are venues someone visits, and it is
-  // the type that carries address, hours, phone and price band together.
+  // The specific type this place really is (Restaurant, MovieTheater, ShoppingCenter, Hotel …),
+  // from one mapping table; LocalBusiness only when the category is one the table does not know.
   const business: Record<string, unknown> = {
-    '@type': 'LocalBusiness',
+    '@type': schemaTypeFor(category?.slug),
     '@id': `${url}#business`,
-    name,
+    name: facts.name,
     url,
-    ...(place.nameEn && place.name && place.nameEn !== place.name
-      ? { alternateName: isAr ? place.nameEn : place.name }
-      : {}),
+    ...(facts.nameOther ? { alternateName: facts.nameOther } : {}),
     ...(place.description || place.descriptionEn
-      ? {
-          description: clampDescription(
-            (isAr ? place.description : place.descriptionEn) || '',
-            300,
-          ),
-        }
+      ? { description: clampDescription((isAr ? place.description : place.descriptionEn) || '', 300) }
       : {}),
     address: {
       '@type': 'PostalAddress',
@@ -235,22 +307,17 @@ export default async function PlaceDetailLayout({
       addressCountry: 'EG',
     },
     ...(hasGeo ? { geo: { '@type': 'GeoCoordinates', latitude: lat, longitude: lng } } : {}),
+    ...(place.mapsUrl ? { hasMap: place.mapsUrl } : {}),
     ...(place.phone ? { telephone: place.phone } : {}),
     ...(social.length ? { sameAs: social } : {}),
-    ...(priceBandLabel(place.priceRange, locale)
-      ? { priceRange: priceBandLabel(place.priceRange, locale) }
-      : {}),
-    ...(place.images?.length
-      ? { image: place.images.slice(0, 6).map((image) => photoCandidates(image).at(-1)?.url).filter(Boolean) }
-      : place.coverImage
-        ? { image: [place.coverImage] }
-        : {}),
+    ...(facts.priceRange ? { priceRange: facts.priceRange } : {}),
+    ...(images.length ? { image: images } : {}),
     ...(hours ? { openingHoursSpecification: hours } : {}),
-    ...(categoryName ? { additionalType: categoryName } : {}),
+    ...(facts.hasMenu && menuItems.length ? { hasMenu: true, menu: `${url}#menu` } : {}),
   };
 
-  // No aggregateRating on purpose: there is no review system, so every place's rating is 0.
-  // Publishing that would be asserting a score nobody gave, which Google treats as spam.
+  // No aggregateRating or review on purpose: there is no review system, and a self-serving rating
+  // is both an asserted score nobody gave and against Google's rules.
 
   return (
     <>
@@ -266,7 +333,7 @@ export default async function PlaceDetailLayout({
                   { name: isAr ? 'الرئيسية' : 'Home', path: '/' },
                   { name: isAr ? 'استكشف' : 'Explore', path: '/explorer' },
                   { name: cityName, path: `/explorer/${citySlug}` },
-                  { name, path },
+                  { name: facts.name, path },
                 ],
                 locale,
               ),
@@ -274,7 +341,8 @@ export default async function PlaceDetailLayout({
                 '@type': 'WebPage',
                 '@id': `${url}#page`,
                 url,
-                name,
+                name: facts.name,
+                inLanguage: isAr ? 'ar' : 'en',
                 isPartOf: { '@id': `${SITE_URL}/#website` },
                 ...(coverUrl
                   ? { primaryImageOfPage: coverUrl }
@@ -285,9 +353,70 @@ export default async function PlaceDetailLayout({
         }}
       />
       {children}
+      <PlaceSeoSections
+        facts={facts}
+        locale={locale}
+        nearby={nearby}
+        menu={menuItems.length ? { heading: isAr ? 'من المنيو' : 'From the menu', items: menuItems.slice(0, 8) } : null}
+      />
       <PlaceLandingLinks place={place} citySlug={citySlug} cityName={cityName} area={area} category={category} locale={locale} />
     </>
   );
+}
+
+/**
+ * The places next to this one, as real links (SEO-DIRECTION 4.1): up to six in the same area
+ * (any category) and up to six of the same category in the city. Two list requests of 7 rows,
+ * both from the endpoint the site already uses; a place never links to itself twice.
+ */
+async function nearbyGroups(
+  place: Place,
+  {
+    locale, citySlug, cityName, area, category, categories, cities,
+  }: {
+    locale: Locale;
+    citySlug: string;
+    cityName: string;
+    area: string;
+    category: { name: string; slug: string } | null;
+    categories: { id: string; nameAr: string; nameEn: string | null; slug: string }[];
+    cities: { id: string; slug: string }[];
+  },
+): Promise<NearbyGroup[]> {
+  if (!place.cityId) return [];
+  const isAr = locale === 'ar';
+  const region = (place.region ?? '').trim();
+  const [inArea, inCategory] = await Promise.all([
+    region ? getPlaceListInArea(place.cityId, region, 7).catch(() => ({ items: [] })) : Promise.resolve({ items: [] }),
+    category ? getPlaceList(place.cityId, 1, place.categoryId ?? '', 7).catch(() => ({ items: [] })) : Promise.resolve({ items: [] }),
+  ]);
+
+  const seen = new Set<string>([place.id ?? '', place.slug ?? '']);
+  const toNearby = (item: Record<string, unknown>): NearbyPlace | null => {
+    const slug = typeof item.slug === 'string' ? item.slug : '';
+    const id = typeof item.id === 'string' ? item.id : '';
+    if (!slug || seen.has(slug) || seen.has(id)) return null;
+    seen.add(slug);
+    if (id) seen.add(id);
+    const name = (isAr ? (item.name as string) || (item.nameEn as string) : (item.nameEn as string) || (item.name as string)) || slug;
+    const itemCategory = categories.find((entry) => entry.id === String(item.categoryId ?? ''));
+    const catName = itemCategory ? ((isAr ? itemCategory.nameAr : itemCategory.nameEn) || itemCategory.nameAr) : null;
+    const itemCitySlug = cities.find((city) => city.id === String(item.cityId ?? ''))?.slug || citySlug;
+    const itemArea = regionLabel(typeof item.region === 'string' ? item.region : null, locale, cityName) || null;
+    return { slug, name, categoryName: catName, areaName: itemArea, citySlug: itemCitySlug, href: `${langPrefix(locale)}${placePath(itemCitySlug, slug)}/` };
+  };
+
+  const areaPlaces = (inArea.items as Record<string, unknown>[]).map(toNearby).filter((p): p is NearbyPlace => Boolean(p)).slice(0, 6);
+  const categoryPlaces = (inCategory.items as Record<string, unknown>[]).map(toNearby).filter((p): p is NearbyPlace => Boolean(p)).slice(0, 6);
+
+  const groups: NearbyGroup[] = [];
+  if (areaPlaces.length) {
+    groups.push({ title: area ? (isAr ? `في ${area}` : `In ${area}`) : (isAr ? `في ${cityName}` : `In ${cityName}`), places: areaPlaces });
+  }
+  if (categoryPlaces.length && category) {
+    groups.push({ title: isAr ? `${category.name} أخرى في ${cityName}` : `More ${category.name.toLowerCase()} in ${cityName}`, places: categoryPlaces });
+  }
+  return groups;
 }
 
 /**
@@ -326,14 +455,14 @@ async function PlaceLandingLinks({
     links.push({ href: `${prefix}/explorer/${citySlug}/category/${category.slug}/`, label: isAr ? `${category.name} في ${cityName}` : `${category.name} in ${cityName}` });
   if (!links.length) return null;
   return (
-    <section aria-label={isAr ? 'صفحات مرتبطة' : 'Related pages'} style={{ maxWidth: 1120, margin: '0 auto', width: '100%', padding: '8px clamp(16px, 4vw, 32px) 40px' }}>
-      <h2 style={{ margin: '0 0 10px', font: '600 13px/1.3 var(--body)', color: 'var(--ink3)', letterSpacing: '.01em' }}>
+    <section aria-label={isAr ? 'صفحات مرتبطة' : 'Related pages'} className="khg-place-seo" style={{ padding: '0 clamp(16px, 4vw, 32px) 40px' }}>
+      <h2 style={{ margin: '0 0 10px', font: '600 13px/1.3 var(--text)', color: 'var(--ink3)', letterSpacing: '.01em' }}>
         {isAr ? 'المزيد في نفس المكان' : 'More around here'}
       </h2>
       <ul style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: 0, padding: 0, listStyle: 'none' }}>
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', borderRadius: 999, border: '1px solid var(--line)', font: '600 13.5px/1.2 var(--body)', color: 'var(--ink)', textDecoration: 'none' }}>
+            <Link href={link.href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', borderRadius: 999, border: '1px solid var(--line)', font: '600 13.5px/1.2 var(--text)', color: 'var(--ink)', textDecoration: 'none' }}>
               {link.label}
             </Link>
           </li>

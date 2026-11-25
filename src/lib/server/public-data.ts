@@ -99,6 +99,12 @@ export const getPlaceList = cache(async (cityId: string, page = 1, categoryId = 
   return placeList(await read(`/v1/places?${params}`));
 });
 
+/** A place page's neighbours: one area of one city, any category (SEO Stage 3). */
+export const getPlaceListInArea = cache(async (cityId: string, region: string, limit = 6) => {
+  const params = new URLSearchParams({ cityId, region, skip: '0', limit: String(limit) });
+  return placeList(await read(`/v1/places?${params}`));
+});
+
 export const getHomeSections = cache(async () => list<HomeSection>(await read('/v1/home'))
   .map((section) => ({ ...section, places: (section.places ?? []).map(normalizePlaceFlags) })));
 export const getFeatured = cache(async () => normalizeFeaturedPlaces(await read('/v1/home/featured')));
