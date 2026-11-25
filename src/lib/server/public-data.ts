@@ -86,6 +86,18 @@ export const getHomePool = cache(async () => placeList(await read('/v1/places?li
 export const getCategoryTotals = cache(async () => catTotals(await Promise.all((await getCategories()).map(async (c) => [c.slug, await optional(read(`/v1/places?categoryId=${c.id}&limit=1`), null)] as [string, unknown]))));
 /** GET /v1/places/counts (contracts/api.md): open places per category for a time window. */
 export const getPlaceCounts = cache(async (when: 'now' | 'tonight' | 'weekend') => await read(`/v1/places/counts?when=${when}`) as { byCategory: Record<string, number>; total: number });
+/**
+ * The first page of a text search, for the server render of /explorer/?q= (SEO-DIRECTION 4.5 item 2). Same endpoint,
+ * page size and normalisation as the client's own query, so the hydrated page is the page the client would have asked
+ * for; the visitor's language and address ride along like every other server read.
+ */
+export const getSearchFirstPage = cache(async (q: string, locale: Locale, source?: Headers | null, limit = 24) => {
+  const params = new URLSearchParams({ q, skip: '0', limit: String(limit), platform: 'web', locale });
+  const raw = await read(`/v1/search/places?${params}`, locale, source);
+  const page = normalizePlaceList(raw);
+  return { items: page.items, total: page.total ?? page.items.length };
+});
+
 export const getMenu = cache(async (slug: string) => normalizeMenu(await read(`/v1/places/${encodeURIComponent(slug)}/menu`)));
 export const getSimilar = cache(async (id: string) => list<Place>(await read(`/v1/places/${encodeURIComponent(id)}/similar`)).map(normalizePlaceFlags));
 

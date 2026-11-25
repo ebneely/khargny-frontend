@@ -165,8 +165,9 @@ export function robotsFor(noindex = false): Metadata['robots'] {
  */
 export const BRAND_SPELLING = '5argny';
 
-export function brandAlternateNames(locale: Locale): string[] {
-  return [BRAND_SPELLING, locale === 'ar' ? 'Khargny' : 'خرجني', '5argny.com'];
+export function brandAlternateNames(): string[] {
+  // One list in both languages (SEO-DIRECTION 4.5 item 4): every spelling people type is tied to the same entity.
+  return ['5argny', 'خرجني', 'Khargny', '5argny.com'];
 }
 
 /** The home page's title is the one place a title carries both spellings. */
@@ -223,7 +224,7 @@ export function organizationSchema(locale: Locale, rawSettings?: unknown) {
     '@id': `${SITE_URL}/#organization`,
     // On the Arabic site the Arabic name is the name, not a footnote to the Latin one.
     name: locale === 'ar' ? 'خرجني' : 'Khargny',
-    alternateName: brandAlternateNames(locale),
+    alternateName: brandAlternateNames(),
     url: urlFor('/', locale),
     logo: { '@type': 'ImageObject', url: `${SITE_URL}/images/logo-en.png` },
     ...(sameAs.length ? { sameAs } : {}),
@@ -238,7 +239,7 @@ export function webSiteSchema(locale: Locale) {
     '@id': `${SITE_URL}/#website`,
     url: urlFor('/', locale),
     name: locale === 'ar' ? 'خرجني' : 'Khargny',
-    alternateName: brandAlternateNames(locale),
+    alternateName: brandAlternateNames(),
     inLanguage: locale === 'ar' ? 'ar-EG' : 'en',
     publisher: { '@id': `${SITE_URL}/#organization` },
     potentialAction: {

@@ -12,6 +12,7 @@ import { getCatalog, getCategoryTotals, optional, publicHydration } from '@/lib/
 import { catTotalsKey } from '@/components/k/data';
 import { KChrome } from '@/components/k/KChrome';
 import { localeOf } from '@/lib/seo';
+import { opensearchLink } from '@/lib/opensearch';
 import type { Lang } from '@/components/k/rules';
 
 // The 5argny redesign's root layout (spec 002): the prototype stylesheet from @5argny/core is the only global CSS here.
@@ -52,7 +53,11 @@ export default async function KLayout({ children, params }: Readonly<{ children:
   const fonts = { '--display': `${cairo.style.fontFamily},${plex.style.fontFamily},system-ui,sans-serif`, '--text': `system-ui,-apple-system,'SF Pro Text','Segoe UI',${plex.style.fontFamily},sans-serif` } as React.CSSProperties;
   return (
     <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} style={fonts} suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: THEME }} /><style>{'html.landing #app{visibility:hidden}'}</style></head>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME }} />
+        <link {...opensearchLink(locale)} />
+        <style>{'html.landing #app{visibility:hidden}'}</style>
+      </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(graph(organizationSchema(locale, settings), webSiteSchema(locale))) }} />
         <LocaleProvider initialLocale={locale}>

@@ -124,7 +124,10 @@ export async function proxy(req: NextRequest) {
   // Both languages route through the `[lang]` segment, so the address in the bar never shows /en and Arabic keeps /ar.
   headers.set(INTERNAL_REWRITE_HEADER, INTERNAL_REWRITE_TOKEN);
   const url = req.nextUrl.clone();
-  url.pathname = `/${locale}${rest === '/' ? '' : rest}`;
+  // A text search is rendered per request with its results in the HTML (/explorer/search), while /explorer/ itself
+  // stays the cached page. The address the visitor sees and shares is still /explorer/?q=… in both languages.
+  const searching = /^\/explorer\/?$/.test(rest) && Boolean(new URLSearchParams(search).get('q')?.trim());
+  url.pathname = searching ? `/${locale}/explorer/search/` : `/${locale}${rest === '/' ? '' : rest}`;
   url.search = search;
   return noindexForQuery(req, NextResponse.rewrite(url, { request: { headers } }));
 }

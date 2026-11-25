@@ -38,8 +38,17 @@ describe('proxy trusted headers', () => {
     const res = await proxy(request('https://www.example.com/ar/explorer/?q=cafe'));
 
     expect(res.headers.get('x-middleware-request-x-khargny-locale')).toBe('ar');
-    expect(res.headers.get('x-middleware-rewrite')).toBe('https://www.example.com/ar/explorer/?q=cafe');
+    // A text search renders per request with its results in the HTML; the address stays /ar/explorer/?q=.
+    expect(res.headers.get('x-middleware-rewrite')).toBe('https://www.example.com/ar/explorer/search/?q=cafe');
     expect(res.headers.get('X-Robots-Tag')).toBe('noindex, follow');
+  });
+
+  it('leaves the cached explore page alone for tracking-only queries and an empty q', async () => {
+    for (const search of ['?utm_source=news', '?q=', '?q=%20%20']) {
+      const res = await proxy(request(`https://www.example.com/explorer/${search}`));
+      // The cached page, with the query kept as given, and no trip through the per-request search route.
+      expect(res.headers.get('x-middleware-rewrite')).toBe(`https://www.example.com/en/explorer/${search}`);
+    }
   });
 
   it('routes English through the [lang] segment and keeps the address plain', async () => {

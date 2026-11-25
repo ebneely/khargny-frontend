@@ -6,6 +6,7 @@ import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { graph, jsonLdScript, organizationSchema, webSiteSchema } from "@/lib/seo";
 import { localeOf } from "@/lib/seo";
+import { opensearchLink } from "@/lib/opensearch";
 import type { Locale } from "@/i18n/dictionaries";
 import { getSiteSettings } from '@/lib/api/site-settings';
 import { SiteSettingsProvider } from '@/lib/api/hooks/use-site-settings';
@@ -43,6 +44,9 @@ export default async function RootLayout({
     // Scrollbars are hidden globally in globals.css. The `scrollbar-hide` class that used to
     // sit on <html> was never defined by any stylesheet or plugin, so it did nothing.
     <html lang={locale} dir={dir} suppressHydrationWarning>
+      <head>
+        <link {...opensearchLink(locale)} />
+      </head>
       <body>
         {/* Publisher and site identity, declared once. Every other page's schema refers to
             these by @id rather than repeating them. */}

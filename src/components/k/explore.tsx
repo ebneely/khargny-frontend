@@ -25,6 +25,7 @@ import { readF, useCatIds, useLocIds, useCounts, usePriceBands, useListQuery, us
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { useK, useKS, reduce } from './KProvider';
 import { usePosition, askPosition, askFail, nearParam } from './near';
+import { EXPLORE_SEARCH_PAGE, exploreSearchKey } from '@/lib/explore-search';
 
 type Sort = 'popular' | 'near' | 'open';
 const PAGE = 24;
@@ -60,11 +61,11 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
     getNextPageParam: (last) => (Object.values(last.next).some(Boolean) ? last.next : undefined),
   });
   const search = useInfiniteQuery({
-    queryKey: ['explore', 'q', q, lang, cityId ?? '', cats.map((x) => x.id).join(',')], enabled: !!q && !badge, staleTime: 60_000,
+    queryKey: exploreSearchKey(q, lang, cityId ?? '', cats.map((x) => x.id).join(',')), enabled: !!q && !badge, staleTime: 60_000,
     initialPageParam: 0,
     queryFn: async ({ pageParam }): Promise<Page & { skip: number }> => {
-      const raw = normalizePlaceList(await apiRequest<unknown>('GET', '/v1/search/places', { params: { q, skip: pageParam, limit: PAGE, cityId: cityId ?? undefined, categoryIds: cats.length && (f.intent || f.cat) ? cats.map((x) => x.id).join(',') : undefined, platform: 'web', locale: lang }, headers: { 'Accept-Language': lang } }));
-      return { items: raw.items, total: raw.total ?? raw.items.length, next: {}, skip: pageParam + PAGE };
+      const raw = normalizePlaceList(await apiRequest<unknown>('GET', '/v1/search/places', { params: { q, skip: pageParam, limit: EXPLORE_SEARCH_PAGE, cityId: cityId ?? undefined, categoryIds: cats.length && (f.intent || f.cat) ? cats.map((x) => x.id).join(',') : undefined, platform: 'web', locale: lang }, headers: { 'Accept-Language': lang } }));
+      return { items: raw.items, total: raw.total ?? raw.items.length, next: {}, skip: pageParam + EXPLORE_SEARCH_PAGE };
     },
     getNextPageParam: (last, all) => (all.reduce((a, x) => a + x.items.length, 0) < last.total && last.items.length ? last.skip : undefined),
   });
