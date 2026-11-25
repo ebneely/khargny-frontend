@@ -1398,3 +1398,10 @@ html.off-blur *,html.off-blur *::before,html.off-blur *::after{-webkit-backdrop-
 html.off-loops #app *,html.off-loops #app *::before,html.off-loops #app *::after{animation:none!important}
 html.off-cv .tile,html.off-cv .post,html.off-cv .rail-row > *{content-visibility:visible!important}
 html.off-layer #app{will-change:auto!important}
+/* iOS Safari top bar shake (owner 2026-11-14): while the bottom URL bar collapses, rubber-bands or the page overscrolls, a
+   sticky bar is re-positioned by the main thread each frame. Its own GPU layer keeps it still, and the page does not
+   rubber-band on top of it. */
+@media (max-width:1023px){
+  .chrome-top{transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden;contain:layout style}
+  html{overscroll-behavior-y:none}
+}
