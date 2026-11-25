@@ -1,6 +1,7 @@
 "use client";
 
 import { isTrackingAllowed, sendTrackingBatch } from "@/lib/analytics/track";
+import { visitorId } from "@/lib/analytics/visitor";
 import { isAdCampaignId, type AdPlacement } from "./placements";
 
 type AdEvent = { eventId: string; campaignId: string; type: "impression" | "tap"; placement: AdPlacement; occurredAt: string };
@@ -145,7 +146,7 @@ export function createAdTracker() {
     const key = `${campaignId}:${placement}:${bucket}`;
     if (type === "impression" && (qualified.has(key) || qualified.size >= MAX_QUALIFICATIONS)) return;
     if (type === "tap" && !qualified.has(key)) return;
-    if (!pageDeviceId) pageDeviceId = uuid();
+    if (!pageDeviceId) pageDeviceId = visitorId() ?? uuid();
     const event: AdEvent = { eventId: uuid(), campaignId, type, placement, occurredAt: new Date().toISOString() };
     if (type === "impression") {
       qualified.set(key, event);
