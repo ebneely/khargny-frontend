@@ -33,8 +33,8 @@ export const ar: Copy = {
   },
   home: {
     takeMe: {
-      aria: 'خرجني', question: 'خرجني فين؟', timeNow: 'الساعة دلوقتي', cantPick: 'محتار؟', surprise: 'فاجئني', rightNow: 'دلوقتي',
-      leadOpen: '{n} مفتوح دلوقتي في {place}', leadPlaces: '{n} مكان في {place}', all: 'الكل', kinds: '{n} نوع', yourPick: 'اختيارك', shuffleAgain: 'جرب تاني',
+      aria: 'خرجني', question: 'خرجني فين؟', timeNow: 'الساعة دلوقتي', cantPick: 'محتار؟', surprise: 'فاجئني', surpriseLoading: 'بنجهز…', rightNow: 'دلوقتي',
+      leadOpen: '{n} مفتوح دلوقتي في {place}', leadPlaces: '{n} مكان في {place}', all: 'الكل', kinds: '{n} نوع', yourPick: 'اختيارك', shuffleAgain: 'فاجئني تاني',
       everythingSheet: 'كل حاجة تتعمل',
     },
     nearYou: 'قريب منك', nearestFirst: 'الأقرب الأول', nearestFirstIn: 'الأقرب الأول في {place}', nearAsk: 'استخدم مكاني', nearAskBody: 'شوف أقرب الأماكن ليك، وكل مكان على بعد قد إيه.',

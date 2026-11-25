@@ -32,8 +32,8 @@ export const en = {
   },
   home: {
     takeMe: {
-      aria: 'Take me out', question: '5argny!… where?', timeNow: 'Time now', cantPick: "Can't pick?", surprise: 'Surprise me', rightNow: 'Right now',
-      leadOpen: '{n} open now in {place}', leadPlaces: '{n} places in {place}', all: 'All', kinds: '{n} kinds', yourPick: 'Your pick', shuffleAgain: 'Shuffle again',
+      aria: 'Take me out', question: '5argny!… where?', timeNow: 'Time now', cantPick: "Can't pick?", surprise: 'Surprise me', surpriseLoading: 'Rolling…', rightNow: 'Right now',
+      leadOpen: '{n} open now in {place}', leadPlaces: '{n} places in {place}', all: 'All', kinds: '{n} kinds', yourPick: 'Your pick', shuffleAgain: 'Surprise me again',
       everythingSheet: 'Everything to do',
     },
     nearYou: 'Near you', nearestFirst: 'Nearest first', nearestFirstIn: 'Nearest first in {place}', nearAsk: 'Use my location', nearAskBody: 'See the places closest to you, and how far each one is.',
