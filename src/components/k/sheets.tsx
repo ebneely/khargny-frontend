@@ -1,14 +1,20 @@
 'use client';
 // What a content sheet shows on a phone, by address (proto render(key)): a place, a collection, a listing, a host.
+// The bodies are loaded when a sheet opens, not with the page: a place sheet alone would otherwise pull the whole place
+// view (and Home through it) into every page's first chunk (issue #39, bundle).
 import type { ReactNode } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 import { placesKeys } from '@/lib/api/hooks/use-places';
 import { bare } from '@5argny/core/rules/locale';
 import { isPlacePath } from './data';
-import { PlaceSheetBody, PlaceSheetFoot } from './placeview';
 import type { Lang } from './rules';
-import { CollectionView } from './collections';
-import { ListingBody, HostBody } from './market';
+
+const PlaceSheetBody = dynamic(() => import('./placeview').then((m) => m.PlaceSheetBody), { ssr: false });
+const PlaceSheetFoot = dynamic(() => import('./placeview').then((m) => m.PlaceSheetFoot), { ssr: false });
+const CollectionView = dynamic(() => import('./collections').then((m) => m.CollectionView), { ssr: false });
+const ListingBody = dynamic(() => import('./market').then((m) => m.ListingBody), { ssr: false });
+const HostBody = dynamic(() => import('./market').then((m) => m.HostBody), { ssr: false });
 
 export type SheetView = { label: string; body: ReactNode; foot?: ReactNode };
 type Named = { name?: string | null; nameEn?: string | null };

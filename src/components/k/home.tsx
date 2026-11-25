@@ -159,7 +159,7 @@ function Story({ p, position, mark }: { p: KPlace; position: number; mark: FeedM
   useShowing(ref, 'stories', p.id, position);
   return (
     <Link ref={ref} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
-      <img decoding="async" src={p.photos[0]?.s} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img decoding="async" src={p.photos[0]?.s} alt="" loading={position <= 4 ? 'eager' : 'lazy'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <b dir="auto" style={{ position: 'absolute', left: 8, right: 8, bottom: 7, color: '#fff', fontSize: 12, fontWeight: 750, lineHeight: 1.2, textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{p.name}</b>
     </Link>
   );
@@ -259,6 +259,12 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
       const imgs = [...box.children], i = imgs.findIndex((x) => x.classList.contains('on')); imgs[i]?.classList.remove('on'); imgs[(i + 1) % imgs.length].classList.add('on'); }, 4500);
     return () => clearInterval(id);
   }, []);
+  // the route line (an SVG stroke, painted on the main thread) and the dice hold still while the card is off screen
+  useEffect(() => {
+    const el = card.current; if (!el || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver(([en]) => el.classList.toggle('tm-still', !en?.isIntersecting), { rootMargin: '200px 0px' });
+    io.observe(el); return () => io.disconnect();
+  }, []);
 
   const shuffle = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const dice = e.currentTarget.querySelector('.lucide'); if (dice) animate(dice, { transform: ['rotate(0deg)', 'rotate(360deg)'] }, spring(0.2, 0.6));
@@ -292,7 +298,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
         <div className="tm-head"><div><b className="tm-q">{lang === 'ar' ? 'خرجني فين؟' : c.home.takeMe.question}</b><span className="tm-time" aria-label={`${c.home.takeMe.timeNow} ${t12(now, lang)}`} suppressHydrationWarning><L n="clock" />{t12(now, lang)}<span className="tm-nudge">{c.home.takeMe.cantPick}</span></span></div>
           <svg className="tm-route" aria-hidden="true"><path className="tm-route-base" /><path className="tm-route-line" /><circle className="tm-route-end" r="3" /></svg>
           <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} onClick={shuffle}><L n="dices" /><span>{c.home.takeMe.surprise}</span></button></div>
-        <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img decoding="async" key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
+        <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img decoding="async" key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} loading={n === 0 ? 'eager' : 'lazy'} fetchPriority={n === 0 ? 'high' : undefined} />)}</span><span className="tm-fade" />
           <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{leadCity ? <span className="tm-sub">{open ? <><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: leadName })}</> : <><L n="map-pin" />{leadName}</>}</span> : null}</span>
           <span className="tm-go"><L n="arrow-right" /></span></Link>
         <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img">{cats.slice(0, 4).map((cat) => <img decoding="async" key={cat.id} src={photo(cat)} alt="" loading="lazy" />)}</span><span className="tm-pick-name"><L n="layout-grid" /><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>

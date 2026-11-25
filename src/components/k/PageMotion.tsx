@@ -27,6 +27,10 @@ export function PageMotion() {
       if (!desk() || reduce() || pending.current) return;
       const view = document.getElementById('view'); if (!view) return;
       const r = view.getBoundingClientRect(), ghost = view.cloneNode(true) as HTMLElement; ghost.removeAttribute('id');
+      // the ghost is one still frame: its loops stand still and the cards far below the screen are dropped, so cloning a
+      // long page does not copy work nobody sees (issue #39). CSS in web.css freezes every animation inside .pm-ghost.
+      ghost.classList.add('pm-ghost'); ghost.setAttribute('aria-hidden', 'true');
+      ghost.querySelectorAll('.tile, .post, .rail-row > *, .tm-pick').forEach((el, index) => { if (index >= 12) el.remove(); });
       const clip = document.createElement('div');
       Object.assign(clip.style, { position: 'fixed', left: r.left + 'px', top: '0', width: r.width + 'px', height: innerHeight + 'px', overflow: 'hidden', pointerEvents: 'none' });
       Object.assign(ghost.style, { position: 'absolute', left: '0', top: r.top + 'px', width: r.width + 'px', margin: '0', pointerEvents: 'none', background: 'var(--bg)' });
@@ -76,8 +80,8 @@ export function PageMotion() {
       animate(view, { transform: [`translateX(${W * dir}px)`, 'translateX(0px)'] }, sp).finished.then(cleanup);
     } else {
       g.clip.style.zIndex = '25'; g.ghost.style.boxShadow = '-12px 0 32px rgba(36,28,22,.14)'; document.body.append(g.clip);
-      view.style.clipPath = `inset(0 0 0 ${W * 0.25}px)`;
-      animate(view, { clipPath: [`inset(0 0 0 ${W * 0.25}px)`, 'inset(0 0 0 0px)'] }, sp);
+      // the incoming page slides in from under the old one: transform and opacity only (a clip-path animation repainted
+      // the whole page column every frame, issue #39)
       animate(view, { transform: [`translateX(${-W * 0.25 * dir}px)`, 'translateX(0px)'], opacity: [0.6, 1] }, sp);
       animate(g.ghost, { transform: ['translateX(0px)', `translateX(${W * dir}px)`] }, sp).finished.then(cleanup);
     }

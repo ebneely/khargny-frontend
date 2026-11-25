@@ -2,11 +2,13 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // Place patterns from proto/app.js, one component each: Meta, StatePill, OpenBar, AllDay, HoursUnknown, Carousel,
 // Actions (ActBtn + Cnt), Go5 (with its flight), Stats, Tile, Post, plus the Share and Which-map sheets they open.
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent } from 'react';
+import { createContext, memo, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { animate } from 'motion';
+import { observeVisibility } from '@/lib/shared-observer';
 import { categoryIcons, categoryIconFallback, badgeIcons, badgeIconFallback } from '@5argny/core/icons';
 import { fill } from '@5argny/core/copy';
 import { apiRequest, ApiError } from '@/lib/api/client';
@@ -250,19 +252,24 @@ export function Stats({ p }: { p: KPlace }) {
   </span>;
 }
 
-export function Tile({ p, extra, surface, position, mark, term }: { p: KPlace; extra?: ReactNode } & CardTrack) {
+export const Tile = memo(function Tile({ p, extra, surface, position, term }: { p: KPlace; extra?: ReactNode } & CardTrack) {
   const { lang, now } = useK();
+  const router = useRouter();
   const st = openState(p, now, lang);
   const ref = useRef<HTMLAnchorElement>(null);
+  const href = placeHref(p, lang);
   useShowing(ref, surface, p.id, position);
+  // the first row of a grid arrives with the page; further cards wait until they are near the screen. The leading photo
+  // also asks the browser for it first (issue #39, images).
+  const eager = position != null && position <= 4;
   return (
-    <Link ref={ref} className="card tile press" data-item href={placeHref(p, lang)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
+    <Link ref={ref} className="card tile press" data-item href={href} onPointerDown={() => router.prefetch(href)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
       
-      <span className="tile-media"><img decoding="async" src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
+      <span className="tile-media"><img decoding="async" src={p.photos[0]?.s} alt="" loading={eager ? 'eager' : 'lazy'} fetchPriority={position === 1 ? 'high' : undefined} />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
       <div className="tile-body"><b dir="auto">{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
     </Link>
   );
-}
+});
 
 /** A Tile's skeleton: the Tile's own markup with stand-in words (five counts, as a list card carries), so nothing moves when it lands. */
 export function TileSkel() {
@@ -297,10 +304,11 @@ export function useShowing(ref: React.RefObject<HTMLElement | null>, surface: Sh
   // eslint-disable-next-line react-hooks/refs -- issue #34 deferred: the effect reads the latest position without re-subscribing; restructuring needs scroll verification
   const at = useRef(position); at.current = position;
   useEffect(() => {
-    const el = ref.current; if (!tracker || !surface || !el || !('IntersectionObserver' in window)) return;
+    const el = ref.current; if (!tracker || !surface || !el) return;
     const key = `${surface}:${id}`, fire = () => trackPlaceShowing(id, surface, at.current);
-    const io = new IntersectionObserver(([en]) => tracker.visible(key, en?.isIntersecting ? en.intersectionRatio : 0, fire), { threshold: 0.5 });
-    io.observe(el); return () => { io.disconnect(); tracker.visible(key, 0, fire); };
+    // one observer for every card on the screen, not one each (issue #39)
+    const off = observeVisibility(el, 0.5, (ratio) => tracker.visible(key, ratio, fire));
+    return () => { off(); tracker.visible(key, 0, fire); };
   }, [ref, tracker, surface, id]);
 }
 
@@ -314,13 +322,15 @@ export function BadgeTags({ p }: { p: KPlace }) {
 const feedSeen = new Set<string>();
 function useFeedView(ref: React.RefObject<HTMLElement | null>, id: string) {
   useEffect(() => {
-    const el = ref.current; if (!el || feedSeen.has(id) || !('IntersectionObserver' in window)) return;
+    const el = ref.current; if (!el || feedSeen.has(id)) return;
     let t: ReturnType<typeof setTimeout> | undefined;
-    const io = new IntersectionObserver(([en]) => {
-      if (!en?.isIntersecting) { clearTimeout(t); return; }
-      t = setTimeout(() => { if (feedSeen.has(id)) return; feedSeen.add(id); io.disconnect(); bumpView(id); }, 1000);
-    }, { threshold: 0.6 });
-    io.observe(el); return () => { clearTimeout(t); io.disconnect(); };
+    let off: () => void = () => {};
+    off = observeVisibility(el, 0.6, (ratio) => {
+      if (ratio < 0.6) { clearTimeout(t); t = undefined; return; }
+      if (t) return;
+      t = setTimeout(() => { if (feedSeen.has(id)) return; feedSeen.add(id); off(); bumpView(id); }, 1000);
+    });
+    return () => { clearTimeout(t); off(); };
   }, [ref, id]);
 }
 
