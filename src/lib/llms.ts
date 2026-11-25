@@ -3,11 +3,15 @@ import { LOCALES } from '@/i18n/dictionaries';
 import type { SeoCategory, SeoCity, SeoPlace } from '@/lib/seo-content';
 
 /**
- * /llms.txt and /llms-full.txt, as one pure builder over the live public catalogue.
+ * /llms.txt, as a pure builder over the live public catalogue.
  *
  * The shape is the llmstxt.org convention the assistants read: an H1 with every spelling of the
  * brand, a blockquote summary, then H2 sections of plain facts and links. Addresses come from the
  * same URL builder as the sitemap, so an assistant is never handed an address Google is not.
+ *
+ * There is deliberately no /llms-full.txt: a file listing every place page is a ready-made copy of
+ * the catalogue for any bot, which is exactly what the site's data protection refuses
+ * (DATA-PROTECTION.md, queued item 5). The short summary is what an AI search needs.
  */
 
 const BRAND = '5argny / خرجني / Khargny';
@@ -30,9 +34,6 @@ export function plainText(value?: string | null): string {
     .trim();
 }
 
-const placePath = (citySlug: string, placeSlug: string) =>
-  `/explorer/${encodeURIComponent(citySlug)}/${encodeURIComponent(placeSlug)}`;
-
 const placeCount = (count: number) => `${count} ${count === 1 ? 'place' : 'places'}`;
 
 export interface LlmsCity {
@@ -48,23 +49,10 @@ export interface LlmsCategory {
   places: number;
 }
 
-export interface LlmsPlace {
-  slug: string;
-  name: string;
-  nameEn?: string | null;
-  citySlug: string;
-  cityName: string;
-  description?: string | null;
-  descriptionEn?: string | null;
-}
-
 export interface LlmsInput {
   siteUrl: string;
   cities: LlmsCity[];
   categories: LlmsCategory[];
-  places: LlmsPlace[];
-  /** True for /llms-full.txt: every place page in both languages, with its description. */
-  full: boolean;
 }
 
 /** The live catalogue, shaped for the builder: counts computed from the same public place list. */
@@ -73,15 +61,12 @@ export function llmsInputFromContent({
   cities,
   categories,
   places,
-  full,
 }: {
   siteUrl: string;
   cities: SeoCity[];
   categories: SeoCategory[];
   places: SeoPlace[];
-  full: boolean;
 }): LlmsInput {
-  const cityById = new Map(cities.map((city) => [city.id, city]));
   const cityCounts = new Map<string, number>();
   const categoryCounts = new Map<string, number>();
   for (const place of places) {
@@ -100,27 +85,12 @@ export function llmsInputFromContent({
         places: categoryCounts.get(category.id) ?? 0,
       }))
       .filter((category) => category.places > 0),
-    places: places
-      .map((place) => {
-        const city = cityById.get(place.cityId);
-        return {
-          slug: place.slug,
-          name: place.name ?? place.nameEn ?? place.slug,
-          nameEn: place.nameEn,
-          citySlug: city?.slug ?? '',
-          cityName: city?.nameEn || city?.name || city?.slug || '',
-          description: place.description,
-          descriptionEn: place.descriptionEn,
-        };
-      })
-      .filter((place) => place.slug && place.citySlug),
-    full,
   };
 }
 
 export function buildLlmsTxt(input: LlmsInput): string {
-  const { siteUrl, cities, categories, places, full } = input;
-  const totalPlaces = places.length;
+  const { siteUrl, cities, categories } = input;
+  const totalPlaces = cities.reduce((sum, city) => sum + city.places, 0);
   const cityCount = cities.filter((city) => city.places > 0).length;
   const out: string[] = [
     `# ${BRAND}`,
@@ -158,30 +128,9 @@ export function buildLlmsTxt(input: LlmsInput): string {
     '',
   ];
 
-  if (full) {
-    out.push('## Places', '');
-    if (places.length) {
-      for (const place of places) {
-        const path = placePath(place.citySlug, place.slug);
-        const en = `${siteUrl}${pathIn(path, 'en')}`;
-        const ar = `${siteUrl}${pathIn(path, 'ar')}`;
-        const english = place.nameEn?.trim() || place.name;
-        out.push(`- [${english}](${en}) · [${place.name}](${ar}) — ${place.cityName}`);
-        const description = plainText(place.descriptionEn || place.description);
-        if (description) out.push(`  ${description}`);
-      }
-    } else {
-      out.push('- No places are listed right now.');
-    }
-    out.push('');
-  }
-
   out.push(
     '## Optional',
     '',
-    full
-      ? `- [llms.txt](${siteUrl}/llms.txt): the same file without the place list`
-      : `- [llms-full.txt](${siteUrl}/llms-full.txt): every place page in English and Arabic`,
     `- [Sitemap](${siteUrl}/sitemap.xml): the sitemap index`,
     '',
   );

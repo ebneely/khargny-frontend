@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(): Promise<Response> {
   try {
     const content = await loadSeoContent();
-    const text = buildLlmsTxt(llmsInputFromContent({ siteUrl: SITE_URL, ...content, full: false }));
+    const text = buildLlmsTxt(llmsInputFromContent({ siteUrl: SITE_URL, ...content }));
     return new Response(text, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',

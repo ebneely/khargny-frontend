@@ -23,45 +23,31 @@ const PLACES: SeoPlace[] = [
   },
 ];
 
-const input = (full: boolean) =>
-  llmsInputFromContent({ siteUrl: 'https://example.test', cities: CITIES, categories: CATEGORIES, places: PLACES, full });
+const input = () =>
+  llmsInputFromContent({ siteUrl: 'https://example.test', cities: CITIES, categories: CATEGORIES, places: PLACES });
 
 describe('llms.txt', () => {
   it('names all three brand spellings and says what the site is', () => {
-    const text = buildLlmsTxt(input(false));
+    const text = buildLlmsTxt(input());
     expect(text.startsWith('# 5argny / خرجني / Khargny')).toBe(true);
     expect(text).toMatch(/^> 5argny/m);
     expect(text).toContain('Egyptian guide');
-    expect(text).toContain('https://example.test/llms-full.txt');
+    expect(text).toContain('https://example.test/sitemap.xml');
   });
 
   it('lists cities and categories with real place counts', () => {
-    const text = buildLlmsTxt(input(false));
+    const text = buildLlmsTxt(input());
     expect(text).toContain('Cairo (القاهرة) — 2 places');
     expect(text).toContain('Cafes (مقاهي) — 1 place');
     expect(text).toContain('Restaurants (مطاعم) — 1 place');
   });
 
-  it('leaves the place list to llms-full.txt', () => {
-    const text = buildLlmsTxt(input(false));
+  it('carries no place list and no llms-full.txt: the catalogue is not handed out', () => {
+    const text = buildLlmsTxt(input());
     expect(text).not.toContain('https://example.test/explorer/cairo/zooba/');
     expect(text).not.toContain('## Places');
-  });
-});
-
-describe('llms-full.txt', () => {
-  it('links every place page in English and Arabic', () => {
-    const text = buildLlmsTxt(input(true));
-    expect(text).toContain('## Places');
-    expect(text).toContain('[Zooba](https://example.test/explorer/cairo/zooba/)');
-    expect(text).toContain('[زوبا](https://example.test/ar/explorer/cairo/zooba/)');
-    expect(text).toContain('[Sequoia](https://example.test/explorer/cairo/sequoia/)');
-  });
-
-  it('carries each place description and links back to llms.txt', () => {
-    const text = buildLlmsTxt(input(true));
-    expect(text).toContain('Egyptian street food.');
-    expect(text).toContain('https://example.test/llms.txt');
+    expect(text).not.toContain('llms-full');
+    expect(text).not.toContain('Egyptian street food.');
   });
 });
 
@@ -73,8 +59,8 @@ describe('plainText', () => {
 
 describe('empty data', () => {
   it('still produces a valid file', () => {
-    const text = buildLlmsTxt({ siteUrl: 'https://example.test', cities: [], categories: [], places: [], full: true });
+    const text = buildLlmsTxt({ siteUrl: 'https://example.test', cities: [], categories: [] });
     expect(text.startsWith('# 5argny')).toBe(true);
-    expect(text).toContain('No places are listed right now.');
+    expect(text).toContain('No cities are listed right now.');
   });
 });
