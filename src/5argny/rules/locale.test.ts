@@ -32,16 +32,19 @@ describe('locale: the language comes from the URL only', () => {
   });
 
   it('old redesign addresses land on the new URL in the same hop, never a chain', () => {
-    expect(redirectFor('/explorer/cairo/', '')).toBe('/explorer/?city=cairo');
-    expect(redirectFor('/en/explorer/cairo/', '?category=cafes')).toBe('/explorer/?city=cairo&cat=cafes');
-    expect(redirectFor('/ar/explorer/cairo/', '?q=koshary')).toBe('/ar/explorer/?city=cairo&q=koshary');
+    // A city now has its own landing page, so the address is served, not redirected (the /en
+    // form still loses its segment).
+    expect(redirectFor('/explorer/cairo/', '')).toBeNull();
+    expect(redirectFor('/explorer/cairo/', '?category=cafes')).toBeNull();
+    expect(redirectFor('/ar/explorer/cairo/', '?q=koshary')).toBeNull();
+    expect(redirectFor('/en/explorer/cairo/', '')).toBe('/explorer/cairo/');
     expect(redirectFor('/plan/', '')).toBe('/saved/');
     expect(redirectFor('/en/plan/', '')).toBe('/saved/');
     expect(redirectFor('/ar/plan/', '')).toBe('/ar/saved/');
     expect(redirectFor('/en/trips/listers/abc/', '')).toBe('/host/abc/');
     expect(redirectFor('/ar/trips/listers/abc/', '')).toBe('/ar/host/abc/');
     // and no target is itself redirected again
-    for (const [p, q] of [['/en/explorer/cairo/', ''], ['/en/plan/', ''], ['/en/', ''], ['/ar/plan/', ''], ['/explorer/cairo/', '?q=a']]) {
+    for (const [p, q] of [['/en/explorer/cairo/', ''], ['/en/plan/', ''], ['/en/', ''], ['/ar/plan/', '']]) {
       const to = new URL(redirectFor(p, q)!, 'https://x');
       expect(redirectFor(to.pathname, to.search)).toBeNull();
     }

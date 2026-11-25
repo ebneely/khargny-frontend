@@ -15,6 +15,7 @@ import type { Locale } from '@/i18n/dictionaries';
 import { browseQueries, readBrowseAddress } from '@/lib/browse-address';
 import { catTotals } from '@/components/k/data';
 import { hasLocalSearchFilters, loadSearchPage } from '@/lib/place-search';
+import { isValidSummary, type LandingFacts, type LandingQuery, type LandingSummary, type LandingType } from '@/lib/landing';
 
 export function markPublicError(error: unknown, locale: Locale) {
   const failure = error && typeof error === 'object' ? error : new Error('Public page data unavailable');
@@ -66,6 +67,31 @@ export const getPlace = cache(async (slug: string) => {
   return normalizePlaceFlags(place);
 });
 export const getCityCount = cache(async (slug: string) => placeList(await read(`/v1/cities/${encodeURIComponent(slug)}/places?limit=1`)));
+
+/**
+ * The landing pages (SEO-DIRECTION 4.1): the index of every page that qualifies, and one page's
+ * facts plus its places. A page under the thin-content guard answers 404 from the API, which the
+ * route turns into a real 404 — never a built empty page.
+ */
+export const getLandingIndex = cache(async (): Promise<{ data: LandingSummary[]; meta: { count: number; updatedAt: string | null } }> => {
+  const raw = await read('/v1/landing/index') as { data?: LandingSummary[]; meta?: { count?: number; updatedAt?: string | null } };
+  const data = Array.isArray(raw) ? raw as LandingSummary[] : raw?.data;
+  if (!Array.isArray(data)) throw new ApiError(502, null);
+  return { data: data.filter(isValidSummary), meta: { count: raw?.meta?.count ?? data.length, updatedAt: raw?.meta?.updatedAt ?? null } };
+});
+
+export const getLandingPage = cache(async (type: LandingType, query: LandingQuery) => {
+  const params = new URLSearchParams();
+  if (query.citySlug) params.set('city', query.citySlug);
+  if (query.areaKey) params.set('area', query.areaKey);
+  if (query.categorySlug) params.set('category', query.categorySlug);
+  params.set('limit', '24');
+  if (query.cursor) params.set('cursor', query.cursor);
+  else if (query.page && query.page > 1) params.set('page', String(query.page));
+  const raw = await read(`/v1/landing/${type}?${params}`) as { facts?: LandingFacts; places?: unknown };
+  if (!raw?.facts) throw new ApiError(502, null);
+  return { facts: raw.facts, places: placeList(raw.places) };
+});
 
 export const getPlaceList = cache(async (cityId: string, page = 1, categoryId = '', limit = CITY_PAGE_SIZE) => {
   const params = new URLSearchParams({ cityId, skip: String((page - 1) * limit), limit: String(limit) });
