@@ -612,7 +612,7 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 @media (prefers-reduced-motion: reduce){ .tm-count{animation:none} }
 
 .tm-deal-text .go5 b{font:inherit;font-weight:800;color:inherit;margin:0}
-.chrome-top.searching{transform:none!important;top:0}
+.chrome-top.searching{transform:translateZ(0)!important;top:0}
 
 
 /* Take me out: a map route from "Can't pick?" to Surprise me; a light runs it, the dice rolls when it lands */
@@ -1364,8 +1364,13 @@ h1 > .sk,h2 > .sk,h3 > .sk,p > .sk:not(.cat-bubble):not(.live-pill),.ov-skel p >
    screen edge with 1 px of its own material over it, and the same material fills the status bar area, so no hairline of
    page ever shows above it. */
 @media (max-width:1023px){
-  .chrome-top{top:-1px;padding-top:calc(env(safe-area-inset-top) + 1px)}
-  .chrome-top::before{content:"";display:block;position:absolute;left:0;right:0;top:-2px;height:calc(env(safe-area-inset-top) + 4px);background:var(--chrome-bg);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);pointer-events:none}
+  /* iOS Safari shook this bar while scrolling (issue #38): a sticky box re-rasterised every frame, held 1 px above the edge
+     (a fractional offset against the scroll) with three backdrop-filter layers inside it (this strip, the topbar and the
+     location bar), each re-sampling the moving page. It now sits on the pixel grid, owns one cached GPU layer, and every
+     blurred layer inside it is cached too, so the compositor only moves the material instead of rebuilding it. */
+  .chrome-top{top:0;padding-top:env(safe-area-inset-top);transform:translateZ(0);will-change:transform;backface-visibility:hidden;contain:layout style}
+  .chrome-top::before{content:"";display:block;position:absolute;left:0;right:0;top:-2px;height:calc(env(safe-area-inset-top) + 4px);background:var(--chrome-bg);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);pointer-events:none;transform:translateZ(0)}
+  .chrome-top .topbar::before,.chrome-top .locbar-wrap::before{transform:translateZ(0);backface-visibility:hidden}
 }
 
 /* rendering cost without changing the look (owner 2026-11-14, measured: the idle home page spent most of its main thread

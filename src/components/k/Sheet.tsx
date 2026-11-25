@@ -53,21 +53,29 @@ let lockedAt: number | null = null, restTop = 0; // restTop: where a fixed botto
 // scrim and would repaint every frame while it moves. Paused one by one (a class on <html> would re-style the whole page).
 let held: Animation[] = [];
 const touchLock = () => typeof window !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+// Where a fixed bottom:0 sheet would rest (above Safari's bottom bar). Measured once while the page is idle, not inside the
+// first open: the probe forced a synchronous layout on the very frame the sheet started moving (issue #38, first open).
+let restInset: number | null = null;
+function measureRest() {
+  const probe = document.createElement('i'); probe.style.cssText = 'position:fixed;bottom:0;left:0;height:0';
+  document.body.append(probe); restInset = probe.getBoundingClientRect().top; probe.remove();
+}
+/** Measured ahead of the first sheet (idle after mount) and again after the visual viewport changes. */
+export function warmSheetMetrics() { if (touchLock() && restInset === null) measureRest(); }
+export function resetSheetMetrics() { restInset = null; }
 function lockPage(on: boolean) {
-  const b = document.body, h = document.documentElement;
+  const h = document.documentElement;
   if (on && lockedAt === null) {
     lockedAt = scrollY; h.classList.add('sheet-open');
     const app = document.getElementById('app');
     held = app ? document.getAnimations().filter((a) => { const t = (a.effect as KeyframeEffect | null)?.target; return a.playState === 'running' && 'animationName' in a && !!t && app.contains(t); }) : [];
     held.forEach((a) => a.pause());
     if (touchLock()) {
-      // where a fixed bottom:0 sheet would rest (above Safari's bottom bar), measured once when the sheet opens
-      const probe = document.createElement('i'); probe.style.cssText = 'position:fixed;bottom:0;left:0;height:0'; b.append(probe);
-      const rest = probe.getBoundingClientRect().top; probe.remove();
       // no body pinning (position:fixed re-laid out and repainted the whole page on every open: the first-open stutter);
-      // iOS 16+ and Android honour overflow:hidden on <html> (html.sheet-open), so the page simply stays where it is
-      // kept in variables and written on the sheets and the scrim themselves: a custom property on <html> would re-style every element of the page
-      h.classList.add('sheet-abs'); restTop = lockedAt + rest;
+      // iOS 16+ and Android honour overflow:hidden on <html> (html.sheet-open), so the page simply stays where it is.
+      // The resting point was measured while idle (warmSheetMetrics), never here, so the first open reads no layout.
+      if (restInset === null) measureRest();
+      h.classList.add('sheet-abs'); restTop = lockedAt + (restInset ?? innerHeight);
     }
   } else if (!on && lockedAt !== null) {
     lockedAt = null; h.classList.remove('sheet-open'); held.forEach((a) => a.play()); held = [];
@@ -203,6 +211,18 @@ export function SheetHost() {
   const open = sheets.filter((x) => !x.closing);
   const anyOpen = open.length > 0;
   useLayoutEffect(() => { lockPage(anyOpen); }, [anyOpen]);
+  // measure where a fixed bottom:0 sheet rests while the page is idle, and again when the viewport changes, so the first
+  // open starts its motion without reading layout (issue #38). Touch devices only: desktop sheets stay fixed.
+  useEffect(() => {
+    if (!matchMedia('(pointer: coarse)').matches) return;
+    const idle = window.requestIdleCallback ? window.requestIdleCallback(warmSheetMetrics, { timeout: 2000 }) : window.setTimeout(warmSheetMetrics, 800);
+    const forget = () => resetSheetMetrics();
+    addEventListener('resize', forget); addEventListener('orientationchange', forget);
+    return () => {
+      if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else clearTimeout(idle);
+      removeEventListener('resize', forget); removeEventListener('orientationchange', forget);
+    };
+  }, []);
   // the sheets stay in page coordinates until the last one has slid out (after the page is unpinned), so a closing sheet leaves through the bottom of the screen
   useLayoutEffect(() => { if (!sheets.length) document.documentElement.classList.remove('sheet-abs'); }, [sheets.length]);
   if (typeof document === 'undefined' || !sheets.length) return null;
