@@ -23,7 +23,7 @@ import { sharePlace } from '@/lib/share-place';
 import { L, Ic } from './icons';
 import { Cnt, Tag, Bit } from './bits';
 import { dur, openState, type OpenState } from './rules';
-import { placeHref, type KPlace, type KStats, type KBadge } from './data';
+import { photoMedium, placeHref, type KPlace, type KStats, type KBadge } from './data';
 import { useK, haptic, reduce, spring, desk } from './KProvider';
 import { useOpenCorrection } from './settings';
 import { KmAway } from './near';
@@ -153,7 +153,7 @@ export function Carousel({ photos }: { photos: KPlace['photos'] }) {
   return <>
     <div className="carousel" data-carousel ref={ref} onScroll={(e) => setAt(Math.round(Math.abs(e.currentTarget.scrollLeft) / e.currentTarget.clientWidth))}>
       
-      {photos.map((ph, i) => <img decoding="async" key={ph.m + i} src={ph.m} alt="" draggable={false} loading={i ? 'lazy' : 'eager'} />)}
+      {photos.map((ph, i) => <img decoding="async" key={(ph.m || ph.s) + i} src={photoMedium(ph)} alt="" draggable={false} loading={i ? 'lazy' : 'eager'} />)}
     </div>
     {photos.length > 1 ? <div className="dots"><button className="dot-nav press" data-act="car-step" aria-label={c.common.previousPhoto} onClick={(e) => step(e, -1)}><L n="chevron-left" /></button>{photos.map((_, i) => <i key={i} className={i === at ? 'on' : ''} />)}<button className="dot-nav press" data-act="car-step" aria-label={c.common.nextPhoto} onClick={(e) => step(e, 1)}><L n="chevron-right" /></button></div> : null}
   </>;
