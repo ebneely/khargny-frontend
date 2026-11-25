@@ -44,6 +44,7 @@ export function LikeButton({ placeId, name, likeCount = 0, detail = false, rail 
     const action = likeStore.action(placeId);
     const liked = likeStore.liked(placeId);
     if (action?.sequence !== previous.current.sequence && action) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- issue #34 deferred: mirrors the store's action sequence for the gesture state machine; moving it changes animation timing
       setObservedAction(action.sequence);
       gesture.current?.tap(action.liked, reduced, action.source, likeStore.count(placeId));
     } else if (action && liked !== previous.current.liked && liked !== action.liked) {

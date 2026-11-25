@@ -36,6 +36,7 @@ export function SaveIcon({
     clearTimeout(timer.current);
     const kind = !reduced && own ? (filled ? "save" : "unsave") : "";
     previous.current = { filled, sequence, active: Boolean(kind) };
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- issue #34 deferred: phase drives the water animation started in this same layout effect; splitting it changes the animation
     setPhase(kind);
     if (water.current)
       active.current = animateWater(

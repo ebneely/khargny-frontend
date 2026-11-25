@@ -81,6 +81,7 @@ function useBlend(pool: KPlace[], city: string | null, area: string | null) {
     // popularity is the card's 30-day views; the tap rate reads loves and 5argny taps, which are all-time by design
     const bp: BlendPlace[] = pool.map((p) => ({ id: p.id, cat: p.cat, city: p.citySlug, area: p.region, promoted: p.promoted, views30: p.d30?.views ?? 0, likes30: p.likes, go30: p.dir,
       photos: p.photos.length, hasHours: p.hours.length > 0, amenities: p.amen.length, badges: p.badges.length,
+      // eslint-disable-next-line react-hooks/purity -- issue #34 deferred: freshness is measured against the moment the blend runs; the rule reads the useMemo callback as render
       freshness: p.updatedAt ? Math.max(0, 1 - (Date.now() - Date.parse(p.updatedAt)) / (90 * DAY)) : 0 }));
     const ctx = { affinity, city, area, seen: adSeen, shownToday: adShown };
     const pick = (list: ReturnType<typeof blend>) => list.map((x) => byId.get(x.p.id)!);
@@ -267,6 +268,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
     let near = surprise;
     if (!pos && (await askPosition())) near = await qc.fetchQuery(surpriseQuery(nearParam(readPosition()))).catch(() => undefined);
     const list = near?.length ? near.map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length) : nearList ?? [];
+    // eslint-disable-next-line react-hooks/purity -- issue #34 deferred: shuffle is an event handler, not render; the rule treats the handler's closure as render
     const next = list.length ? pickNear(list, recent.current, Math.random) : pool[Math.floor(Math.random() * pool.length)] ?? null;
     if (!next) return;
     recent.current = [...recent.current, next.id].slice(-5); setDeal(next);

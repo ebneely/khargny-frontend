@@ -36,6 +36,7 @@ export function useBrowseAddress(initialPage = 1) {
   };
 
   if (observed !== draft.observed) {
+    /* eslint-disable react-hooks/refs -- issue #34 deferred: this is React's derived-state-during-render pattern; the refs carry the last written address and pending updates across the render, and restructuring needs browser verification */
     const actual = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search).toString() : observed;
     let next = { ...draft, observed };
     if (!pending.current.delete(observed) && observed === actual) {
@@ -45,6 +46,7 @@ export function useBrowseAddress(initialPage = 1) {
       pending.current.clear();
     }
     latest.current = next;
+    /* eslint-enable react-hooks/refs */
     setDraft(next);
   }
 

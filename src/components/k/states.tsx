@@ -15,7 +15,9 @@ export function Sk({ w, h, r, cls = '', style }: { w?: number | string; h?: numb
 /** The class for content that takes a skeleton's place: it fades in only when the skeleton was on screen (rules/loading revealOf). */
 export function useReveal(loading: boolean) {
   const started = useRef<number | null>(null), cls = useRef('');
+  // eslint-disable-next-line react-hooks/purity -- issue #34 deferred: the reveal class must be known on this render, so the loading start is timed here
   if (loading) { if (started.current == null) started.current = performance.now(); cls.current = ''; }
+  // eslint-disable-next-line react-hooks/purity -- issue #34 deferred: same reason; moving the measurement to an effect delays the fade by one commit
   else if (started.current != null) { cls.current = revealOf(started.current, performance.now()) === 'fade' ? 'sk-reveal' : ''; started.current = null; }
   return cls.current;
 }

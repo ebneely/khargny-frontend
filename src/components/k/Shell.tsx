@@ -145,6 +145,7 @@ function Sidebar({ cur }: { cur: Tab }) {
       keys = INTENTS.map((x) => x.key).sort(() => Math.random() - 0.5).slice(0, 5);
       try { sessionStorage.setItem('k-shortcuts', JSON.stringify(keys)); } catch { /* ignore */ }
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- issue #34 deferred: the five shortcuts are picked from sessionStorage after mount so server and client agree
     setPicked(keys);
   }, []);
   const shortcuts = picked ? picked.map((key) => INTENTS.find((i) => i.key === key)!) : INTENTS.slice(0, 5);
@@ -184,6 +185,7 @@ function TopBar() {
   const urlQ = useSearchParams().get('q');
   const [q, setQ] = useState(() => barQ);
   // an Explore deep link (or a new ?q= on it) puts its word in the bar; the server render starts empty, so no mismatch
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- issue #34 deferred: the bar follows a URL change after mount; computing it during render would mismatch the server HTML
   useEffect(() => { if (onExplore()) { barQ = (urlQ ?? '').trim(); setQ(barQ); } else { setQ(barQ); searchOrigin = null; } }, [urlQ]);
   const commit = (v: string) => { barQ = v.trim(); setQ(barQ); };
   const [searching, setSearching] = useState(false);

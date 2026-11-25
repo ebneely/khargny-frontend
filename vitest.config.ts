@@ -9,4 +9,7 @@ export default defineConfig({
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
     ],
   },
+  test: {
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+  },
 });

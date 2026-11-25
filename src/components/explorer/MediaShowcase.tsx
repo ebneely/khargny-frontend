@@ -44,8 +44,8 @@ export function usePlaceGallery() {
     busy.current = true;
     setError(false);
     try {
-      const module = await loadGallery();
-      const gallery = await module.openGallery({
+      const galleryModule = await loadGallery();
+      const gallery = await galleryModule.openGallery({
         items,
         index,
         trigger,

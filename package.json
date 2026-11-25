@@ -6,9 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "e2e": "npm --prefix e2e-tests run test:e2e",
-    "test": "vitest run src"
+    "test": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -56,7 +56,6 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@iconify/json": "^2.2.313",
     "@iconify/react": "^5.2.0",
     "@tanstack/eslint-plugin-query": "^5.68.0",
