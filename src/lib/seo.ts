@@ -196,7 +196,7 @@ export function pageMetadata({ path, locale, title, description, image = default
     robots: robotsFor(noindex),
     openGraph: {
       type, title: fittedTitle, description: fittedDescription, url: urlFor(path, locale),
-      siteName: locale === 'ar' ? 'خرجني' : 'Khargny',
+      siteName: locale === 'ar' ? 'خرجني' : BRAND_SPELLING,
       locale: ogLocale(locale), alternateLocale: ogAlternateLocale(locale), images: [absoluteImage],
     },
     twitter: { card: 'summary_large_image', title: fittedTitle, description: fittedDescription, images: [absoluteImage] },
@@ -223,7 +223,7 @@ export function organizationSchema(locale: Locale, rawSettings?: unknown) {
     '@type': 'Organization',
     '@id': `${SITE_URL}/#organization`,
     // On the Arabic site the Arabic name is the name, not a footnote to the Latin one.
-    name: locale === 'ar' ? 'خرجني' : 'Khargny',
+    name: locale === 'ar' ? 'خرجني' : BRAND_SPELLING,
     alternateName: brandAlternateNames(),
     url: urlFor('/', locale),
     logo: { '@type': 'ImageObject', url: `${SITE_URL}/images/logo-en.png` },
@@ -238,7 +238,7 @@ export function webSiteSchema(locale: Locale) {
     '@type': 'WebSite',
     '@id': `${SITE_URL}/#website`,
     url: urlFor('/', locale),
-    name: locale === 'ar' ? 'خرجني' : 'Khargny',
+    name: locale === 'ar' ? 'خرجني' : BRAND_SPELLING,
     alternateName: brandAlternateNames(),
     inLanguage: locale === 'ar' ? 'ar-EG' : 'en',
     publisher: { '@id': `${SITE_URL}/#organization` },
