@@ -2,6 +2,7 @@
 // The prototype's small patterns, each exactly once: Btn, IconBtn, Tag, Bit, Group, Brand, Cnt (roll + count-up), Seg.
 import { useEffect, useLayoutEffect, useRef, type ReactNode, type MouseEvent } from 'react';
 import { animate } from 'motion';
+import { observeFirst } from '@/lib/shared-observer';
 import { L, Ic, type StrokeName } from './icons';
 import { k } from './rules';
 import { useK, reduce, spring } from './KProvider';
@@ -59,13 +60,12 @@ export function Cnt({ base, mine = false }: { base: number | null | undefined; m
     shown.current = to;
   }, [to]);
   useEffect(() => {
-    const el = ref.current; if (!el || to == null || reduce() || to < 2 || !('IntersectionObserver' in window)) return;
-    const io = new IntersectionObserver((es) => es.forEach((en) => {
-      if (!en.isIntersecting) return; io.disconnect(); const t0 = performance.now(), D = 900, n = shown.current ?? to;
+    const el = ref.current; if (!el || to == null || reduce() || to < 2) return;
+    return observeFirst(el, 0.6, () => {
+      const t0 = performance.now(), D = 900, n = shown.current ?? to;
       const step = (t: number) => { const f = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - f, 3); el.textContent = k(Math.round(n * e)); if (f < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step);
-    }), { threshold: 0.6 });
-    io.observe(el); return () => io.disconnect();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [to == null]);
   // not known yet: an empty line of the same height, so the count arriving never moves the row (never a fake 0)

@@ -1,7 +1,7 @@
 'use client';
 // Explore from proto/app.js Explore(): the location bar with Filters, a title that names what and where, the count and
 // the sort, then the results grid. Everything comes from the URL, so the query is kept.
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { useSearchParams } from 'next/navigation';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -29,6 +29,9 @@ import { EXPLORE_SEARCH_PAGE, exploreSearchKey } from '@/lib/explore-search';
 
 type Sort = 'popular' | 'near' | 'open';
 const PAGE = 24;
+// an intent opens one list per category at once: the first page of each is shorter, so the screen fills on one round of
+// requests instead of six full pages (issue #39). "Everything" stays a full page.
+const FIRST_IN_MANY = 12;
 type Cursors = Record<string, string | null>; // per category ('all' without one): '' = first page, null = no more
 type Page = { items: unknown[]; total: number; next: Cursors };
 
@@ -52,7 +55,8 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
     initialPageParam: Object.fromEntries(L.catIds.map((id) => [id ?? 'all', ''])) as Cursors,
     queryFn: async ({ pageParam }): Promise<Page> => {
       const open = Object.entries(pageParam).filter(([, cur]) => cur !== null);
-      const answers = await Promise.all(open.map(async ([id, cur]) => [id, await apiRequest<{ meta?: { nextCursor?: string | null } }>('GET', '/v1/places', { params: { ...L.params, categoryId: id === 'all' ? undefined : id, near: near ?? undefined, sort: apiSort, cursor: cur || undefined, limit: PAGE } })] as const));
+      const limit = open.length > 1 ? FIRST_IN_MANY : PAGE;
+      const answers = await Promise.all(open.map(async ([id, cur]) => [id, await apiRequest<{ meta?: { nextCursor?: string | null } }>('GET', '/v1/places', { params: { ...L.params, categoryId: id === 'all' ? undefined : id, near: near ?? undefined, sort: apiSort, cursor: cur || undefined, limit } })] as const));
       const next: Cursors = { ...pageParam };
       for (const [id, raw] of answers) next[id] = raw.meta?.nextCursor || null;
       const pages = answers.map(([, raw]) => normalizePlaceList(raw));
@@ -74,10 +78,13 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
   const first = src?.data?.pages[0];
   // the applied filters' total also answers Filters' "Show N" (same key as useResultCount), so the sheet opens with its number
   useEffect(() => { if (!q && !badge && first) qc.setQueryData(totalKey(L.key), first.total); }, [first, q, badge]); // eslint-disable-line react-hooks/exhaustive-deps
-  const k = (r: unknown) => toK(r as never, { cities, categories }, lang);
-  const pages = badge ? (earned ? [earned.map(k)] : []) : (src?.data?.pages ?? []).map((pg) => pg.items.map(k));
+  const k = useCallback((r: unknown) => toK(r as never, { cities, categories }, lang), [cities, categories, lang]);
+  const dataPages = src?.data?.pages;
+  // a stable list per query answer: without this, every render made new cards and a memoized Tile never matched (issue #39)
+  const rawPages = useMemo(() => (badge ? (earned ? [earned.map(k)] : []) : (dataPages ?? []).map((pg) => pg.items.map(k))), [badge, earned, k, dataPages]);
+  const pages = useMemo(() => rawPages.map((pg) => pg.filter((p) => p.photos.length)), [rawPages]);
   return {
-    pages: pages.map((pg) => pg.filter((p) => p.photos.length)),
+    pages,
     total: badge ? earned?.length ?? null : L.none && !q ? 0 : first?.total ?? null,
     loading: badge ? !earned : L.none && !q ? false : !!src?.isPending,
     more: !badge && !!src?.hasNextPage, fetchingMore: !!src?.isFetchingNextPage, loadMore: () => { if (src?.hasNextPage && !src.isFetchingNextPage && !src.isFetchNextPageError) void src.fetchNextPage(); },
@@ -117,14 +124,18 @@ export function ExploreView() {
   // "Nearest" is the person's own choice, so it may ask for the location then; the list then comes nearest first from the API
   useEffect(() => { if (sort === 'near' && !pos) void askPosition().then((ok) => { const why = askFail(); if (!ok && why) toast(c.states.near[why]); }); }, [sort, pos]); // eslint-disable-line react-hooks/exhaustive-deps
   const here = pos;
-  // shortcut: search results (q) carry no distanceKm (the search route takes no near=), so Nearest orders them by the cards' own coordinates
-  const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
-  // hype position first (merged category lists keep one order); search results carry no position and keep their 30-day views
-  const score = { popular: (p: KPlace) => (p.popularRank != null ? 1e9 - p.popularRank : p.d30?.views ?? 0), near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
-  // the list route filters by When itself; search does not, so its pages are filtered here (and the count is what is listed)
-  const fit = (pg: KPlace[]) => (q && f.when ? pg.filter((p) => matchesWhen(p.hours, f.when as When, now.date)) : pg);
-  // shortcut: each page is ordered on its own and appended, so loading more never reshuffles what is on screen
-  const res = res0.pages.flatMap((pg) => [...fit(pg)].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a))); // paid places first inside a match, looking like any other
+  // one pass per answer, not per render: filtering and sorting the loaded pages is memoised, so a scroll, a hover or a
+  // sheet opening no longer re-sorts every loaded page (issue #39)
+  const res = useMemo(() => {
+    // shortcut: search results (q) carry no distanceKm (the search route takes no near=), so Nearest orders them by the cards' own coordinates
+    const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
+    // hype position first (merged category lists keep one order); search results carry no position and keep their 30-day views
+    const score = { popular: (p: KPlace) => (p.popularRank != null ? 1e9 - p.popularRank : p.d30?.views ?? 0), near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
+    // the list route filters by When itself; search does not, so its pages are filtered here (and the count is what is listed)
+    const fit = (pg: KPlace[]) => (q && f.when ? pg.filter((p) => matchesWhen(p.hours, f.when as When, now.date)) : pg);
+    // shortcut: each page is ordered on its own and appended, so loading more never reshuffles what is on screen
+    return res0.pages.flatMap((pg) => [...fit(pg)].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a))); // paid places first inside a match, looking like any other
+  }, [res0.pages, q, f.when, sort, here, now, lang]);
   const total = q && f.when ? (res0.more ? null : res.length) : res0.total;
   // a search answer is shown (its first page, in the order listed)
   const listed = q && !res0.loading ? res.slice(0, 20).map((p) => p.id).join() : '';

@@ -10,8 +10,10 @@ import { retryQuery } from '@5argny/core/rules';
 
 export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
   const [queryClient] = useState(() => {
-    // one quiet retry for the network and the server, none for a 4xx that will not change (src/5argny/rules/loading.ts)
-    const client = new QueryClient({ defaultOptions: { queries: { retry: retryQuery, staleTime: 30_000 } } });
+    // one quiet retry for the network and the server, none for a 4xx that will not change (src/5argny/rules/loading.ts).
+    // Lists and feeds do not refetch when a tab regains focus: coming back to the tab keeps the screen the person left
+    // (issue #39, TanStack). Data still refreshes by its staleTime and explicit invalidations.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: retryQuery, staleTime: 30_000, refetchOnWindowFocus: false } } });
     prepareBrowseQueries(client);
     return client;
   });

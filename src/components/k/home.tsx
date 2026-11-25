@@ -17,7 +17,7 @@ import { fill } from '@5argny/core/copy';
 import { L, Ic } from './icons';
 import { Brand, Btn, Tag, Bit } from './bits';
 import { INTENTS, moment, t12, k, openState as openStateOf, type Intent } from './rules';
-import { placeHref, toK, type KPlace } from './data';
+import { placeHref, photoMedium, toK, type KPlace } from './data';
 import { Post, PostSkel, Tile, TileSkel, Go5, StatePill, Meta, BadgeTags, useShowing, usePlaceStats, catIcon, type CardTrack } from './place';
 import { Shell, usePlaceName, useLocKeys } from './Shell';
 import { useK, useKS, haptic, reduce, spring } from './KProvider';
@@ -159,7 +159,7 @@ function Story({ p, position, mark }: { p: KPlace; position: number; mark: FeedM
   useShowing(ref, 'stories', p.id, position);
   return (
     <Link ref={ref} className="story press" data-item href={placeHref(p, lang)} style={{ flex: 'none', position: 'relative', width: 96, height: 150, borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh1)' }}>
-      <img decoding="async" src={p.photos[0]?.s} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img decoding="async" src={p.photos[0]?.s} alt="" loading={position <= 4 ? 'eager' : 'lazy'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <b dir="auto" style={{ position: 'absolute', left: 8, right: 8, bottom: 7, color: '#fff', fontSize: 12, fontWeight: 750, lineHeight: 1.2, textShadow: '0 1px 8px rgba(0,0,0,.6)' }}>{p.name}</b>
     </Link>
   );
@@ -208,8 +208,8 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
   const { c, lang, now, openSheet, setLoc } = useK();
   const m = moment(now), lead = m.x, rest = INTENTS.filter((x) => x.key !== lead.key).slice(0, 5);
   const inCats = (x: Intent) => pool.filter((p) => (x.cats as readonly string[]).includes(p.cat));
-  const photoFor = (cats: readonly string[], n = 0) => { const list = pool.filter((p) => cats.includes(p.cat)); const pl = list[n % Math.max(1, list.length)] || pool[n % Math.max(1, pool.length)]; return pl?.photos[0]?.m || undefined; };
-  const leadPhotos = inCats(lead).slice(0, 4).map((p) => p.photos[0]?.m).filter(Boolean);
+  const photoFor = (cats: readonly string[], n = 0) => { const list = pool.filter((p) => cats.includes(p.cat)); const pl = list[n % Math.max(1, list.length)] || pool[n % Math.max(1, pool.length)]; return photoMedium(pl?.photos[0]) || undefined; };
+  const leadPhotos = inCats(lead).slice(0, 4).map((p) => photoMedium(p.photos[0])).filter(Boolean);
   const total = (x: Intent) => { const ns = data.categories.filter((cat) => (x.cats as readonly string[]).includes(cat.en)).map((cat) => totalByCategory[cat.id]); return ns.some((n) => n == null) ? null : ns.reduce<number>((a, n) => a + (n ?? 0), 0); };
   const card = useRef<HTMLElement>(null);
   const [deal, setDeal] = useState<KPlace | null>(null);
@@ -259,6 +259,12 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
       const imgs = [...box.children], i = imgs.findIndex((x) => x.classList.contains('on')); imgs[i]?.classList.remove('on'); imgs[(i + 1) % imgs.length].classList.add('on'); }, 4500);
     return () => clearInterval(id);
   }, []);
+  // the route line (an SVG stroke, painted on the main thread) and the dice hold still while the card is off screen
+  useEffect(() => {
+    const el = card.current; if (!el || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver(([en]) => el.classList.toggle('tm-still', !en?.isIntersecting), { rootMargin: '200px 0px' });
+    io.observe(el); return () => io.disconnect();
+  }, []);
 
   const shuffle = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const dice = e.currentTarget.querySelector('.lucide'); if (dice) animate(dice, { transform: ['rotate(0deg)', 'rotate(360deg)'] }, spring(0.2, 0.6));
@@ -279,7 +285,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
   const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)).then(() => { const f = card.current?.querySelector<HTMLElement>('.tm-flip'); if (f) f.style.transform = ''; drawRoute.current(); }); }; // no 3D layer left behind (Safari)
   // most places first (proto), each with a photo of its own: the pool's, else the one its count request brought
   const cats = [...data.categories].sort((a, b) => (totalByCategory[b.id] ?? -1) - (totalByCategory[a.id] ?? -1));
-  const photo = (cat: HomeData['categories'][number]) => pool.find((p) => p.cat === cat.en)?.photos[0]?.m || coverByCategory[cat.id] || photoFor([cat.en], 0);
+  const photo = (cat: HomeData['categories'][number]) => photoMedium(pool.find((p) => p.cat === cat.en)?.photos[0]) || coverByCategory[cat.id] || photoFor([cat.en], 0);
   const allCats = () => {
     openSheet(c.home.takeMe.everythingSheet, <div className="tm-sheet">{cats.map((cat) => <Link key={cat.id} className="tm-tile press" href={`${langPrefix(lang)}/explorer/?cat=${encodeURIComponent(cat.en)}`}><img decoding="async" src={photo(cat)} alt="" loading="lazy" /><span className="tm-fade" /><span className="tm-label"><L n={catIcon(cat.en)} /><b>{cat.label}</b></span>{totalByCategory[cat.id] != null ? <span className="tm-count"><i className="live" />{totalByCategory[cat.id]}</span> : null}</Link>)}</div>);
     requestAnimationFrame(() => document.querySelectorAll('.sheet .tm-sheet .tm-tile').forEach((tl, n) => animate(tl, { opacity: [0, 1], transform: ['translateY(14px) scale(.96)', 'translateY(0) scale(1)'] }, { ...spring(0, 0.45), delay: 0.04 + n * 0.03 })));
@@ -292,7 +298,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
         <div className="tm-head"><div><b className="tm-q">{lang === 'ar' ? 'خرجني فين؟' : c.home.takeMe.question}</b><span className="tm-time" aria-label={`${c.home.takeMe.timeNow} ${t12(now, lang)}`} suppressHydrationWarning><L n="clock" />{t12(now, lang)}<span className="tm-nudge">{c.home.takeMe.cantPick}</span></span></div>
           <svg className="tm-route" aria-hidden="true"><path className="tm-route-base" /><path className="tm-route-line" /><circle className="tm-route-end" r="3" /></svg>
           <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} onClick={shuffle}><L n="dices" /><span>{c.home.takeMe.surprise}</span></button></div>
-        <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img decoding="async" key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} />)}</span><span className="tm-fade" />
+        <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img decoding="async" key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} loading={n === 0 ? 'eager' : 'lazy'} fetchPriority={n === 0 ? 'high' : undefined} />)}</span><span className="tm-fade" />
           <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{leadCity ? <span className="tm-sub">{open ? <><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: leadName })}</> : <><L n="map-pin" />{leadName}</>}</span> : null}</span>
           <span className="tm-go"><L n="arrow-right" /></span></Link>
         <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img">{cats.slice(0, 4).map((cat) => <img decoding="async" key={cat.id} src={photo(cat)} alt="" loading="lazy" />)}</span><span className="tm-pick-name"><L n="layout-grid" /><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>
@@ -309,7 +315,7 @@ function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.Mo
   const ref = useRef<HTMLDivElement>(null);
   useShowing(ref, 'takeme', p.id, 1);
   // the photo and the name open the place like every other card; the buttons keep their own actions
-  return <div className="tm-deal" ref={ref}><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img decoding="async" src={p.photos[0]?.m} alt="" /></Link><span className="tm-fade" />
+  return <div className="tm-deal" ref={ref}><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img decoding="async" src={photoMedium(p.photos[0])} alt="" /></Link><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
     <div className="tm-deal-text"><Link className="tm-deal-name press" href={href}><b dir="auto">{p.name}</b></Link><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;
