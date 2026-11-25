@@ -1188,7 +1188,9 @@ a,button,[role="button"],[role="link"],.press,.btn,.chip,.icon-btn,.option,.nav-
 .live-pill.unknown .live::before,.live-pill.unknown .live::after{display:block;border-color:rgba(245,165,36,.8)}
 .live-pill.unknown .live::before{animation:liveWaveWide 6s cubic-bezier(.2,.6,.35,1) 3s infinite}
 .live-pill.unknown .live::after{animation:liveWaveWide 6s cubic-bezier(.2,.6,.35,1) 0s infinite}
-@keyframes liveWaveWide{0%{inset:-1px;border-width:2px}100%{inset:-170px;border-width:.5px}}
+/* the widest ring is a fixed-size circle scaled from the dot, like the others: transform only (issue #39) */
+.live-pill.unknown .live::before,.live-pill.unknown .live::after{inset:-170px}
+@keyframes liveWaveWide{0%{transform:scale(.03)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion: reduce){ .live-pill.unknown .live::before,.live-pill.unknown .live::after{animation:none;display:none} }
 /* sheet page lock: desktop keeps every column in place (overflow only), phones pin the body and keep the sticky top chrome on screen */
 html{scrollbar-gutter:stable}
