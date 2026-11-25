@@ -27,6 +27,7 @@ import { FootLinks } from './footlinks';
 import { hasLocBar, type Frame } from './frame';
 import { usePosition } from './near';
 import { useK, useKS, haptic, reduce, spring, type Tab } from './KProvider';
+import { initialScrollDirection, scrollDirection } from '@/lib/scroll-direction';
 import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -101,6 +102,41 @@ export function FrameHost({ initial, children }: { initial: Frame; children: Rea
     const top = document.querySelector('.chrome-top'); if (!top) return;
     const put = () => document.documentElement.style.setProperty('--chrome-h', `${top.getBoundingClientRect().height}px`);
     put(); const ro = new ResizeObserver(put); ro.observe(top); return () => ro.disconnect();
+  }, []);
+  /**
+   * The location bar (All Egypt · Area · Filters) folds under the top bar while the page scrolls down and comes straight
+   * back when it scrolls up; at the top of a page it is always out (owner 2026-11-25). One passive scroll listener
+   * schedules one rAF, and the direction rule (8 px threshold, visible near the top) is the same one the other layout
+   * uses (scroll-direction.ts), so a thumb that jitters by a few pixels cannot make the bar flicker. The rAF only
+   * toggles a class: the bar's motion is a transform in web.css, so the compositor moves it, React does not re-render and
+   * nothing forces layout — the failure that made the iOS top bar shake (#38). The class starts absent, so a first paint
+   * has nothing to animate.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    let chrome = document.querySelector<HTMLElement>('.chrome-top');
+    let state = initialScrollDirection(window.scrollY);
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      if (!chrome?.isConnected) chrome = document.querySelector<HTMLElement>('.chrome-top');
+      if (!chrome) return;
+      state = scrollDirection(state, window.scrollY, {
+        // a search being typed or a sheet being read keeps the chrome whole, exactly where the person left it
+        locked: chrome.classList.contains('searching') || root.classList.contains('sheet-open'),
+      });
+      chrome.classList.toggle('compact', state.hidden);
+    };
+    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(update); };
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    window.addEventListener('pageshow', schedule);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('pageshow', schedule);
+    };
   }, []);
   // one showing tracker for the frame (search results in the top bar); each page opens its own inside (one visit = one scope)
   return <FrameCtx.Provider value={set}><ShowingScope>

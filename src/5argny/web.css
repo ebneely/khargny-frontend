@@ -1332,18 +1332,24 @@ h1 > .sk,h2 > .sk,h3 > .sk,p > .sk:not(.cat-bubble):not(.live-pill),.ov-skel p >
 .chrome-top.scrolled .brand-mark{transform:scale(.92)}
 .topbar .gsearch{height:36px;transition:box-shadow .2s var(--chrome-ease)}
 @media (max-width:1023px){ .topbar .gsearch{height:34px} }
-@media (prefers-reduced-motion: reduce){ .chrome-top .locbar-wrap,.chrome-top .brand-mark{transition:opacity .15s} .chrome-top.compact .locbar-wrap{transform:none} .chrome-top.scrolled .brand-mark{transform:none} }
+@media (prefers-reduced-motion: reduce){ .chrome-top .locbar-wrap,.chrome-top .brand-mark{transition:none!important} .chrome-top.scrolled .brand-mark{transform:none} }
 @media (prefers-reduced-transparency: reduce){ :root,[data-theme=dark]{--chrome-bg:var(--bg)} .chrome-top .topbar::before,.chrome-top .locbar-wrap::before{-webkit-backdrop-filter:none;backdrop-filter:none} }
 /* top chrome v5 (owner 2026-11-14): the bars are always tinted (no clear-at-top fade, which was a second animation at the
-   start of every scroll); the only motion is the location bar's spring, run from JS once the scroll rests (useChromeFold) */
+   start of every scroll); nothing else moves during a scroll.
+   top chrome v6 (owner 2026-11-25): the location bar follows the scroll direction again. Down: it slides up under the top
+   bar; up, or at the top of the page: it comes straight back. The direction decision is Shell.tsx's scroll listener (one
+   passive listener, one rAF, an 8 px threshold, the shared scroll-direction rule); it only toggles .compact, and this is
+   the entire motion: one transform, 220 ms ease-out, no scale, no spring, no bounce. The layer exists before the first
+   move (will-change) so that move never hitches, and the top bar itself never moves — #38's steady bar is untouched.
+   Nothing animates on the first paint (.compact starts absent); reduced motion swaps the bar instantly. */
 .chrome-top .topbar::before,.chrome-top .locbar-wrap::before{opacity:1;transition:none}
 .chrome-top .brand-mark,.chrome-top.scrolled .brand-mark{transform:none;transition:none}
-.chrome-top .locbar-wrap{transition:none;transform-origin:50% 0;box-shadow:var(--chrome-edge)}
+.chrome-top .locbar-wrap{transition:transform .22s ease-out;transform-origin:50% 0;box-shadow:var(--chrome-edge);will-change:transform}
 .chrome-top .topbar{box-shadow:none;transition:box-shadow .3s var(--chrome-ease)}
 .chrome-top.compact .topbar{box-shadow:var(--chrome-edge)}
 .chrome-top.scrolled .locbar-wrap,.chrome-top.scrolled.compact .topbar{box-shadow:var(--chrome-edge)}
-/* no fade on the location bar: it only slides (owner 2026-11-14) */
-.chrome-top.compact .locbar-wrap{opacity:1}
+/* the bar only slides, never fades (owner 2026-11-14) */
+.chrome-top.compact .locbar-wrap{transform:translateY(-100%);opacity:1;pointer-events:none}
 
 /* the phone tab bar (GlassTabBar, owner 2026-11-14): a floating Liquid Glass capsule. The glass is one static layer (bent
    through #gbar-lens on Chromium, frosted elsewhere); the selection pill moves by transform only. */
