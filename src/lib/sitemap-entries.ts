@@ -4,6 +4,7 @@ import { urlFor } from '@/lib/site-url';
 import { SITE_URL } from '@/lib/config';
 import type { SeoCity, SeoPlace, SeoTrip } from '@/lib/seo-content';
 import type { ImageSitemapEntry } from '@/lib/crawler-responses';
+import { summaryPath, type LandingSummary } from '@/lib/landing';
 
 /**
  * The pure builders behind the split sitemaps. No fetch, no clock, no Next request: a place's
@@ -75,6 +76,24 @@ export function placeEntries(cities: SeoCity[], places: SeoPlace[]): MetadataRou
 }
 
 /**
+ * Every qualifying landing page (SEO-DIRECTION 4.1): city, area, category and their combinations.
+ * The lastmod is the newest place edit inside the page, never the clock; a page the index does not
+ * list is simply not published, so a thin page has no sitemap entry.
+ */
+export function landingEntries(rows: LandingSummary[]): MetadataRoute.Sitemap {
+  return rows.flatMap((row) => {
+    const path = summaryPath(row);
+    if (!path) return [];
+    const updated = lastModified(row.updatedAt);
+    return localized(path, {
+      ...(updated ? { lastModified: updated } : {}),
+      changeFrequency: 'daily',
+      priority: row.type === 'city' ? 0.8 : 0.7,
+    });
+  });
+}
+
+/**
  * Google reads at most 50,000 URLs in one sitemap file. A place is published in two languages, so a file holds at most
  * 20,000 places (40,000 URLs) and stays inside the limit with room for the hreflang links.
  */
@@ -100,17 +119,42 @@ export function sitemapIndexFor(
   siteUrl: string,
   fileCount: number,
   dates: (Date | undefined)[] = [],
+  landingFiles = 0,
+  landingDates: (Date | undefined)[] = [],
 ): { loc: string; lastModified?: Date }[] {
   const files = Array.from({ length: Math.max(1, Math.trunc(fileCount) || 0) }, (_, i) => i + 1);
-  const entry = (kind: 'places' | 'images', index: number) => ({
+  const landing = Array.from({ length: Math.max(0, Math.trunc(landingFiles) || 0) }, (_, i) => i + 1);
+  const entry = (kind: 'places' | 'images' | 'landing', index: number, last?: Date) => ({
     loc: `${siteUrl}/sitemaps/${kind}-${index}.xml`,
-    ...(dates[index - 1] ? { lastModified: dates[index - 1] } : {}),
+    ...(last ? { lastModified: last } : {}),
   });
   return [
     { loc: `${siteUrl}/sitemaps/static.xml` },
-    ...files.map((index) => entry('places', index)),
-    ...files.map((index) => entry('images', index)),
+    ...files.map((index) => entry('places', index, dates[index - 1])),
+    ...files.map((index) => entry('images', index, dates[index - 1])),
+    ...landing.map((index) => entry('landing', index, landingDates[index - 1])),
   ];
+}
+
+/** Landing pages are published in two languages, so one file holds at most 20,000 pages. */
+export const LANDINGS_PER_FILE = 20_000;
+
+export function landingFileCount(total: number): number {
+  return Math.max(1, Math.ceil(Math.max(0, total) / LANDINGS_PER_FILE));
+}
+
+export function chunkLandings<T>(rows: T[], index: number): T[] {
+  const start = Math.max(0, Math.trunc(index)) * LANDINGS_PER_FILE;
+  return rows.slice(start, start + LANDINGS_PER_FILE);
+}
+
+export function newestSummaryUpdate(rows: { updatedAt: string | null }[]): Date | undefined {
+  let newest: Date | undefined;
+  for (const row of rows) {
+    const date = lastModified(row.updatedAt);
+    if (date && (!newest || date > newest)) newest = date;
+  }
+  return newest;
 }
 
 /** The newest update inside one file: an honest lastmod for that file, never the clock. */

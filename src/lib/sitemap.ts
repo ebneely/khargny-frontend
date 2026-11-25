@@ -1,7 +1,21 @@
 import type { MetadataRoute } from 'next';
 import { isPreviewDeployment } from '@/lib/seo-environment';
 import { loadSeoContent, loadTrips } from '@/lib/seo-content';
-import { lastModified, placeEntries, imageEntries, staticEntries, chunkPlaces, newestUpdate, sitemapFileCount, sitemapIndexFor } from '@/lib/sitemap-entries';
+import {
+  lastModified,
+  placeEntries,
+  imageEntries,
+  staticEntries,
+  chunkPlaces,
+  chunkLandings,
+  landingEntries,
+  landingFileCount,
+  newestSummaryUpdate,
+  newestUpdate,
+  sitemapFileCount,
+  sitemapIndexFor,
+} from '@/lib/sitemap-entries';
+import { getLandingIndex } from '@/lib/server/public-data';
 import type { ImageSitemapEntry } from '@/lib/crawler-responses';
 import { SITE_URL } from '@/lib/config';
 import type { SeoPlace } from '@/lib/seo-content';
@@ -70,10 +84,37 @@ export async function placesSitemapFileDate(index: number): Promise<Date | undef
   return newestUpdate(chunkPlaces(places, index - 1));
 }
 
-/** The index: static once, then every numbered place and image file, one hop each. */
+/** How many landing-*.xml files the qualifying landing pages need right now. */
+export async function landingSitemapFileCount(): Promise<number> {
+  if (isPreviewDeployment()) return 0;
+  const { data } = await getLandingIndex();
+  return data.length ? landingFileCount(data.length) : 0;
+}
+
+/** One numbered landing sitemap (1-based), or null when the site has fewer files. */
+export async function landingSitemapFile(index: number): Promise<MetadataRoute.Sitemap | null> {
+  if (isPreviewDeployment()) return [];
+  const { data } = await getLandingIndex();
+  const count = landingFileCount(data.length);
+  if (!data.length || !Number.isInteger(index) || index < 1 || index > count) return null;
+  return landingEntries(chunkLandings(data, index - 1));
+}
+
+/** The newest place edit inside one landing file, for the index's lastmod. */
+export async function landingSitemapFileDate(index: number): Promise<Date | undefined> {
+  if (isPreviewDeployment()) return undefined;
+  const { data } = await getLandingIndex();
+  return newestSummaryUpdate(chunkLandings(data, index - 1));
+}
+
+/** The index: static once, then every numbered place, image and landing file, one hop each. */
 export async function sitemapIndexEntries(siteUrl: string = SITE_URL): Promise<{ loc: string; lastModified?: Date }[]> {
   if (isPreviewDeployment()) return [];
   const count = await placesSitemapFileCount();
-  const dates = await Promise.all(Array.from({ length: count }, (_, i) => placesSitemapFileDate(i + 1)));
-  return sitemapIndexFor(siteUrl, count, dates);
+  const landingCount = await landingSitemapFileCount();
+  const [dates, landingDates] = await Promise.all([
+    Promise.all(Array.from({ length: count }, (_, i) => placesSitemapFileDate(i + 1))),
+    Promise.all(Array.from({ length: landingCount }, (_, i) => landingSitemapFileDate(i + 1))),
+  ]);
+  return sitemapIndexFor(siteUrl, count, dates, landingCount, landingDates);
 }

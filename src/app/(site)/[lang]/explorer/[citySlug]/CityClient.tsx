@@ -61,7 +61,7 @@ function pageWindow(current: number, total: number): (number | null)[] {
   return out;
 }
 
-function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { citySlug?: string; initialPage?: number }) {
+function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1, intro, seoAfter }: { citySlug?: string; initialPage?: number; intro?: string; seoAfter?: React.ReactNode }) {
   const { t, locale } = useI18n();
   const address = useSearchParams();
   const params = useParams();
@@ -218,7 +218,7 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
               </p>
             )}
           </div>
-          {currentCity && <p className="khg-browse-intro">{cityIntro}</p>}
+          {currentCity && <p className="khg-browse-intro">{intro || cityIntro}</p>}
         </header>
         <div ref={sentinelRef} className="khg-browse-sentinel" aria-hidden="true" />
         <div ref={blockRef} className="khg-browse-sticky" data-stuck="false">
@@ -446,11 +446,12 @@ function CityExplorerPage({ citySlug: initialCitySlug, initialPage = 1 }: { city
             )}
           </div>
         )}
+        {seoAfter}
       </main>
     </div>
   );
 }
 
-export default function CitySearchPage(props: { citySlug?: string; initialPage?: number } = {}) {
+export default function CitySearchPage(props: { citySlug?: string; initialPage?: number; intro?: string; seoAfter?: React.ReactNode } = {}) {
   return <React.Suspense fallback={<LoadingSkeleton count={6} />}><CityExplorerPage key={`${props.citySlug}:${props.initialPage}`} {...props} /></React.Suspense>;
 }

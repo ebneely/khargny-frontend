@@ -19,18 +19,10 @@ export function pathIn(path: string, lang: Lang): string {
 /**
  * Old (pre-redesign) addresses that still exist in search results, bookmarks, shares and the app: each lands on its
  * redesign equivalent. Takes and returns a path without a language segment, query included; null when it is current.
- *  /explorer/<city>/  -> /explorer/?city=<city> (area, q and category kept as the new Explore reads them)
  *  /plan/             -> /saved/
  *  /trips/listers/<id>/ -> /host/<id>/ (the host profile); the rest of /trips stays: bookings need sign-in (spec 003)
  */
 export function redesignRoute(path: string, search: string): string | null {
-  const q = new URLSearchParams(search);
-  const city = /^\/explorer\/([^/]+)\/?$/.exec(path);
-  if (city) {
-    const next = new URLSearchParams({ city: decodeURIComponent(city[1]) });
-    for (const [from, to] of [['area', 'area'], ['q', 'q'], ['category', 'cat'], ['time', 'time']] as const) { const v = q.get(from); if (v) next.set(to, v); }
-    return `/explorer/?${next}`;
-  }
   if (/^\/plan\/?$/.test(path)) return `/saved/${search}`;
   const lister = /^\/trips\/listers\/([^/]+)\/?$/.exec(path);
   if (lister) return `/host/${lister[1]}/${search}`;

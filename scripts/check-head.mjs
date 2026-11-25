@@ -34,7 +34,58 @@ const pages = [
   { path: placePath, status: 200, metadata: true },
   { path: `/ar${placePath}`, status: 200, metadata: true },
   { path: '/explorer/matrouh/definitely-not-a-place-check/', status: 404, metadata: false },
+  // A city that does not exist is a real 404, not an empty landing page.
+  { path: '/explorer/not-a-real-city-check/', status: 404, metadata: false },
 ];
+
+/**
+ * One landing page of each type, discovered from the site's own landing sitemap, so this check
+ * proves `<h1>`, canonical, hreflang and a single heading on the pages the sitemap actually
+ * publishes — not on a hard-coded address that may stop qualifying tomorrow.
+ */
+const LANDING_SHAPES = [
+  { kind: 'area-category', re: /^\/explorer\/[^/]+\/area\/[^/]+\/category\/[^/]+\/$/ },
+  { kind: 'city-category', re: /^\/explorer\/[^/]+\/category\/[^/]+\/$/ },
+  { kind: 'area', re: /^\/explorer\/[^/]+\/area\/[^/]+\/$/ },
+  { kind: 'category', re: /^\/category\/[^/]+\/$/ },
+  { kind: 'city', re: /^\/explorer\/[^/]+\/$/ },
+];
+
+async function discoverLandingPaths() {
+  const found = new Map();
+  const index = await fetch(new URL('/sitemap.xml', base), { headers: { accept: 'application/xml' } });
+  if (!index.ok) throw new Error(`/sitemap.xml answered ${index.status}`);
+  const indexXml = await index.text();
+  const landingFiles = [...indexXml.matchAll(/<loc>([^<]*\/sitemaps\/landing-\d+\.xml)<\/loc>/g)].map((match) => match[1]);
+  if (!landingFiles.length) throw new Error('/sitemap.xml lists no landing-N.xml');
+  const file = await fetch(landingFiles[0], { headers: { accept: 'application/xml' } });
+  if (!file.ok) throw new Error(`${landingFiles[0]} answered ${file.status}`);
+  const xml = await file.text();
+  for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+    let path;
+    try { path = new URL(match[1]).pathname; } catch { continue; }
+    const bare = path.replace(/^\/ar(?=\/)/, '');
+    for (const shape of LANDING_SHAPES) {
+      if (found.has(shape.kind) || !shape.re.test(bare)) continue;
+      if (shape.kind === 'city' && /^\/explorer\/(search|not-a-real-city-check)\/$/.test(bare)) continue;
+      found.set(shape.kind, path);
+      break;
+    }
+  }
+  const missing = LANDING_SHAPES.map((shape) => shape.kind).filter((kind) => !found.has(kind));
+  if (missing.length) throw new Error(`no landing page of type(s) ${missing.join(', ')} in ${landingFiles[0]}`);
+  return [...found.values()].flatMap((path) => [
+    { path, status: 200, metadata: true },
+    { path: `/ar${path}`, status: 200, metadata: true },
+  ]);
+}
+
+try {
+  pages.push(...(await discoverLandingPaths()));
+} catch (error) {
+  console.error(`landing page discovery failed: ${error instanceof Error ? error.message : error}`);
+  process.exit(1);
+}
 const agents = {
   browser: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
   Googlebot: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
@@ -71,7 +122,8 @@ for (const page of pages) {
     const html = await res.text();
     if (res.status !== page.status) failures.push(`${label}: status ${res.status}, expected ${page.status}`);
     const h1 = h1Count(html);
-    if (h1 !== 1) failures.push(`${label}: ${h1} <h1> elements`);
+    // A 404 document is not a landing page; only a 200 has to carry exactly one heading.
+    if (page.status === 200 && h1 !== 1) failures.push(`${label}: ${h1} <h1> elements`);
 
     // A person's browser may stream metadata; it only has to get the right page and heading.
     if (name === 'browser') {

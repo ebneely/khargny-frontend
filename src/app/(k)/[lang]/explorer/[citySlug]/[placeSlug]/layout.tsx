@@ -23,7 +23,10 @@ import { photoCandidates, photoSrcSet, PHOTO_SIZES, type Photo } from '@/lib/pla
 // presence: a title and description built from its own facts, and LocalBusiness structured
 // data carrying the address, coordinates, phone, hours and price band the API already
 // returns and the page previously threw away.
-import { getPlace, getCities, getCategories } from '@/lib/server/public-data';
+import { getPlace, getCities, getCategories, getLandingIndex } from '@/lib/server/public-data';
+import { areaKeyOf } from '@/lib/landing';
+import { langPrefix } from '@5argny/core/rules/locale';
+import Link from 'next/link';
 import { ApiError } from '@/lib/api/client';
 
 type Params = { citySlug: string; placeSlug: string };
@@ -71,10 +74,11 @@ async function fetchCityName(slug: string, isAr: boolean): Promise<string | null
   return (isAr ? city?.name : city?.nameEn) || city?.name || null;
 }
 
-async function fetchCategoryName(id: string | undefined, isAr: boolean): Promise<string | null> {
+async function fetchCategory(id: string | undefined, isAr: boolean): Promise<{ name: string; slug: string } | null> {
   if (!id) return null;
   const category = (await getCategories()).find((item) => item.id === id);
-  return (isAr ? category?.nameAr : category?.nameEn) || category?.nameAr || category?.nameEn || null;
+  const name = (isAr ? category?.nameAr : category?.nameEn) || category?.nameAr || category?.nameEn || null;
+  return name && category ? { name, slug: category.slug } : null;
 }
 
 async function fetchPlace(slug: string): Promise<Place> {
@@ -145,10 +149,11 @@ export async function generateMetadata({
   }
 
   const name = pickName(place, locale);
-  const [resolvedCity, categoryName] = await Promise.all([
+  const [resolvedCity, category] = await Promise.all([
     fetchCityName(citySlug, isAr),
-    fetchCategoryName(place.categoryId, isAr),
+    fetchCategory(place.categoryId, isAr),
   ]);
+  const categoryName = category?.name ?? null;
   const cityName =
     resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
   const area = regionLabel(place.region, locale, place.city?.nameEn || place.city?.name || resolvedCity || citySlug);
@@ -185,10 +190,11 @@ export default async function PlaceDetailLayout({
   const coverUrl = photoCandidates(place.images?.[0] ?? {}).at(-1)?.url || place.coverImage;
 
   const name = pickName(place, locale);
-  const [resolvedCity, categoryName] = await Promise.all([
+  const [resolvedCity, category] = await Promise.all([
     fetchCityName(citySlug, isAr),
-    fetchCategoryName(place.categoryId, isAr),
+    fetchCategory(place.categoryId, isAr),
   ]);
+  const categoryName = category?.name ?? null;
   const cityName =
     resolvedCity || (isAr ? place.city?.name : place.city?.nameEn) || citySlug;
   const path = placePath(citySlug, place.slug || requested.placeSlug);
@@ -279,6 +285,60 @@ export default async function PlaceDetailLayout({
         }}
       />
       {children}
+      <PlaceLandingLinks place={place} citySlug={citySlug} cityName={cityName} area={area} category={category} locale={locale} />
     </>
+  );
+}
+
+/**
+ * The other pages this place belongs to (SEO-DIRECTION 4.1): its city, its area and its
+ * city+category landing pages, shown only when that page exists (>= 5 places). Real anchors, so
+ * a crawler that found this place can walk up to the pages that list it with its neighbours.
+ */
+async function PlaceLandingLinks({
+  place,
+  citySlug,
+  cityName,
+  area,
+  category,
+  locale,
+}: {
+  place: Place;
+  citySlug: string;
+  cityName: string;
+  area: string;
+  category: { name: string; slug: string } | null;
+  locale: Locale;
+}) {
+  const isAr = locale === 'ar';
+  const index = await getLandingIndex().catch(() => ({ data: [] }));
+  const has = (type: string, extra: Record<string, string | undefined>) =>
+    index.data.some((row) => {
+      if (row.type !== type) return false;
+      return Object.entries(extra).every(([key, value]) => !value || (row as unknown as Record<string, string | undefined>)[key] === value);
+    });
+  const prefix = langPrefix(locale);
+  const areaKeyValue = place.region ? areaKeyOf(place.region) : '';
+  const links: { href: string; label: string }[] = [];
+  if (has('city', { citySlug })) links.push({ href: `${prefix}/explorer/${citySlug}/`, label: isAr ? `كل ${cityName}` : `All of ${cityName}` });
+  if (areaKeyValue && has('area', { citySlug, areaKey: areaKeyValue })) links.push({ href: `${prefix}/explorer/${citySlug}/area/${areaKeyValue}/`, label: isAr ? area : area });
+  if (category && has('city-category', { citySlug, categorySlug: category.slug }))
+    links.push({ href: `${prefix}/explorer/${citySlug}/category/${category.slug}/`, label: isAr ? `${category.name} في ${cityName}` : `${category.name} in ${cityName}` });
+  if (!links.length) return null;
+  return (
+    <section aria-label={isAr ? 'صفحات مرتبطة' : 'Related pages'} style={{ maxWidth: 1120, margin: '0 auto', width: '100%', padding: '8px clamp(16px, 4vw, 32px) 40px' }}>
+      <h2 style={{ margin: '0 0 10px', font: '600 13px/1.3 var(--body)', color: 'var(--ink3)', letterSpacing: '.01em' }}>
+        {isAr ? 'المزيد في نفس المكان' : 'More around here'}
+      </h2>
+      <ul style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: 0, padding: 0, listStyle: 'none' }}>
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link href={link.href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', borderRadius: 999, border: '1px solid var(--line)', font: '600 13.5px/1.2 var(--body)', color: 'var(--ink)', textDecoration: 'none' }}>
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
