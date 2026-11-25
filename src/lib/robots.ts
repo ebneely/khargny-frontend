@@ -3,15 +3,35 @@ import { SITE_URL } from '@/lib/config';
 import { isPreviewDeployment } from '@/lib/seo-environment';
 
 /**
- * AI crawlers that train models on what they read. Being in the models helps the place data
- * spread, so these are allowed by default. To switch every training crawler off, set this to [].
+ * Data protection (owner 2026-11-25): a crawler that copies the catalogue for its own use is refused, a crawler that
+ * can send a visitor or cite a page is let in. User agents stop the lazy ones only — the backend's per-visitor limits
+ * and Cloudflare's rules are the real protection — but robots.txt is the published statement of intent, and search
+ * engines honour it for the pages they index.
  */
 export const AI_TRAINING_BOTS: string[] = [
   'GPTBot',
   'ClaudeBot',
+  'anthropic-ai',
+  'Claude-Web',
   'Google-Extended',
   'Applebot-Extended',
   'CCBot',
+  'Bytespider',
+  'meta-externalagent',
+  'cohere-ai',
+  'Amazonbot',
+  'Diffbot',
+  'omgili',
+];
+
+/** Competitive SEO tools: they read the catalogue to sell the numbers back, and never send a visitor. */
+export const SEO_DATA_BOTS: string[] = [
+  'AhrefsBot',
+  'SemrushBot',
+  'MJ12bot',
+  'DotBot',
+  'BLEXBot',
+  'DataForSeoBot',
 ];
 
 /** Search engines and AI search/answer bots whose crawls can bring a visitor or a citation. */
@@ -19,6 +39,9 @@ export const SEARCH_AND_AI_ANSWER_BOTS: string[] = [
   'Googlebot',
   'Bingbot',
   'Applebot',
+  'PetalBot',
+  'YandexBot',
+  'DuckDuckBot',
   'OAI-SearchBot',
   'ChatGPT-User',
   'PerplexityBot',
@@ -26,9 +49,6 @@ export const SEARCH_AND_AI_ANSWER_BOTS: string[] = [
   'Claude-SearchBot',
   'Claude-User',
 ];
-
-/** Scrapers that give nothing back: no search result, no answer, no citation. */
-export const BLOCKED_SCRAPERS: string[] = ['Diffbot', 'omgili', 'Bytespider'];
 
 /**
  * Private pages, listed in both languages because /saved and /ar/saved are different prefixes to a
@@ -70,20 +90,22 @@ function openRule(userAgent: string | string[]): Rule {
 /**
  * The whole policy as data, so the text builder and its tests need no deployment environment.
  * Order is meaningful only for the reader: `*` first, then the named search/answer bots, then the
- * training bots, and finally the scrapers that are refused everywhere.
+ * bots that are refused everywhere.
  */
 export function buildRobots({
   siteUrl = SITE_URL,
   trainingBots = AI_TRAINING_BOTS,
+  seoDataBots = SEO_DATA_BOTS,
 }: {
   siteUrl?: string;
   trainingBots?: string[];
+  seoDataBots?: string[];
 } = {}): MetadataRoute.Robots {
   const rules: Rule[] = [
     openRule('*'),
     openRule(SEARCH_AND_AI_ANSWER_BOTS),
-    ...(trainingBots.length ? [openRule(trainingBots)] : []),
-    ...BLOCKED_SCRAPERS.map((userAgent) => ({ userAgent, disallow: '/' })),
+    ...(trainingBots.length ? [{ userAgent: trainingBots, disallow: '/' }] : []),
+    ...(seoDataBots.length ? [{ userAgent: seoDataBots, disallow: '/' }] : []),
   ];
 
   return {

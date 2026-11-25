@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   AI_TRAINING_BOTS,
   ALLOWED_API_PATHS,
-  BLOCKED_SCRAPERS,
   DISALLOWED_PATHS,
   SEARCH_AND_AI_ANSWER_BOTS,
+  SEO_DATA_BOTS,
   buildRobots,
 } from './robots';
 import { robotsText } from './crawler-responses';
@@ -15,6 +15,7 @@ const agents = (rule: { userAgent?: string | string[] }): string[] =>
 describe('robots policy', () => {
   const robots = buildRobots({ siteUrl: 'https://example.test' });
   const rules = Array.isArray(robots.rules) ? robots.rules : [robots.rules];
+  const ruleFor = (bot: string) => rules.find((rule) => agents(rule).includes(bot));
 
   it('opens the site to everyone and names the sitemap index', () => {
     expect(rules[0]).toMatchObject({ userAgent: '*', allow: ['/', '/api/indexnow/'] });
@@ -33,36 +34,38 @@ describe('robots policy', () => {
   });
 
   it('gives search and AI answer engines their own open group', () => {
-    const search = rules.find((rule) => agents(rule).includes('Googlebot'));
+    const search = ruleFor('Googlebot');
     expect(search).toBeDefined();
     expect(agents(search!)).toEqual(expect.arrayContaining([
-      'Googlebot', 'Bingbot', 'Applebot', 'OAI-SearchBot', 'ChatGPT-User',
-      'PerplexityBot', 'Perplexity-User', 'Claude-SearchBot', 'Claude-User',
+      'Googlebot', 'Bingbot', 'Applebot', 'PetalBot', 'YandexBot', 'DuckDuckBot',
+      'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User', 'Claude-SearchBot', 'Claude-User',
     ]));
     expect(search?.allow).toEqual(expect.arrayContaining(['/', '/api/indexnow/']));
+    expect(search?.disallow).not.toContain('/');
   });
 
-  it('allows the AI training bots, in one exported list', () => {
-    expect(AI_TRAINING_BOTS).toEqual(['GPTBot', 'ClaudeBot', 'Google-Extended', 'Applebot-Extended', 'CCBot']);
-    const training = rules.find((rule) => agents(rule).includes('GPTBot'));
-    expect(training).toBeDefined();
-    expect(agents(training!)).toEqual(expect.arrayContaining([...AI_TRAINING_BOTS]));
-    expect(training?.allow).toEqual(expect.arrayContaining(['/', '/api/indexnow/']));
-  });
-
-  it('switches every training bot off with an empty list', () => {
-    const closed = buildRobots({ trainingBots: [] });
-    const closedRules = Array.isArray(closed.rules) ? closed.rules : [closed.rules];
-    expect(closedRules.some((rule) => agents(rule).includes('GPTBot'))).toBe(false);
-    expect(closedRules.some((rule) => agents(rule).includes('ClaudeBot'))).toBe(false);
-  });
-
-  it('refuses the scrapers that give nothing back', () => {
-    for (const bot of BLOCKED_SCRAPERS) {
-      const rule = rules.find((item) => agents(item).includes(bot));
-      expect(rule).toBeDefined();
-      expect(rule).toMatchObject({ disallow: '/' });
+  it('refuses every AI training crawler', () => {
+    for (const bot of ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Claude-Web', 'Google-Extended', 'Applebot-Extended', 'CCBot', 'Bytespider', 'meta-externalagent', 'cohere-ai', 'Amazonbot', 'Diffbot', 'omgili']) {
+      expect(AI_TRAINING_BOTS).toContain(bot);
+      expect(ruleFor(bot), bot).toMatchObject({ disallow: '/' });
+      expect(ruleFor(bot)?.allow).toBeUndefined();
     }
+  });
+
+  it('refuses the SEO-data crawlers', () => {
+    for (const bot of ['AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot', 'BLEXBot', 'DataForSeoBot']) {
+      expect(SEO_DATA_BOTS).toContain(bot);
+      expect(ruleFor(bot), bot).toMatchObject({ disallow: '/' });
+    }
+  });
+
+  it('lets every training crawler back in with an empty list (one switch)', () => {
+    const open = buildRobots({ trainingBots: [] });
+    const openRules = Array.isArray(open.rules) ? open.rules : [open.rules];
+    expect(openRules.some((rule) => agents(rule).includes('GPTBot'))).toBe(false);
+    expect(openRules.some((rule) => agents(rule).includes('CCBot'))).toBe(false);
+    // The SEO-data list is its own switch and stays closed.
+    expect(openRules.some((rule) => agents(rule).includes('AhrefsBot'))).toBe(true);
   });
 
   it('never emits a Content-Signal line, and keeps the IndexNow key file allowed', () => {
@@ -75,7 +78,11 @@ describe('robots policy', () => {
   });
 
   it('keeps training-only crawlers out of the search/answer list', () => {
-    expect(SEARCH_AND_AI_ANSWER_BOTS).not.toContain('GPTBot');
-    expect(SEARCH_AND_AI_ANSWER_BOTS).not.toContain('CCBot');
+    for (const bot of ['GPTBot', 'CCBot', 'Google-Extended', 'ClaudeBot', 'AhrefsBot']) {
+      expect(SEARCH_AND_AI_ANSWER_BOTS).not.toContain(bot);
+    }
+    // Applebot stays allowed; its training-only sibling does not.
+    expect(SEARCH_AND_AI_ANSWER_BOTS).toContain('Applebot');
+    expect(SEARCH_AND_AI_ANSWER_BOTS).not.toContain('Applebot-Extended');
   });
 });
