@@ -155,7 +155,7 @@ export function usePlaceParts(p: KPlace) {
   const call = () => openSheet(c.place.call, <><p style={{ font: '900 26px/1.2 var(--display)', textAlign: 'center', padding: '6px 0 4px' }} dir="ltr">{p.phone}</p><p className="t-small" style={{ textAlign: 'center', marginBottom: 12 }}>{p.name}</p></>,
     <a className="btn primary wide press" href={`tel:${(p.phone || '').replace(/\s+/g, '')}`} onClick={() => setTimeout(closeTop, 300)}><Ic n="phone" />{c.place.callNow}</a>);
   const body = <>
-    <div className="place-media"><Carousel photos={p.photos} /></div>
+    <div className="place-media"><Carousel photos={p.photos} name={p.name} area={p.area} city={p.city} /></div>
     <div className="place-head"><span className="gesture-hint" aria-hidden="true">
       <span><svg className="gh-love" viewBox="0 0 20 20"><circle className="tap t1" cx="10" cy="10" r="3" /><circle className="tap t2" cx="10" cy="10" r="3" /><path className="hrt" d="M10 16.4s-5.6-3.4-7.1-6.7C1.8 7.2 3.4 4.6 6.1 4.6c1.7 0 2.9 1 3.9 2.4 1-1.4 2.2-2.4 3.9-2.4 2.7 0 4.3 2.6 3.2 5.1-1.5 3.3-7.1 6.7-7.1 6.7z" /></svg>{c.place.loveHint}</span>
       <span><svg className="gh-share" viewBox="0 0 20 20"><circle className="tap t1" cx="10" cy="10" r="3" /><circle className="tap t2" cx="10" cy="10" r="3" /><circle className="track" cx="10" cy="10" r="7.5" /><circle className="fill" cx="10" cy="10" r="7.5" pathLength={1} /><path className="arr" d="M10 13V5.5M7 8.2 10 5.2l3 3M5.5 11.5v3h9v-3" /></svg>{c.place.shareHint}</span></span><h1 className="t-display" dir="auto">{p.name}</h1>
