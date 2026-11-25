@@ -8,7 +8,7 @@
   --fill:#F2E9DD; --fill2:#EAE0D2; --accent:#D9622A; --accent-ink:#fff; --accent-soft:rgba(217,98,42,.12);
   --hero:#241C16; --hero-ink:#FBF6EE; --good:#0A7A45; --good-soft:rgba(10,122,69,.12); --warn:#A24A05; --warn-soft:#FFF1CF;
   --bar:rgba(253,249,243,.78);
-  --sh1:0 1px 2px rgba(36,28,22,.06),0 8px 24px rgba(36,28,22,.07);
+  --sh1:0 1px 2px rgba(36,28,22,.06),0 2px 6px rgba(36,28,22,.05);
   --sh2:0 1px 2px rgba(36,28,22,.08),0 18px 48px rgba(36,28,22,.16);
   --text:system-ui,-apple-system,'SF Pro Text','Segoe UI','IBM Plex Sans Arabic',sans-serif;
   --display:'Cairo','IBM Plex Sans Arabic',system-ui,sans-serif;
@@ -131,8 +131,9 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 16px}
 .tile img{width:100%;aspect-ratio:1/1;object-fit:cover;background:var(--fill)}
-.tile .tile-body{padding:8px 10px 10px}
-.tile b{display:block;font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .tile-body{padding:8px 10px 10px;height:90px;overflow:hidden}
+.tile.with-extra .tile-body{height:116px}
+.tile b{display:block;height:17px;line-height:17px;font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .group{margin:0 16px 14px;padding:14px;border-radius:16px;background:var(--card);box-shadow:var(--sh1)}
 .group-title{font:700 13px/1 var(--text);letter-spacing:.01em;color:var(--ink2);margin-bottom:10px}
@@ -345,6 +346,11 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .tm-time{display:inline-flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:rgba(251,246,238,.65)}
 .tm-time .lucide{width:13px;height:13px}
 .tm-dice{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px 0 10px;border-radius:999px;background:var(--accent);color:#fff;font-size:13px;font-weight:750;flex:none;box-shadow:0 6px 16px rgba(217,98,42,.35)}
+.tm-dice:disabled{opacity:.82}
+.tm-spin{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:tmSpin .7s linear infinite;flex:none}
+.tm-deal-actions .tm-spin{width:15px;height:15px;border-color:rgba(255,255,255,.3);border-top-color:#fff}
+@keyframes tmSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){ .tm-spin{animation-duration:1.6s} }
 .tm-dice .lucide{width:17px;height:17px}
 .tm-lead{position:relative;display:block;height:150px;border-radius:16px;overflow:hidden;margin-bottom:8px}
 .tm-photos img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.2s ease}
@@ -910,7 +916,7 @@ html,body{overflow-anchor:none}
   --fill:#2A221C; --fill2:#342A22; --accent:#EC7A40; --accent-soft:rgba(236,122,64,.18);
   --hero:#2A2019; --hero-ink:#F3ECE3; --good:#43CF8A; --good-soft:rgba(67,207,138,.16); --warn:#F0A04B; --warn-soft:rgba(240,160,75,.16);
   --bar:rgba(30,24,20,.80);
-  --sh1:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35); --sh2:0 1px 2px rgba(0,0,0,.5),0 18px 48px rgba(0,0,0,.5);
+  --sh1:0 1px 2px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.32); --sh2:0 1px 2px rgba(0,0,0,.5),0 18px 48px rgba(0,0,0,.5);
   color-scheme:dark;
 }
 [data-theme=dark] body{background:var(--bg);color:var(--ink)}
@@ -969,11 +975,18 @@ html,body{overflow-anchor:none}
 .gv svg{width:13px;height:13px}
 .option[aria-checked="true"] .gv{color:var(--accent)}
 
-/* card stats v3: one quiet row, no bubble, no grid: five small counts that fit a narrow card */
+/* card stats v3: one quiet row, no bubble, no grid: five small counts that fit a narrow card, on ONE line (the lowest
+   priority counter drops before the row would wrap) */
 .tile .stats,.mini .stats,.trend-main .stats{display:flex;flex-wrap:wrap;gap:2px 8px;padding:0;margin:4px 0 2px;background:none;border-radius:0}
+.tile .stats{flex-wrap:nowrap;gap:2px 6px;overflow:hidden}
 @container (max-width:240px){ .tile .stats,.mini .stats,.trend-main .stats{display:flex;gap:2px 7px} }
+@container (max-width:172px){ .tile .stats .views:nth-child(n+4){display:none} }
+@container (max-width:150px){ .tile .stats .views:nth-child(n+3){display:none} }
 .tile .stats .views,.mini .stats .views,.trend-main .stats .views{gap:2px;font-size:11px;white-space:nowrap}
 .tile .stats svg,.mini .stats svg,.trend-main .stats svg{width:12px;height:12px}
+/* area and km: one line each, fixed height, so every card in a row is the same height */
+.tile .tile-body>.t-small{display:block;margin-top:2px;height:15px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .tile-body>.bits{display:flex;flex-wrap:nowrap;height:16px;margin-top:2px;overflow:hidden;white-space:nowrap}
 /* the signal rings travel the whole pill: they start (or end) beyond its far edge, so no ring ever appears or stops inside it */
 @keyframes pillSignal{0%{inset:-1px}100%{inset:-90px}}
 @keyframes pillSignalIn{0%{inset:-90px}100%{inset:-1px}}

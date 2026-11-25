@@ -19,7 +19,7 @@ export const light = {
   warn: '#A24A05',
   warnSoft: '#FFF1CF',
   bar: 'rgba(253,249,243,.78)',
-  sh1: '0 1px 2px rgba(36,28,22,.06),0 8px 24px rgba(36,28,22,.07)',
+  sh1: '0 1px 2px rgba(36,28,22,.06),0 2px 6px rgba(36,28,22,.05)',
   sh2: '0 1px 2px rgba(36,28,22,.08),0 18px 48px rgba(36,28,22,.16)',
 };
 
@@ -45,7 +45,7 @@ export const dark: Palette = {
   warn: '#F0A04B',
   warnSoft: 'rgba(240,160,75,.16)',
   bar: 'rgba(30,24,20,.80)',
-  sh1: '0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35)',
+  sh1: '0 1px 2px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.32)',
   sh2: '0 1px 2px rgba(0,0,0,.5),0 18px 48px rgba(0,0,0,.5)',
 };
 
