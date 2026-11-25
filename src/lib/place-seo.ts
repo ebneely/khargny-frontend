@@ -82,10 +82,11 @@ export const CATEGORY_PROFILES: Record<string, Profile> = {
   bakeries: { schema: 'Bakery', kind: 'eat', noun: { en: 'bakery', ar: 'مخبز وحلواني' }, intents: ['menu', 'prices', 'hours', 'photos'] },
   cafes: { schema: 'CafeOrCoffeeShop', kind: 'coffee', noun: { en: 'café', ar: 'مقهى' }, intents: ['menu', 'prices', 'hours', 'photos'] },
   bars: { schema: 'BarOrPub', kind: 'nightlife', noun: { en: 'bar', ar: 'بار' }, intents: ['hours', 'prices', 'photos', 'location'] },
-  clubs: { schema: 'NightClub', kind: 'nightlife', noun: { en: 'club', ar: 'نادي ليلي' }, intents: ['hours', 'prices', 'photos', 'location'] },
+  // Egyptian 'clubs' here are sports and social clubs (Wadi Degla, Madinaty Sports Club…), never night clubs
+  clubs: { schema: 'SportsClub', kind: 'sport', noun: { en: 'club', ar: 'نادي' }, intents: ['hours', 'location', 'photos'] },
   cinemas: { schema: 'MovieTheater', kind: 'cinema', noun: { en: 'cinema', ar: 'سينما' }, intents: ['hours', 'location', 'photos'] },
   malls: { schema: 'ShoppingCenter', kind: 'retail', noun: { en: 'shopping mall', ar: 'مول تجاري' }, intents: ['hours', 'location', 'photos'] },
-  shops: { schema: 'ShoppingCenter', kind: 'retail', noun: { en: 'shop', ar: 'متجر' }, intents: ['hours', 'location', 'photos'] },
+  shops: { schema: 'Store', kind: 'retail', noun: { en: 'shop', ar: 'متجر' }, intents: ['hours', 'location', 'photos'] },
   hotels: { schema: 'Hotel', kind: 'stay', noun: { en: 'hotel', ar: 'فندق' }, intents: ['location', 'photos', 'contact'] },
   museums: { schema: 'Museum', kind: 'culture', noun: { en: 'museum', ar: 'متحف' }, intents: ['hours', 'location', 'photos'] },
   attractions: { schema: 'TouristAttraction', kind: 'culture', noun: { en: 'attraction', ar: 'مكان سياحي' }, intents: ['hours', 'location', 'photos'] },
@@ -93,7 +94,8 @@ export const CATEGORY_PROFILES: Record<string, Profile> = {
   libraries: { schema: 'Library', kind: 'culture', noun: { en: 'library', ar: 'مكتبة' }, intents: ['hours', 'location', 'photos'] },
   parks: { schema: 'Park', kind: 'outdoor', noun: { en: 'park', ar: 'حديقة' }, intents: ['hours', 'location', 'photos'] },
   beaches: { schema: 'Beach', kind: 'outdoor', noun: { en: 'beach', ar: 'شاطئ' }, intents: ['hours', 'location', 'photos'] },
-  entertainment: { schema: 'AmusementPark', kind: 'outdoor', noun: { en: 'entertainment venue', ar: 'مكان ترفيهي' }, intents: ['hours', 'location', 'photos'] },
+  // arcades, escape rooms, paintball and parks alike: the broad type, not AmusementPark
+  entertainment: { schema: 'EntertainmentBusiness', kind: 'outdoor', noun: { en: 'entertainment venue', ar: 'مكان ترفيهي' }, intents: ['hours', 'location', 'photos'] },
   sports: { schema: 'SportsActivityLocation', kind: 'sport', noun: { en: 'sports venue', ar: 'ملعب أو مركز رياضي' }, intents: ['hours', 'location', 'photos'] },
   spas: { schema: 'DaySpa', kind: 'wellness', noun: { en: 'spa', ar: 'سبا' }, intents: ['hours', 'prices', 'photos'] },
 };
@@ -390,7 +392,8 @@ function article(noun: string): string {
 /**
  * An amenity written inside a sentence: "Outdoor Seating" → "outdoor seating", but "Wi-Fi" and
  * "TV" keep their case (they are names, not words).
- */export function sentenceCase(name: string): string {
+ */
+export function sentenceCase(name: string): string {
   return name.split(' ').map((word) => {
     if (/^[A-Z0-9]{2,}$/.test(word)) return word;        // TV, EGP, AC
     if (/\d/.test(word)) return word;                   // 24h
@@ -404,7 +407,9 @@ const FEATURE_ORDER = [
   /outdoor seating/i, /indoor seating/i, /free parking/i, /paid parking/i, /valet/i,
   /wifi|wi-fi/i, /delivery/i, /takeaway/i, /wheelchair accessible entrance/i,
   /kid friendly|kids area|playground/i, /accepts reservations/i, /table service/i,
-  /vegetarian options/i, /vegan options/i, /alcohol|bar on site/i, /swimming pool/i,
+  // alcohol is deliberately absent: the imported amenity is wrong on many places (PLACES-DIRECTION §4) and a false
+  // "serves alcohol" on a public page is worse than saying nothing; re-add after the amenities sweep
+  /vegetarian options/i, /vegan options/i, /swimming pool/i,
   /gym|fitness/i, /air condition/i, /credit cards/i, /cash/i,
 ];
 
@@ -535,9 +540,9 @@ const AMENITY_QUESTIONS: AmenityQuestion[] = [
     answerEn: 'Yes — the entrance is wheelchair accessible.', answerAr: 'نعم، المدخل مناسب لذوي الهمم.',
   },
   {
-    match: /kid friendly|playground|kids area/i,
+    match: /playground|kids area/i,
     en: 'a kids area', ar: 'منطقة أطفال',
-    answerEn: 'Yes — it is kid friendly.', answerAr: 'نعم، المكان مناسب للأطفال.',
+    answerEn: 'Yes — it has a kids area.', answerAr: 'نعم، يوجد منطقة أطفال.',
   },
   {
     match: /delivery/i,

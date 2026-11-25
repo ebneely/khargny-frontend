@@ -182,10 +182,10 @@ describe('hours in words', () => {
 describe('schema types', () => {
   it('maps every category we actually store to a specific type', () => {
     const expected: Record<string, string> = {
-      restaurants: 'Restaurant', cafes: 'CafeOrCoffeeShop', bars: 'BarOrPub', clubs: 'NightClub',
-      cinemas: 'MovieTheater', malls: 'ShoppingCenter', shops: 'ShoppingCenter', hotels: 'Hotel',
+      restaurants: 'Restaurant', cafes: 'CafeOrCoffeeShop', bars: 'BarOrPub', clubs: 'SportsClub',
+      cinemas: 'MovieTheater', malls: 'ShoppingCenter', shops: 'Store', hotels: 'Hotel',
       museums: 'Museum', attractions: 'TouristAttraction', landmarks: 'TouristAttraction',
-      parks: 'Park', beaches: 'Beach', entertainment: 'AmusementPark',
+      parks: 'Park', beaches: 'Beach', entertainment: 'EntertainmentBusiness',
       sports: 'SportsActivityLocation', libraries: 'Library', spas: 'DaySpa', bakeries: 'Bakery',
       mtam: 'Restaurant',
     };
