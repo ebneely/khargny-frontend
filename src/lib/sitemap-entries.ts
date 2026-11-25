@@ -74,6 +74,55 @@ export function placeEntries(cities: SeoCity[], places: SeoPlace[]): MetadataRou
   });
 }
 
+/**
+ * Google reads at most 50,000 URLs in one sitemap file. A place is published in two languages, so a file holds at most
+ * 20,000 places (40,000 URLs) and stays inside the limit with room for the hreflang links.
+ */
+export const PLACES_PER_FILE = 20_000;
+
+/** How many numbered files a catalogue needs: never zero, so a fresh site still serves places-1.xml. */
+export function sitemapFileCount(total: number): number {
+  if (!Number.isFinite(total) || total <= 0) return 1;
+  return Math.ceil(total / PLACES_PER_FILE);
+}
+
+/** One file's slice of the catalogue, in catalogue order, so file N and file N+1 never overlap. */
+export function chunkPlaces<T>(places: T[], index: number): T[] {
+  const start = Math.max(0, Math.trunc(index)) * PLACES_PER_FILE;
+  return places.slice(start, start + PLACES_PER_FILE);
+}
+
+/**
+ * The index entries for a catalogue of `fileCount` numbered files (at least one): static once, then every place file
+ * and every image file. `dates[i]` is file `i + 1`'s newest update; a file without one is listed without a lastmod.
+ */
+export function sitemapIndexFor(
+  siteUrl: string,
+  fileCount: number,
+  dates: (Date | undefined)[] = [],
+): { loc: string; lastModified?: Date }[] {
+  const files = Array.from({ length: Math.max(1, Math.trunc(fileCount) || 0) }, (_, i) => i + 1);
+  const entry = (kind: 'places' | 'images', index: number) => ({
+    loc: `${siteUrl}/sitemaps/${kind}-${index}.xml`,
+    ...(dates[index - 1] ? { lastModified: dates[index - 1] } : {}),
+  });
+  return [
+    { loc: `${siteUrl}/sitemaps/static.xml` },
+    ...files.map((index) => entry('places', index)),
+    ...files.map((index) => entry('images', index)),
+  ];
+}
+
+/** The newest update inside one file: an honest lastmod for that file, never the clock. */
+export function newestUpdate(places: { updatedAt?: string }[]): Date | undefined {
+  let newest: Date | undefined;
+  for (const place of places) {
+    const date = lastModified(place.updatedAt);
+    if (date && (!newest || date > newest)) newest = date;
+  }
+  return newest;
+}
+
 /** Photos of a place, cover first, without the duplicate the gallery repeats, largest rendition. */
 export function placePhotos(place: SeoPlace): string[] {
   const urls = [

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { imageEntries, lastModified, placeEntries, staticEntries } from './sitemap-entries';
+import { chunkPlaces, imageEntries, lastModified, newestUpdate, placeEntries, sitemapFileCount, sitemapIndexFor, staticEntries } from './sitemap-entries';
 import type { SeoCity, SeoPlace } from './seo-content';
 
 const CITIES: SeoCity[] = [
@@ -93,5 +93,64 @@ describe('image sitemap entries', () => {
   it('titles each photo in the page language', () => {
     expect(entries.find((entry) => entry.url.includes('/ar/'))?.images[0].title).toBe('زوبا');
     expect(entries.find((entry) => !entry.url.includes('/ar/'))?.images[0].title).toBe('Zooba');
+  });
+});
+
+describe('numbered place sitemaps', () => {
+  const places = (n: number) => Array.from({ length: n }, (_, i) => ({ slug: `p${i}`, cityId: 'cairo', updatedAt: `2026-01-${String((i % 28) + 1).padStart(2, '0')}T00:00:00.000Z` }));
+
+  it('needs one file for a catalogue of 20,000 places or fewer, and two from 20,001', () => {
+    expect(sitemapFileCount(0)).toBe(1);
+    expect(sitemapFileCount(1)).toBe(1);
+    expect(sitemapFileCount(20_000)).toBe(1);
+    expect(sitemapFileCount(20_001)).toBe(2);
+    expect(sitemapFileCount(40_000)).toBe(2);
+    expect(sitemapFileCount(40_001)).toBe(3);
+  });
+
+  it('gives every place exactly one file, with no overlap between neighbours', () => {
+    const all = places(20_001);
+    const first = chunkPlaces(all, 0);
+    const second = chunkPlaces(all, 1);
+    expect(first).toHaveLength(20_000);
+    expect(second).toHaveLength(1);
+    expect(first[0].slug).toBe('p0');
+    expect(first[19_999].slug).toBe('p19999');
+    expect(second[0].slug).toBe('p20000');
+    // 20,001 places × 2 languages = 40,002 URLs, under Google's 50,000-URL limit across two files.
+    expect(placeEntries(CITIES, first).length + placeEntries(CITIES, second).length).toBe(40_002);
+  });
+
+  it('handles an empty catalogue and a file past the end without inventing entries', () => {
+    expect(chunkPlaces([], 0)).toEqual([]);
+    expect(chunkPlaces(places(1), 5)).toEqual([]);
+    expect(placeEntries(CITIES, chunkPlaces([], 0))).toEqual([]);
+  });
+
+  it('takes the file lastmod from the newest update inside it', () => {
+    const chunk = [{ updatedAt: '2026-01-02T00:00:00.000Z' }, { updatedAt: '2026-03-04T00:00:00.000Z' }, {}];
+    expect(newestUpdate(chunk)?.toISOString()).toBe('2026-03-04T00:00:00.000Z');
+    expect(newestUpdate([{ updatedAt: 'not a date' }])).toBeUndefined();
+    expect(newestUpdate([])).toBeUndefined();
+  });
+
+  it('lists static first, then every place file, then every image file', () => {
+    const dates = [new Date('2026-01-02T00:00:00.000Z'), new Date('2026-02-03T00:00:00.000Z')];
+    const index = sitemapIndexFor('https://example.test', 2, dates);
+    expect(index.map((entry) => entry.loc)).toEqual([
+      'https://example.test/sitemaps/static.xml',
+      'https://example.test/sitemaps/places-1.xml',
+      'https://example.test/sitemaps/places-2.xml',
+      'https://example.test/sitemaps/images-1.xml',
+      'https://example.test/sitemaps/images-2.xml',
+    ]);
+    expect(index[1].lastModified?.toISOString()).toBe('2026-01-02T00:00:00.000Z');
+    expect(index[2].lastModified?.toISOString()).toBe('2026-02-03T00:00:00.000Z');
+    // A one-file catalogue (and an empty one) still lists a places-1 and an images-1.
+    expect(sitemapIndexFor('https://example.test', 0).map((entry) => entry.loc)).toEqual([
+      'https://example.test/sitemaps/static.xml',
+      'https://example.test/sitemaps/places-1.xml',
+      'https://example.test/sitemaps/images-1.xml',
+    ]);
   });
 });

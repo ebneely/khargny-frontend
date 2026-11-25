@@ -70,13 +70,14 @@ async function getJson<T>(path: string): Promise<T[]> {
 }
 
 /**
- * Every page of a list, not just the first. The API caps a page at 100; Cairo has more places than
- * that, and a one-request sitemap silently left the rest out.
+ * Every page of a list, not just the first. The public list's page cap is 50 (DATA-PROTECTION.md, queued item 3: a
+ * hard cap on every public list), so the loop asks for 50 and follows the pages until the list ends. Cairo has more
+ * places than one page, and a one-request sitemap silently left the rest out.
  */
 async function getAll<T extends { slug?: string }>(pathBase: string): Promise<T[]> {
   const out: T[] = [];
   const seen = new Set<string>();
-  const size = 100;
+  const size = 50;
   for (let skip = 0; ; skip += size) {
     const separator = pathBase.includes('?') ? '&' : '?';
     const page = await getJson<T>(`${pathBase}${separator}skip=${skip}&limit=${size}`);
