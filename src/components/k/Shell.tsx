@@ -300,6 +300,11 @@ function SearchPanel({ q, onCancel, onGo }: { q: string; onCancel: () => void; o
     const p = panel.current; if (!p) return;
     animate(p, { opacity: [0, 1], transform: ['translateY(-8px) scale(.985)', 'translateY(0) scale(1)'] }, spring(0, 0.32));
     [...p.children].forEach((ch, n) => animate(ch, { opacity: [0, 1], transform: ['translateY(6px)', 'translateY(0)'] }, { ...spring(0, 0.35), delay: 0.02 * n }));
+    // a touch-scroll of the suggestions puts the phone's keyboard away (passive: the scroll is never delayed), so the
+    // whole dropdown is visible
+    const blur = () => { const a = document.activeElement; if (a instanceof HTMLElement) a.blur(); };
+    p.addEventListener('touchmove', blur, { passive: true });
+    return () => p.removeEventListener('touchmove', blur);
   }, []);
   const m = moment(now);
   const chips: [string, string, string][] = [[c.moments[m.title], `${langPrefix(lang)}/explorer/?intent=${m.x.key}&when=now`, m.x.icon], [c.search.zero.openLate, `${langPrefix(lang)}/explorer/?when=tonight`, 'moon'], [c.search.zero.workFrom, `${langPrefix(lang)}/explorer/?intent=coffee`, 'laptop']];
