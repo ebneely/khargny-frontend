@@ -169,10 +169,10 @@ export function landingDescription(facts: LandingFacts, locale: Locale): string 
   if (category)
     return ar
       ? `${facts.count} ${category} في ${place}، ${open} منهم فاتحين دلوقتي. العنوان والمواعيد والصور لكل مكان على خرجني.`
-      : `${facts.count} ${category.toLowerCase()} in ${place}, ${open} of them open right now. Addresses, opening hours and photos for every place on Khargny.`;
+      : `${facts.count} ${category.toLowerCase()} in ${place}, ${open} of them open right now. Addresses, photos and opening hours where known, on 5argny.`;
   return ar
     ? `${facts.count} مكان في ${place}، ${open} منهم فاتحين دلوقتي. كافيهات ومطاعم وأماكن خروج مختارة على خرجني.`
-    : `${facts.count} places in ${place}, ${open} of them open right now. Cafés, restaurants and outings picked by Khargny.`;
+    : `${facts.count} places in ${place}, ${open} of them open right now. Cafés, restaurants and outings on 5argny.`;
 }
 
 function hash(value: string): number {
@@ -267,8 +267,8 @@ export function landingIntro(facts: LandingFacts, locale: Locale): string {
     const thing = category ? category.toLowerCase() : 'place';
     sentences.push(
       variant === 0
-        ? `Khargny lists ${count} ${count === 1 ? thing.replace(/s$/, '') : thing} in ${place}, and ${open} of them are open right now.`
-        : `${place} has ${count} ${count === 1 ? thing.replace(/s$/, '') : thing} on Khargny, with ${open} open at this hour.`,
+        ? `5argny lists ${count} ${count === 1 ? thing.replace(/s$/, '') : thing} in ${place}, and ${open} of them are open right now.`
+        : `${place} has ${count} ${count === 1 ? thing.replace(/s$/, '') : thing} on 5argny, with ${open} open at this hour.`,
     );
     if (facts.category && topAreasInCategory.length)
       sentences.push(
@@ -332,11 +332,11 @@ export function landingFaq(facts: LandingFacts, locale: Locale): LandingFaq[] {
     ar
       ? {
           question: `كام ${thing} في ${place}؟`,
-          answer: `خرجني بيجمع ${facts.count} ${thing} في ${place} دلوقتي، وكلهم متأكدين ومتسجلين بصور ومواعيد عمل.`,
+          answer: `خرجني بيجمع ${facts.count} ${thing} في ${place} دلوقتي، بالصور والعناوين ومواعيد العمل المتاحة.`,
         }
       : {
           question: `How many ${thing === 'place' ? 'places' : thing} are in ${place}?`,
-          answer: `Khargny lists ${facts.count} ${thing === 'place' ? 'places' : thing} in ${place} right now, each with photos and opening hours.`,
+          answer: `5argny lists ${facts.count} ${thing === 'place' ? 'places' : thing} in ${place} right now, with photos, addresses and the opening hours we have.`,
         },
     ar
       ? {
