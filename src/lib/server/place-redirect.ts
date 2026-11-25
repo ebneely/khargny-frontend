@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '@/lib/config';
+import { backendHeaders } from '@/lib/backend-headers';
 import { placeRedirect } from '@/lib/place-address';
 import { BoundedCache } from '@/lib/bounded-cache';
 import type { Locale } from '@/i18n/dictionaries';
@@ -32,7 +33,7 @@ function isPlaceMissing(body: unknown): boolean {
   return typeof message === 'string' && message.startsWith('Place with slug');
 }
 
-async function lookupPlace(slug: string): Promise<Lookup> {
+async function lookupPlace(slug: string, source?: Headers | null): Promise<Lookup> {
   if (missing.get(slug)) return { status: 'missing' };
   const cached = found.get(slug);
   if (cached) return { status: 'ok', place: cached };
@@ -41,7 +42,7 @@ async function lookupPlace(slug: string): Promise<Lookup> {
   if (!base) return { status: 'error' };
   try {
     const res = await fetch(`${base}/v1/places/${encodeURIComponent(slug)}/address`, {
-      headers: { accept: 'application/json' },
+      headers: { accept: 'application/json', ...backendHeaders(source) },
       signal: AbortSignal.timeout(2000),
     });
     if (res.status === 404) {
@@ -74,9 +75,9 @@ export type PlaceAddressResolution =
 
 /** 301 target, 404, or nothing special (the page renders). */
 export async function resolvePlaceAddress(
-  requested: { citySlug: string; placeSlug: string; locale: Locale; search: string },
+  requested: { citySlug: string; placeSlug: string; locale: Locale; search: string; source?: Headers | null },
 ): Promise<PlaceAddressResolution> {
-  const lookup = await lookupPlace(requested.placeSlug);
+  const lookup = await lookupPlace(requested.placeSlug, requested.source);
   if (lookup.status !== 'ok') return { status: lookup.status };
   return {
     status: 'ok',

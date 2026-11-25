@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { QueryClient, dehydrate, type QueryKey } from '@tanstack/react-query';
 import { getApiBaseUrl } from '@/lib/config';
+import { backendHeaders } from '@/lib/backend-headers';
 import { ApiError } from '@/lib/api/client';
 import { normalizePlaceFlags } from '@/lib/api/normalize-place';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
@@ -20,13 +21,13 @@ export function markPublicError(error: unknown, locale: Locale) {
   return Object.assign(failure, { digest: `khargny-public-${locale}` });
 }
 
-const read = cache(async (path: string, locale?: Locale): Promise<unknown> => {
+const read = cache(async (path: string, locale?: Locale, source?: Headers | null): Promise<unknown> => {
   try {
     if (!getApiBaseUrl({ browser: false })) throw new ApiError(503, null);
     const response = await fetch(`${getApiBaseUrl({ browser: false })}${path}`, {
       next: { revalidate: 300, tags: ['public-discovery', path.split('?')[0]] },
       signal: AbortSignal.timeout(10000),
-      ...(locale ? { headers: { 'Accept-Language': locale } } : {}),
+      headers: { ...(locale ? { 'Accept-Language': locale } : {}), ...backendHeaders(source) },
     });
     if (!response.ok) throw new ApiError(response.status, null);
     const json = await response.json();
@@ -103,7 +104,7 @@ export const getCatalog = cache(async () => {
   return { cities, categories };
 });
 
-export const getCityPage = cache(async (slug: string, page: number, search = '', requestedLocale?: Locale) => {
+export const getCityPage = cache(async (slug: string, page: number, search = '', requestedLocale?: Locale, source?: Headers | null) => {
   const [city, catalog] = await Promise.all([getCity(slug), getCatalog()]);
   const state = readBrowseAddress(search);
   state.page = page;
@@ -117,7 +118,7 @@ export const getCityPage = cache(async (slug: string, page: number, search = '',
     for (const [key, value] of Object.entries(params ?? {})) {
       if (value !== undefined && value !== null) query.set(key, Array.isArray(value) ? value.join(',') : String(value));
     }
-    return read(`${path}${query.size ? `?${query}` : ''}`, searching ? locale : undefined);
+    return read(`${path}${query.size ? `?${query}` : ''}`, searching ? locale : undefined, source);
   };
   const places = searching
     ? await loadSearchPage(searchQuery, queries.local, request)

@@ -22,7 +22,7 @@ export default async function CityPage({ params, searchParams }: {
   const search = query.toString();
   const page = cityPageNumber(values.page);
   const locale = localeOf(lang);
-  const data = await getCityPage(citySlug, page, search, locale).catch((error: unknown) => {
+  const data = await getCityPage(citySlug, page, search, locale, await headers()).catch((error: unknown) => {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
   });

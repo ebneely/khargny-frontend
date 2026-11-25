@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { getApiBaseUrl } from '@/lib/config';
+import { backendHeaders } from '@/lib/backend-headers';
 import { currentLocale, pageMetadata } from '@/lib/seo';
 import type { Trip } from '@/lib/trips/api';
 import { TripClient } from './TripClient';
@@ -9,6 +11,7 @@ async function readTrip(id: string): Promise<Trip | null> {
     const res = await fetch(`${getApiBaseUrl({ browser: false })}/v1/tourism/trips/${encodeURIComponent(id)}`, {
       next: { revalidate: 300 },
       signal: AbortSignal.timeout(5000),
+      headers: backendHeaders(await headers()),
     });
     return res.ok ? ((await res.json()).data as Trip) : null;
   } catch {

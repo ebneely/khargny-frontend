@@ -1,5 +1,12 @@
 import { getApiBaseUrl } from '@/lib/config';
+import { backendHeaders } from '@/lib/backend-headers';
 import { waitForGuestHandover } from './guest-handover';
+
+/** The server's own calls identify themselves; a browser call never sees the forwarder secret. */
+function withBackendHeaders(options: RequestInit): RequestInit {
+  if (typeof window !== 'undefined') return options;
+  return { ...options, headers: { ...(options.headers as Record<string, string> | undefined), ...backendHeaders() } };
+}
 
 let sessionReady = false;
 let sessionRequest: Promise<Response> | undefined;
@@ -7,7 +14,7 @@ let sessionRequest: Promise<Response> | undefined;
 export async function fetchApi(path: string, options: RequestInit = {}): Promise<Response> {
   const base = getApiBaseUrl();
   if (base === '/api') await waitForGuestHandover();
-  const send = () => fetch(`${base}${path}`, base === '/api' ? { ...options, cache: 'no-store' } : options);
+  const send = () => fetch(`${base}${path}`, base === '/api' ? { ...options, cache: 'no-store' } : withBackendHeaders(options));
   if (typeof window === 'undefined' || options.credentials !== 'include') return send();
   while (!sessionReady) {
     if (!sessionRequest) {

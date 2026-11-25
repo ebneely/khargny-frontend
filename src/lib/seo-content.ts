@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { getApiBaseUrl } from '@/lib/config';
+import { backendHeaders } from '@/lib/backend-headers';
 
 /**
  * The public catalogue the sitemaps and llms.txt are built from.
@@ -58,7 +59,7 @@ export function isPublic(record: PublicRecord | null | undefined): boolean {
 async function getJson<T>(path: string): Promise<T[]> {
   const origin = getApiBaseUrl({ browser: false });
   if (!origin) throw new Error('SEO API origin is not configured');
-  const res = await fetch(`${origin}${path}`, { cache: 'no-store' });
+  const res = await fetch(`${origin}${path}`, { cache: 'no-store', headers: backendHeaders() });
   if (!res.ok) throw new Error(`SEO upstream failed (${res.status})`);
   const json = await res.json();
   if (json?.success === false) throw new Error('SEO upstream reported failure');
@@ -117,7 +118,7 @@ async function fetchTrips(): Promise<SeoTrip[]> {
   try {
     const origin = getApiBaseUrl({ browser: false });
     if (!origin) return [];
-    const res = await fetch(`${origin}/v1/tourism/trips`, { cache: 'no-store' });
+    const res = await fetch(`${origin}/v1/tourism/trips`, { cache: 'no-store', headers: backendHeaders() });
     if (!res.ok) return [];
     const trips = (await res.json())?.data;
     return Array.isArray(trips) ? (trips as SeoTrip[]).filter((trip) => Boolean(trip?.id)) : [];

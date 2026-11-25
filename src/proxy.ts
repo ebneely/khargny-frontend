@@ -102,7 +102,7 @@ export async function proxy(req: NextRequest) {
     && incoming.get('sec-fetch-dest') !== 'empty';
   const carriesQuery = search.length > 1;
   if (place && (documentRequest || carriesQuery)) {
-    const resolved = await resolvePlaceAddress({ ...place, locale, search });
+    const resolved = await resolvePlaceAddress({ ...place, locale, search, source: incoming });
     if (resolved.status === 'missing') {
       // Serve the site-styled 404 document, not a bare string, while keeping the real 404 and
       // noindex. The internal route is (site)/[lang]/not-found-place/view; never linked or sitemapped.

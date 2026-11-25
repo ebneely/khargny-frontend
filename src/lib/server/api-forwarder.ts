@@ -1,6 +1,7 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getApiBaseUrl } from '@/lib/config';
+import { forwarderSecret, isAddress } from '@/lib/backend-headers';
 
 const NO_STORE = {
   'Cache-Control': 'private, no-store',
@@ -13,18 +14,6 @@ const FORWARDED_HEADERS = [
   'origin', 'user-agent', 'x-device-id', 'x-request-id',
 ];
 
-function isAddress(address: string): boolean {
-  if (/^(0|[1-9]\d{0,2})(\.(0|[1-9]\d{0,2})){3}$/.test(address)) {
-    return address.split('.').every((part) => Number(part) <= 255);
-  }
-  if (!address.includes(':') || !/^[a-f\d:.]+$/i.test(address)) return false;
-  try {
-    return Boolean(new URL(`http://[${address}]/`).hostname);
-  } catch {
-    return false;
-  }
-}
-
 function unavailable(code: string): NextResponse {
   return NextResponse.json({
     success: false, error: { code, message: 'API forwarding is unavailable' },
@@ -35,12 +24,14 @@ export function forwardBrowserApi(request: NextRequest): NextResponse | null {
   const { pathname, search } = request.nextUrl;
   if (process.env.NEXT_PUBLIC_API_MODE !== 'same-origin' || !pathname.startsWith('/api/v1/')) return null;
 
-  const secret = process.env.WEB_FORWARDER_SECRET;
-  if (!secret || secret.trim().length < 32 || secret !== secret.trim() || /[^\x20-\x7e]/.test(secret)) {
-    return unavailable('WEB_FORWARDER_UNAVAILABLE');
-  }
-  const address = process.env.VERCEL === '1' ? request.headers.get('x-vercel-forwarded-for')?.trim() : undefined;
-  if (!address || !isAddress(address)) return unavailable('WEB_FORWARDER_IP_UNAVAILABLE');
+  const secret = forwarderSecret();
+  if (!secret) return unavailable('WEB_FORWARDER_UNAVAILABLE');
+  // The edge's own header is the only one trusted here (Cloudflare now, the old platform before it): a client cannot
+  // forge it, and it is the address the backend's per-visitor limits count.
+  const address = process.env.VERCEL === '1'
+    ? isAddress(request.headers.get('x-vercel-forwarded-for'))
+    : isAddress(request.headers.get('cf-connecting-ip'));
+  if (!address) return unavailable('WEB_FORWARDER_IP_UNAVAILABLE');
 
   const incoming = new Headers(request.headers);
   incoming.delete('x-khargny-forwarder');
