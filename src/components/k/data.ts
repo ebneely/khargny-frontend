@@ -100,7 +100,8 @@ export function photoMedium(photo: { s: string; m: string } | undefined): string
   return /_small\.webp$/i.test(photo.s) ? photo.s.replace(/_small\.webp$/i, '_medium.webp') : photo.s || undefined;
 }
 
-export const placeHref = (p: Pick<KPlace, 'citySlug' | 'slug'>, lang: Lang) => `${langPrefix(lang)}/explorer/${p.citySlug}/${p.slug}/`;export const isPlacePath = (path: string) => /^(\/ar)?\/explorer\/[^/]+\/[^/]+\/?$/.test(path);
+export const placeHref = (p: Pick<KPlace, 'citySlug' | 'slug'>, lang: Lang) => `${langPrefix(lang)}/explorer/${p.citySlug}/${p.slug}/`;
+export const isPlacePath = (path: string) => /^(\/ar)?\/explorer\/[^/]+\/[^/]+\/?$/.test(path);
 /** Opens as a sheet on a phone and as a depth-1 page on desktop: a place, a collection, a Marketplace listing, a host. */
 export const isSheetPath = (path: string) => isPlacePath(path) || /^(\/ar)?\/(c|marketplace|host)\/[^/]+\/?$/.test(path);
 

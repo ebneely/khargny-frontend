@@ -215,7 +215,10 @@ export function SheetHost() {
   // open starts its motion without reading layout (issue #38). Touch devices only: desktop sheets stay fixed.
   useEffect(() => {
     if (!matchMedia('(pointer: coarse)').matches) return;
-    const idle = window.requestIdleCallback ? window.requestIdleCallback(warmSheetMetrics, { timeout: 2000 }) : window.setTimeout(warmSheetMetrics, 800);
+    // and fetch the sheet bodies' code while idle too: sheets.tsx loads them on demand (smaller first page), so without this
+    // the very first open would wait for a download, the first-open stall #38 is about
+    const warm = () => { warmSheetMetrics(); void import('./placeview'); void import('./collections'); void import('./market'); };
+    const idle = window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 2000 }) : window.setTimeout(warm, 800);
     const forget = () => resetSheetMetrics();
     addEventListener('resize', forget); addEventListener('orientationchange', forget);
     return () => {

@@ -199,7 +199,7 @@ export function Go5({ p, wide, small }: { p: KPlace; wide?: boolean; small?: boo
     e.preventDefault(); e.stopPropagation(); if (busy.current) return; busy.current = true; haptic();
     const el = e.currentTarget, icn = el.querySelector<HTMLElement>('.go5-ic')!, word = el.querySelector('b');
     const home = () => { busy.current = false; icn.style.opacity = ''; animate(icn, { transform: ['translate(-8px,8px) scale(.5)', 'translate(0,0) scale(1)'], opacity: [0, 1] }, spring(0.25, 0.4)); };
-    const goNow = () => { directions(p); setTaps((n) => n + 1); trackPlaceAction('directions', p.id); void apiRequest('POST', `/v1/places/${p.id}/directions`).catch(() => {}); setTimeout(home, 250); };
+    const goNow = () => { directions(p); setTaps((n) => n + 1); trackPlaceAction('directions', p.id); /* counted from this event only: the old POST /directions counts nothing */ setTimeout(home, 250); };
     if (reduce()) { goNow(); return; }
     animate(el, { transform: ['scale(1)', 'scale(.94)', 'scale(1.04)', 'scale(1)'] }, { duration: 0.5 });
     if (word) animate(word, { transform: ['translateY(0)', 'translateY(-3px)', 'translateY(0)'] }, { duration: 0.45 });
