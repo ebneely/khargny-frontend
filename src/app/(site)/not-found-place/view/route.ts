@@ -1,5 +1,4 @@
-import { SITE_URL } from '@/lib/config';
-import { urlFor } from '@/lib/site-url';
+import { dark, light } from '@5argny/core/tokens';
 import type { Locale } from '@/i18n/dictionaries';
 
 /**
@@ -7,13 +6,13 @@ import type { Locale } from '@/i18n/dictionaries';
  * notFound(): Next 16 renders the app's not-found boundary outside the site providers and falls
  * back to the global error shell, which has no <h1> and no site UI. A handler can return the
  * real 404 status and a complete, styled document reliably.
+ *
+ * A noindex page carries no canonical or hreflang links. The palette is the site's own token
+ * set, with a prefers-color-scheme dark variant.
  */
 export async function GET(request: Request): Promise<Response> {
   const locale: Locale = request.headers.get('x-khargny-locale') === 'ar' ? 'ar' : 'en';
   const isAr = locale === 'ar';
-  const canonical = urlFor('/explorer', locale);
-  const english = urlFor('/explorer', 'en');
-  const arabic = urlFor('/explorer', 'ar');
   const title = isAr ? 'المكان ده مش موجود | خرجني' : 'Place not found | 5argny';
   const heading = isAr ? 'المكان ده مش موجود' : 'Place not found';
   const body = isAr
@@ -29,24 +28,32 @@ export async function GET(request: Request): Promise<Response> {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>${title}</title>
 <meta name="robots" content="noindex, follow">
-<link rel="canonical" href="${canonical}">
-<link rel="alternate" hrefLang="en" href="${english}">
-<link rel="alternate" hrefLang="ar" href="${arabic}">
-<link rel="alternate" hrefLang="x-default" href="${english}">
 <style>
-:root { --brand-700:#0f766e; --surface-app:#f8faf9; --surface-card:#fff; --gray-200:#e5e7eb; --text-primary:#17211f; --text-secondary:#4b5563; }
+:root {
+  --bg: ${light.bg}; --card: ${light.card}; --ink: ${light.ink}; --ink2: ${light.ink2};
+  --line: ${light.line}; --accent: ${light.accent}; --accent-ink: ${light.accentInk};
+  --sh1: ${light.sh1};
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: ${dark.bg}; --card: ${dark.card}; --ink: ${dark.ink}; --ink2: ${dark.ink2};
+    --line: ${dark.line}; --accent: ${dark.accent}; --accent-ink: ${dark.accentInk};
+    --sh1: ${dark.sh1};
+  }
+}
 * { box-sizing: border-box; }
-body { margin:0; background:var(--surface-app); color:var(--text-primary); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
-header { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; border-bottom:1px solid var(--gray-200); background:var(--surface-card); }
+body { margin:0; background:var(--bg); color:var(--ink); font-family: system-ui, -apple-system, "Segoe UI", "IBM Plex Sans Arabic", sans-serif; }
+header { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; border-bottom:1px solid var(--line); background:var(--card); }
 header a { text-decoration:none; }
-.brand { color:var(--brand-700); font-size:1.35rem; font-weight:700; }
-nav a { color:var(--text-secondary); font-size:1rem; }
+.brand { color:var(--accent); font-size:1.35rem; font-weight:700; }
+nav a { color:var(--ink2); font-size:1rem; }
 main { max-width:42rem; margin:0 auto; padding:4.5rem 1.5rem; text-align:center; }
 h1 { font-size:2rem; line-height:1.25; margin:0 0 .5rem; }
-p { color:var(--text-secondary); line-height:1.6; margin:0 0 1.75rem; }
-a.back { display:inline-flex; align-items:center; min-height:44px; padding:0 20px; border-radius:999px; background:var(--brand-700); color:#fff; font-weight:600; text-decoration:none; }
+p { color:var(--ink2); line-height:1.6; margin:0 0 1.75rem; }
+a.back { display:inline-flex; align-items:center; min-height:44px; padding:0 20px; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-weight:600; text-decoration:none; box-shadow:var(--sh1); }
 </style>
 </head>
 <body>

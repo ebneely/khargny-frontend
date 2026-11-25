@@ -13,8 +13,10 @@ describe('unknown-place 404 document', () => {
     expect((html.match(/<h1(?:\s|>)/g) ?? []).length).toBe(1);
     expect(html).toContain('<html lang="en" dir="ltr">');
     expect(html).toContain('Place not found');
-    expect(html).toContain('rel="canonical"');
-    expect(html).toContain('hrefLang="ar"');
+    expect(html).not.toContain('rel="canonical"');
+    expect(html).not.toContain('hrefLang=');
+    expect(html).toContain('--bg: #FBF6EE');
+    expect(html).toContain('@media (prefers-color-scheme: dark)');
   });
 
   it('is Arabic by the URL header', async () => {
