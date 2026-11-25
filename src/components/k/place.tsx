@@ -15,6 +15,7 @@ import { apiRequest, ApiError } from '@/lib/api/client';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { regionLabel } from '@/lib/egypt-regions';
+import { photoAlt } from '@/lib/place-seo';
 import { likeStore } from '@/lib/likes';
 import { saveStore } from '@/lib/saves';
 import { trackPlaceAction, trackPlaceShowing, trackPlaceView, trackSearchTap, type ShowingSurface } from '@/lib/analytics/track';
@@ -145,7 +146,7 @@ function useSwap() {
   };
 }
 
-export function Carousel({ photos }: { photos: KPlace['photos'] }) {
+export function Carousel({ photos, name, area, city }: { photos: KPlace['photos']; name?: string; area?: string; city?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(0);
   const { c, lang } = useK();
@@ -153,7 +154,7 @@ export function Carousel({ photos }: { photos: KPlace['photos'] }) {
   return <>
     <div className="carousel" data-carousel ref={ref} onScroll={(e) => setAt(Math.round(Math.abs(e.currentTarget.scrollLeft) / e.currentTarget.clientWidth))}>
       
-      {photos.map((ph, i) => <img decoding="async" key={(ph.m || ph.s) + i} src={photoMedium(ph)} alt="" draggable={false} loading={i ? 'lazy' : 'eager'} />)}
+      {photos.map((ph, i) => <img decoding="async" key={(ph.m || ph.s) + i} src={photoMedium(ph)} alt={name ? photoAlt(name, area || '', city || '', i, lang) : ''} draggable={false} loading={i ? 'lazy' : 'eager'} />)}
     </div>
     {photos.length > 1 ? <div className="dots"><button className="dot-nav press" data-act="car-step" aria-label={c.common.previousPhoto} onClick={(e) => step(e, -1)}><L n="chevron-left" /></button>{photos.map((_, i) => <i key={i} className={i === at ? 'on' : ''} />)}<button className="dot-nav press" data-act="car-step" aria-label={c.common.nextPhoto} onClick={(e) => step(e, 1)}><L n="chevron-right" /></button></div> : null}
   </>;
@@ -346,7 +347,7 @@ export function Post({ p, surface, position, mark }: { p: KPlace } & CardTrack) 
     <article ref={ref} className="card post press" data-item data-open={p.slug} data-id={p.id} onClick={onClick}>
       
       <header className="post-head"><img decoding="async" className="avatar" src={(p.photos[1] || p.photos[0])?.s} alt="" /><div className="post-who"><b dir="auto">{p.name}</b><Meta p={p} /></div>{st ? <StatePill st={st} /> : null}</header>
-      <div className="media"><Carousel photos={p.photos.slice(0, 5)} /></div>
+      <div className="media"><Carousel photos={p.photos.slice(0, 5)} name={p.name} area={p.area} city={p.city} /></div>
       <div className="post-foot">{p.badges.length ? <p className="post-meta"><BadgeTags p={p} /></p> : null}
         <div className="post-actions"><Actions p={p} end={<Go5 p={p} />} /></div></div>
     </article>

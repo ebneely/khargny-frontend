@@ -242,6 +242,9 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 .place-tools{display:flex;align-items:center;gap:4px;padding:0 10px 10px}
 @media (min-width:1024px){
   .place-wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px}
+  /* The place page's own text below it (SEO Stage 3: About, Nearby, questions): it belongs in the
+     content column, not beside the sidebar, and it fills the page width on a phone. */
+  .layout > .khg-place-seo{grid-column:2/3;min-width:0;width:100%;max-width:932px;margin:0 auto}
   .place-side{position:sticky;top:calc(var(--chrome-h,60px) + 16px);align-self:start}
   .place-wrap .place-media{border-radius:var(--r-card);overflow:hidden;aspect-ratio:16/10}
   .place-wrap .place-head,.place-wrap .place-tools{padding-inline:0}
@@ -657,6 +660,9 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 
 .place-side{display:grid;gap:12px}
 .place-side > .group{margin:0}
+/* the place page's text below it: one column on a phone, the content column on a desktop */
+.khg-place-seo{grid-column:1/-1;width:100%;max-width:1120px;margin:0 auto}
+
 
 .back-pin{position:sticky;top:var(--chrome-h,76px);height:0;z-index:6}
 .back-pin .page-back{position:relative;top:12px;inset-inline-start:12px;background:rgba(36,28,22,.42);color:#fff;-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);box-shadow:0 2px 10px rgba(36,28,22,.18)}

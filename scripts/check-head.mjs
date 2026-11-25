@@ -58,8 +58,11 @@ async function discoverLandingPaths() {
   const indexXml = await index.text();
   const landingFiles = [...indexXml.matchAll(/<loc>([^<]*\/sitemaps\/landing-\d+\.xml)<\/loc>/g)].map((match) => match[1]);
   if (!landingFiles.length) throw new Error('/sitemap.xml lists no landing-N.xml');
-  const file = await fetch(landingFiles[0], { headers: { accept: 'application/xml' } });
-  if (!file.ok) throw new Error(`${landingFiles[0]} answered ${file.status}`);
+  // The index lists absolute URLs built from the site's public origin; a local run serves the
+  // same files from its own base, so the origin is swapped for the base being checked.
+  const first = new URL(new URL(landingFiles[0]).pathname, base).href;
+  const file = await fetch(first, { headers: { accept: 'application/xml' } });
+  if (!file.ok) throw new Error(`${first} answered ${file.status}`);
   const xml = await file.text();
   for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
     let path;
