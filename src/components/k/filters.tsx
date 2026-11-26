@@ -1,23 +1,19 @@
 'use client';
-// Explore's filter state and the Filters sheet (proto app.js readF/FiltersBody/FiltersFoot/refreshFilters).
-// The state lives in the URL (?intent ?cat ?when ?f=amenityId,band:N ?q ?sort ?badge) so the query is kept on reload and Back.
-import { useRef, useState } from 'react';
+// Explore's filter state and the Filters sheet's staged state (proto app.js readF/refreshFilters); the sheet's own body
+// and foot are filters-sheet.tsx, its own chunk. The state lives in the URL (?intent ?cat ?when ?f=amenityId,band:N ?q ?sort
+// ?badge) so the query is kept on reload and Back. The query key it builds is in list-query.ts, shared with the prefetch.
+import { useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { langPrefix } from '@5argny/core/rules/locale';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { animate } from 'motion';
-import { fill } from '@5argny/core/copy';
-import { amenityIcons, amenityIconFallback, mustHaveAmenities } from '@5argny/core/icons';
 import { apiRequest } from '@/lib/api/client';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
-import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { regionLabel } from '@/lib/egypt-regions';
-import { L, Ic } from './icons';
-import { catIcon } from './place';
-import { searchNormalize } from '@5argny/core/rules';
-import { Btn, Seg } from './bits';
 import { INTENTS } from './rules';
+import { catIdsOf, listQueryOf } from './list-query';
 import { useK, useKS, haptic, spring } from './KProvider';
 import { catTotals, catTotalsKey } from './data';
 
@@ -46,11 +42,12 @@ export function useLocIds() {
   return { cityId: city?.id ?? null, citySlug: city?.slug ?? null, area };
 }
 
-/** The category ids a filter state names: one category, or every category of an intent. */
+/** The category names an intent asks for (components/k/rules.ts owns the intent list). */
+const intentCats = (intent: string) => (INTENTS.find((x) => x.key === intent)?.cats ?? []) as readonly string[];
+
 export function useCatIds(f: Pick<F, 'intent' | 'cat'>) {
   const { data: categories = [] } = useCategories();
-  const intent = INTENTS.find((x) => x.key === f.intent);
-  return categories.filter((c) => (f.cat ? (c.nameEn || c.nameAr) === f.cat || c.slug === f.cat || c.id === f.cat : intent ? (intent.cats as readonly string[]).includes(c.nameEn || '') : false));
+  return catIdsOf(f, categories, intentCats(f.intent));
 }
 
 /** Places per category for the location bar, all time, with a photo each (one shared query; Egypt-wide it comes with the page). */
@@ -89,63 +86,11 @@ export function usePriceBands() {
   return data.map((b) => ({ level: b.level, label: lang === 'ar' ? b.labelEn.replace('EGP', 'جنيه') : b.labelEn }));
 }
 
-/** Every category, stacked over Filters: counts for the chosen When (grey dot at 0), a search box when the list is long. */
-function AllCats({ when, cur, onPick }: { when: When; cur: string; onPick: (cat: string) => void }) {
-  const { c, lang } = useK();
-  const { data: categories = [] } = useCategories();
-  const count = useCounts(when);
-  const [q, setQ] = useState('');
-  const n = searchNormalize(q);
-  const rows = categories.map((x) => ({ x, key: x.nameEn || x.nameAr, label: (lang === 'ar' ? x.nameAr : x.nameEn || x.nameAr) || x.slug, n: count([x.nameEn || '']) }))
-    .filter((r) => !n || searchNormalize(`${r.x.nameEn ?? ''} ${r.x.nameAr ?? ''}`).includes(n));
-  return <>
-    {categories.length > 8 ? <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--card)', paddingBottom: 8 }}><label className="search"><Ic n="search" /><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={c.filters.findCat} aria-label={c.filters.findCat} autoComplete="off" enterKeyHint="search" /></label></div> : null}
-    {rows.map((r) => <button key={r.x.id} className="option press" role="radio" aria-checked={cur === r.key} data-act="f-cat" onClick={() => onPick(r.key)}><L n={catIcon(r.x.nameEn || '')} /><span className="grow">{r.label}</span>{r.n != null ? <em className="sg-n"><i className={`live ${r.n ? '' : 'off'}`} />{r.n}</em> : null}<Ic n="check" cls="check" /></button>)}
-    {rows.length ? null : <div className="empty" style={{ padding: 18 }}><L n="search-x" /><p className="t-head">{fill(c.filters.noCat, { q: q.trim() })}</p></div>}
-  </>;
-}
-
-function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
-  const { c, lang, openSheet, closeTop } = useK();
-  const { data: categories = [] } = useCategories();
-  const picked = f.cat ? categories.find((x) => (x.nameEn || x.nameAr) === f.cat || x.slug === f.cat || x.id === f.cat) : null;
-  const count = useCounts(f.when);
-  const bands = usePriceBands();
-  const { data: amenities = [] } = useAmenities();
-  const must = mustHaveAmenities.map((n) => amenities.find((a) => a.nameEn === n)).filter(Boolean) as typeof amenities;
-  const toggle = (v: string) => { const s = new Set(f.filters); if (s.has(v)) s.delete(v); else s.add(v); onChange({ ...f, filters: s }); };
-  const chip = (key: string, on: boolean, label: string, icon: string | null, n: number | null | undefined, onClick: () => void) =>
-    <button key={key} className="chip press" aria-pressed={on} onClick={onClick}>{icon ? <L n={icon} /> : null}{label}{n != null ? <em><i className={`live ${n ? '' : 'off'}`} />{n}</em> : null}</button>;
-  return <>
-    <h3 className="group-title"><L n="clock" /> {c.filters.when}</h3>
-    <div style={{ marginBottom: 16 }}><Seg opts={WHENS.map((w) => [w, c.explore.when[w || 'any']] as [When, string])} val={f.when} onPick={(w) => onChange({ ...f, when: w })} /></div>
-    <h3 className="group-title"><L n="layout-grid" /> {c.filters.category}</h3>
-    <div className="amen" style={{ marginBottom: 16 }}>{INTENTS.map((x) => chip(x.key, f.intent === x.key, c.intents[x.key], x.icon, count(x.cats), () => onChange({ ...f, intent: f.intent === x.key ? '' : x.key, cat: '' })))}
-      {picked ? chip('cat', true, (lang === 'ar' ? picked.nameAr : picked.nameEn || picked.nameAr) || picked.slug, catIcon(picked.nameEn || ''), count([picked.nameEn || '']), () => onChange({ ...f, cat: '' })) : null}
-      {/* every category, in a sheet stacked over Filters; picking one comes back here with it selected (still staged) */}
-      <button className="chip press" data-act="all-cats" onClick={() => openSheet(c.filters.allCats, <AllCats when={f.when} cur={f.cat} onPick={(cat) => { onChange({ ...f, cat, intent: '' }); closeTop(); }} />)}><L n="layout-grid" />{c.filters.seeAllCats}<L n="chevron-right" /></button></div>
-    {bands.length ? <><h3 className="group-title"><L n="banknote" /> {c.filters.price}</h3>
-      <div className="amen" style={{ marginBottom: 16 }}>{bands.map((b) => chip('b' + b.level, f.filters.has('band:' + b.level), b.label, null, null, () => toggle('band:' + b.level)))}</div></> : null}
-    {must.length ? <><h3 className="group-title"><L n="list-checks" /> {c.filters.mustHave}</h3>
-      <div className="amen">{must.map((a) => chip(a.id, f.filters.has(a.id), (lang === 'ar' ? a.name : a.nameEn) || a.name, amenityIcons[a.nameEn || ''] || amenityIconFallback, null, () => toggle(a.id)))}</div></> : null}
-  </>;
-}
-
 /** The /v1/places question a filter state asks: one request per category of an intent (the route takes one categoryId). */
 export function useListQuery(f: F) {
   const { cityId, area } = useLocIds();
-  const cats = useCatIds(f);
   const { data: categories = [] } = useCategories();
-  const bands = [...f.filters].filter((x) => x.startsWith('band:')).map((x) => x.slice(5)).join(',');
-  const amen = [...f.filters].filter((x) => !x.startsWith('band:')).join(',');
-  const wantCats = !!(f.intent || f.cat);
-  return {
-    // categories still loading: wait, never the whole of Egypt by mistake; a category name that matches none finds nothing
-    ready: !wantCats || cats.length > 0, none: wantCats && categories.length > 0 && !cats.length,
-    catIds: wantCats ? cats.map((x) => x.id) : [null],
-    params: { cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, when: f.when || undefined },
-    key: [cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, f.when] as const,
-  };
+  return listQueryOf(f, cityId, area, categories, intentCats(f.intent));
 }
 export const totalKey = (key: ReturnType<typeof useListQuery>['key']) => ['places', 'total', ...key] as const;
 
@@ -199,12 +144,36 @@ export function useEarned(enabled = true) {
   }).data;
 }
 
-function FiltersFoot({ get, onApply, onClear }: { get: () => F; onApply: () => void; onClear: () => void }) {
-  const { c } = useK();
-  const f = get();
-  const n = useResultCount(f, '', false);
-  return <><Btn label={c.filters.clear} act="filters-clear" onClick={onClear} /><Btn label={n == null ? c.filters.showPlaces : fill(c.filters.show, { n })} kind="primary" act="filters-apply" wide onClick={onApply} /></>;
+/** Explore's first page for a filter state, fetched before the tap: the same key and request as the screen's own query. */
+const PAGE = 24; // shortcut: Explore's own page size (explore.tsx:30); the two move together
+export function usePrefetchList() {
+  const qc = useQueryClient();
+  const { cityId, area } = useLocIds();
+  const { data: categories = [] } = useCategories();
+  return useCallback((f: F) => {
+    const L = listQueryOf(f, cityId, area, categories, intentCats(f.intent));
+    if (!L.ready || L.none) return;
+    const queryKey = ['explore', ...L.key, '', ''] as const;
+    if (qc.getQueryData(queryKey)) return; // already on the screen
+    void qc.prefetchInfiniteQuery({
+      queryKey, staleTime: 60_000,
+      initialPageParam: Object.fromEntries(L.catIds.map((id) => [id ?? 'all', ''])) as Record<string, string | null>,
+      queryFn: async ({ pageParam }) => {
+        const open = Object.entries(pageParam).filter(([, cur]) => cur !== null);
+        const answers = await Promise.all(open.map(async ([id, cur]) => [id, await apiRequest<{ meta?: { nextCursor?: string | null } }>('GET', '/v1/places', { params: { ...L.params, categoryId: id === 'all' ? undefined : id, cursor: cur || undefined, limit: PAGE } })] as const));
+        const next: Record<string, string | null> = { ...pageParam };
+        for (const [id, raw] of answers) next[id] = raw.meta?.nextCursor || null;
+        const pages = answers.map(([, raw]) => normalizePlaceList(raw));
+        return { items: pages.flatMap((x) => x.items), total: pages.reduce((a, x) => a + (x.total ?? x.items.length), 0), next };
+      },
+      getNextPageParam: (last: { next: Record<string, string | null> }) => (Object.values(last.next).some(Boolean) ? last.next : undefined),
+    });
+  }, [qc, cityId, area, categories]);
 }
+
+// the sheet body and foot are their own chunk: a first visit never carries them, and the idle prefetch has them ready
+const FiltersBodySheet = dynamic(() => import('./filters-sheet').then((m) => m.FiltersBodySheet), { ssr: false });
+const FiltersFootSheet = dynamic(() => import('./filters-sheet').then((m) => m.FiltersFootSheet), { ssr: false });
 
 /** Filters: staged, nothing behind the sheet changes until "Show N places"; the count is live. */
 export function useOpenFilters() {
@@ -214,12 +183,8 @@ export function useOpenFilters() {
     let staged = readF(keep);
     const listeners = new Set<() => void>();
     const set = (f: F) => { staged = f; haptic(); listeners.forEach((l) => l()); requestAnimationFrame(() => { const b = document.querySelector('.sheet [data-act="filters-apply"]'); if (b) animate(b, { transform: ['scale(.97)', 'scale(1)'] }, spring(0.3, 0.3)); }); };
-    const Live = ({ part }: { part: 'body' | 'foot' }) => {
-      const [, tick] = useState(0);
-      const sub = useRef(false); if (!sub.current) { sub.current = true; listeners.add(() => tick((n) => n + 1)); }
-      return part === 'body' ? <FiltersBody f={staged} onChange={set} />
-        : <FiltersFoot get={() => staged} onClear={() => set({ intent: '', cat: '', when: '', filters: new Set() })} onApply={() => { closeTop(); const q = writeF(staged, keep); go(`${langPrefix(lang)}/explorer/${q.toString() ? '?' + q : ''}`); }} />;
-    };
-    openSheet(c.filters.title, <Live part="body" />, <Live part="foot" />);
+    const get = () => staged, subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
+    const onApply = () => { closeTop(); const q = writeF(staged, keep); go(`${langPrefix(lang)}/explorer/${q.toString() ? '?' + q : ''}`); };
+    openSheet(c.filters.title, <FiltersBodySheet get={get} set={set} subscribe={subscribe} />, <FiltersFootSheet get={get} set={set} subscribe={subscribe} onApply={onApply} />);
   };
 }

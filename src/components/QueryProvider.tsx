@@ -11,7 +11,9 @@ import { retryQuery } from '@5argny/core/rules';
 export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
   const [queryClient] = useState(() => {
     // one quiet retry for the network and the server, none for a 4xx that will not change (src/5argny/rules/loading.ts)
-    const client = new QueryClient({ defaultOptions: { queries: { retry: retryQuery, staleTime: 30_000 } } });
+    // a browse list never re-asks the server because a tab came back into focus (the person kept it open), and it stays
+    // in memory for half an hour so Back and a revisit show it at once; the public catalogue keeps its own Infinity.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: retryQuery, staleTime: 30_000, gcTime: 30 * 60_000, refetchOnWindowFocus: false } } });
     prepareBrowseQueries(client);
     return client;
   });
