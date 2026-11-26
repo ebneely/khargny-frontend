@@ -177,9 +177,11 @@ export function ExploreView() {
   const skel = (n: number) => Array.from({ length: n }, (_, i) => <TileSkel key={'s' + i} />);
   return (
     <Shell cur="explore" wide withFilters>
-      <h1 className="t-display page-pad" style={{ margin: '2px 0 10px' }}>{head} <span style={{ color: 'var(--ink3)', fontWeight: 800 }}>{c.explore.in} <PlaceWord word={where} key={loc.city + '|' + loc.area} /></span></h1>
-      <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{total == null ? (res0.error ? null : <span className="sk" aria-hidden="true"><b>000</b> {fill(c.explore.results, { n: '' }).trim()}</span>) : <><b style={{ color: 'var(--ink)' }}>{total}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
-        {/* owner 2026-11-26: Popular · Nearest, then Filters with Reset beside it, on one row under the count */}
+      {/* the count rides on the heading line as a lighter suffix (owner 2026-11-26, round 2): "Everything in Cairo · 44 places"; the
+          loading count keeps its skeleton, the separate count row is gone */}
+      <h1 className="t-display page-pad" style={{ margin: '2px 0 10px' }}>{head} <span style={{ color: 'var(--ink3)', fontWeight: 800 }}>{c.explore.in} <PlaceWord word={where} key={loc.city + '|' + loc.area} /></span>{total == null ? (res0.error ? null : <> · <span className="sk" aria-hidden="true"><b>000</b> {fill(c.explore.results, { n: '' }).trim()}</span></>) : <> · <span className="t-small" style={{ color: 'var(--ink3)', fontWeight: 650, whiteSpace: 'nowrap' }}>{fill(c.explore.results, { n: total })}{whenText ? ` ${whenText.toLowerCase()}` : ''}</span></>}</h1>
+      <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}>
+        {/* owner 2026-11-26: Popular · Nearest, then Filters with Reset beside it, on one row under the heading */}
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near]] as [Sort, string][]} val={sort === 'open' ? 'popular' : sort} onPick={setSort} />
           <Seg<'list' | 'map'> opts={[['list', c.explore.list], ['map', c.explore.map]]} val={mapView ? 'map' : 'list'} onPick={(v) => setMapView(v === 'map')} />
