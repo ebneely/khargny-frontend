@@ -19,11 +19,13 @@ import { Carousel, Meta, OpenPiece, Actions, Go5, Tile, placeStatsQuery, badgeIc
 import { useQuery } from '@tanstack/react-query';
 import { Shell, putOpened } from './Shell';
 import { withBrand, HomeView, type HomeData } from './home';
-import { failKind } from '@5argny/core/rules';
+import { failKind, kmText } from '@5argny/core/rules';
 import { Failed, Sk, StateBlock, useReveal } from './states';
 import { useK, useKS, spring, desk } from './KProvider';
 import { PlaceMoreBody } from './collections';
 import { useOpenCorrection } from './settings';
+import { usePosition } from './near';
+import { useRoadKm } from './road';
 
 export function useKPlace(slug: string) { return useKPlaceQ(slug).p; }
 /** The place and its query, for the screens that draw its loading and failed states. */
@@ -138,6 +140,15 @@ function Similar({ p }: { p: KPlace }) {
   return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`${langPrefix(lang)}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x, i) => <Tile key={x.id} p={x} surface="similar" position={i + 1} />)}</div></section>;
 }
 
+/** Road distance and driving time once the engine answers and the person shared a position; nothing before that. */
+function RoadLine({ p }: { p: KPlace }) {
+  const { c } = useK();
+  const pos = usePosition();
+  const road = useRoadKm(pos ? p.id : null, pos);
+  if (!road) return null;
+  return <><span className="meta-area"><L n="route" />{fill(c.units.km, { km: kmText(road.km) })}</span><span className="meta-area"><L n="car" />{fill(c.units.minByCar, { n: road.min })}</span></>;
+}
+
 /** The place itself: body (both layouts), foot (5argny! and Call), side (desktop column). */
 export function usePlaceParts(p: KPlace) {
   const { c, lang, now, openSheet, toast, closeTop } = useK();
@@ -159,7 +170,7 @@ export function usePlaceParts(p: KPlace) {
     <div className="place-head"><span className="gesture-hint" aria-hidden="true">
       <span><svg className="gh-love" viewBox="0 0 20 20"><circle className="tap t1" cx="10" cy="10" r="3" /><circle className="tap t2" cx="10" cy="10" r="3" /><path className="hrt" d="M10 16.4s-5.6-3.4-7.1-6.7C1.8 7.2 3.4 4.6 6.1 4.6c1.7 0 2.9 1 3.9 2.4 1-1.4 2.2-2.4 3.9-2.4 2.7 0 4.3 2.6 3.2 5.1-1.5 3.3-7.1 6.7-7.1 6.7z" /></svg>{c.place.loveHint}</span>
       <span><svg className="gh-share" viewBox="0 0 20 20"><circle className="tap t1" cx="10" cy="10" r="3" /><circle className="tap t2" cx="10" cy="10" r="3" /><circle className="track" cx="10" cy="10" r="7.5" /><circle className="fill" cx="10" cy="10" r="7.5" pathLength={1} /><path className="arr" d="M10 13V5.5M7 8.2 10 5.2l3 3M5.5 11.5v3h9v-3" /></svg>{c.place.shareHint}</span></span><h1 className="t-display" dir="auto">{p.name}</h1>
-      <p style={{ marginTop: 6 }}><Meta p={p} extra={band ? <span className="meta-area"><L n="wallet" />{band}</span> : null} /></p><OpenPiece p={p} /></div>
+      <p style={{ marginTop: 6 }}><Meta p={p} extra={<>{band ? <span className="meta-area"><L n="wallet" />{band}</span> : null}<RoadLine p={p} /></>} /></p><OpenPiece p={p} /></div>
     <div className="place-tools"><Actions p={p} end={<IconBtn icon="more" label={c.common.more} cls="filled" act="place-more" id={p.id} onClick={placeMore} />} /></div>
     <div className="phone-only"><Badges p={p} /><OverviewSlot id={p.id} /></div>
     {/* TODO: "<Place> services" (menu items with "from N EGP") once the backend serves p.services; the prototype's offers are samples */}

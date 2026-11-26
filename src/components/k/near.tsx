@@ -12,6 +12,7 @@ import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { Bit } from './bits';
 import { L } from './icons';
+import { useRoadKm } from './road';
 import { toK, type KPlace } from './data';
 import { useK, haptic } from './KProvider';
 
@@ -120,12 +121,16 @@ export function NearAsk() {
 
 /**
  * "~N km away" on a card, only when the card came with a real distance; from a fix worse than 1 km the area is shown
- * instead (a km figure from a Wi-Fi position would be wrong, and the road distance would be 1.3-2x it anyway).
+ * instead (a km figure from a Wi-Fi position would be wrong, and the road distance would be 1.3-2x it anyway). When the
+ * road answer arrives it replaces the straight line as "N km away" (no "~"), in the number's own slot.
  */
-export function KmAway({ p, cls }: { p: Pick<KPlace, 'distanceKm' | 'area' | 'city'>; cls?: 'meta-area' }) {
+export function KmAway({ p, cls }: { p: Pick<KPlace, 'id' | 'distanceKm' | 'area' | 'city'>; cls?: 'meta-area' }) {
   const { c } = useK();
   const approx = useApproxHere();
-  const text = approx ? p.area || p.city : p.distanceKm == null ? null : fill(c.units.kmAway, { km: kmText(p.distanceKm) });
+  const pos = usePosition();
+  const km = approx ? null : p.distanceKm;
+  const road = useRoadKm(km == null ? null : p.id, pos);
+  const text = approx ? p.area || p.city : km == null ? null : fill(road ? c.units.km : c.units.kmAway, { km: kmText(road ? road.km : km) });
   if (!text) return null;
   return cls === 'meta-area' ? <span className="meta-area"><L n="map-pin" />{text}</span> : <Bit icon="map-pin">{text}</Bit>;
 }
