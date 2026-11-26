@@ -981,13 +981,14 @@ html,body{overflow-anchor:none}
 .gv svg{width:13px;height:13px}
 .option[aria-checked="true"] .gv{color:var(--accent)}
 
-/* card stats v3: one quiet row, no bubble, no grid: five small counts that fit a narrow card, on ONE line (the lowest
-   priority counter drops before the row would wrap) */
+/* card stats v4 (owner 2026-11-26, round 2): five small counts on ONE line at every card width, never dropped. A
+   narrow card shrinks the row instead of hiding a counter: smaller type, smaller icons, tighter gaps, measured at the
+   card's own container width, so the last counter never reaches the overflow:hidden clip. */
 .tile .stats,.mini .stats,.trend-main .stats{display:flex;flex-wrap:wrap;gap:2px 8px;padding:0;margin:4px 0 2px;background:none;border-radius:0}
 .tile .stats{flex-wrap:nowrap;gap:2px 6px;overflow:hidden}
-@container (max-width:240px){ .tile .stats,.mini .stats,.trend-main .stats{display:flex;gap:2px 7px} }
-@container (max-width:172px){ .tile .stats .views:nth-child(n+4){display:none} }
-@container (max-width:150px){ .tile .stats .views:nth-child(n+3){display:none} }
+@container (max-width:240px){ .mini .stats,.trend-main .stats{display:flex;gap:2px 7px} }
+@container (max-width:180px){ .tile .stats{gap:2px 4px} .tile .stats .views{gap:1px;font-size:10.5px} .tile .stats svg{width:10px;height:10px} }
+@container (max-width:160px){ .tile .stats{gap:2px 3px} .tile .stats .views{font-size:10px} .tile .stats svg{width:9px;height:9px} }
 .tile .stats .views,.mini .stats .views,.trend-main .stats .views{gap:2px;font-size:11px;white-space:nowrap}
 .tile .stats svg,.mini .stats svg,.trend-main .stats svg{width:12px;height:12px}
 /* area and km: one line each, fixed height, so every card in a row is the same height */

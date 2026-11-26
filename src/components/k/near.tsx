@@ -120,17 +120,19 @@ export function NearAsk() {
 }
 
 /**
- * "~N km away" on a card, only when the card came with a real distance; from a fix worse than 1 km the area is shown
- * instead (a km figure from a Wi-Fi position would be wrong, and the road distance would be 1.3-2x it anyway). When the
- * road answer arrives it replaces the straight line as "N km away" (no "~"), in the number's own slot.
+ * "~N km away" on a card, only when the card came with a real distance. A rough fix (Precise Location off, a Wi-Fi or IP
+ * position) prints "~N km" in whole kilometres instead of hiding it (owner 2026-11-26, round 2): a straight line that
+ * coarse is still a useful whole number. When the road answer arrives it replaces the straight line as "N km away"
+ * (no "~", one decimal), in the number's own slot.
  */
 export function KmAway({ p, cls }: { p: Pick<KPlace, 'id' | 'distanceKm' | 'area' | 'city'>; cls?: 'meta-area' }) {
   const { c } = useK();
   const approx = useApproxHere();
   const pos = usePosition();
+  const rough = approx && p.distanceKm != null ? Math.round(p.distanceKm) : null;
   const km = approx ? null : p.distanceKm;
   const road = useRoadKm(km == null ? null : p.id, pos);
-  const text = approx ? p.area || p.city : km == null ? null : fill(road ? c.units.km : c.units.kmAway, { km: kmText(road ? road.km : km) });
+  const text = rough != null ? fill(c.units.kmRough, { km: rough }) : approx ? p.area || p.city : km == null ? null : fill(road ? c.units.km : c.units.kmAway, { km: kmText(road ? road.km : km) });
   if (!text) return null;
   return cls === 'meta-area' ? <span className="meta-area"><L n="map-pin" />{text}</span> : <Bit icon="map-pin">{text}</Bit>;
 }
