@@ -219,7 +219,7 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
   const { data: cities = [] } = useCities();
   const { data: categories = [] } = useCategories();
   const pos = usePosition();
-  const { data: surprise } = useQuery(surpriseQuery(nearParam(pos)));
+  const [rolling, setRolling] = useState(false);
   const recent = useRef<string[]>([]);
   // the lead names the person's real city: the nearest place's city (Near you's position, never asked for here), else Cairo;
   // its number is that city's open-now count (GET /v1/places/counts?when=now), the same places Explore lists for it
@@ -242,16 +242,23 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
       // layout boxes relative to the head (offsetLeft/Top ignore transforms, so the turned card can never skew them; iOS)
       const box = (el: HTMLElement) => { let x = 0, y = 0, n: HTMLElement | null = el; while (n && n !== head) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent as HTMLElement | null; } return { left: x, top: y, right: x + el.offsetWidth, height: el.offsetHeight }; };
       const a = box(from as HTMLElement), b = box(to as HTMLElement), rtl = lang === 'ar';
-      const sx = rtl ? a.left - 8 : a.right + 8, sy = a.top + a.height / 2, by = b.top + b.height / 2;
-      const ex = rtl ? b.right + 5 : b.left - 5, w = ex - sx;
+      // both ends are clamped to the head: a long "Can't pick?" on a narrow phone can reach the button, and the curve
+      // must never leave the card (the bug: an inverted run past Surprise me).
+      const pad = 4, headW = head.offsetWidth, clamp = (v: number) => Math.max(pad, Math.min(headW - pad, v));
+      let sx = clamp(rtl ? a.left - 8 : a.right + 8);
+      const sy = a.top + a.height / 2, by = b.top + b.height / 2;
+      let ex = clamp(rtl ? b.right + 5 : b.left - 5);
+      if (!rtl) sx = Math.min(sx, ex - 14); else ex = Math.max(ex, sx + 14);
+      sx = clamp(sx); ex = clamp(ex);
+      const w = ex - sx;
       const d = `M${sx},${sy} C${sx + w * 0.38},${sy + 7} ${ex - w * 0.38},${by - 7} ${ex},${by}`;
       svg.querySelectorAll('path').forEach((pa) => pa.setAttribute('d', d)); const ci = svg.querySelector('circle')!; ci.setAttribute('cx', String(ex)); ci.setAttribute('cy', String(by));
       svg.style.setProperty('--len', String(svg.querySelector('path')!.getTotalLength()));
     };
-    drawRoute.current = draw; draw(); addEventListener('resize', draw); document.fonts?.ready.then(draw);
+    drawRoute.current = draw; draw(); addEventListener('resize', draw); visualViewport?.addEventListener('resize', draw); document.fonts?.ready.then(draw);
     // any layout change of the head (fonts, the frame settling, the card resizing) redraws it, not only a window resize
     const head = card.current?.querySelector<HTMLElement>('.tm-head'); const ro = head ? new ResizeObserver(() => draw()) : null; if (head) { ro!.observe(head); head.querySelectorAll<HTMLElement>('.tm-nudge,.tm-dice').forEach((el) => ro!.observe(el)); }
-    return () => { removeEventListener('resize', draw); ro?.disconnect(); };
+    return () => { removeEventListener('resize', draw); visualViewport?.removeEventListener('resize', draw); ro?.disconnect(); };
   }, [lang]);
   // the lead photos cross-fade every 4.5 s
   useEffect(() => {
@@ -266,21 +273,44 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
     io.observe(el); return () => io.disconnect();
   }, []);
 
+  // the pick card sits in the middle of the space between the top chrome and the tab bar (both measured), never under
+  // the bar; a plain scroll with no overshoot, instant under reduced motion
+  const centrePick = () => {
+    const el = card.current?.querySelector<HTMLElement>('.tm-deal') ?? card.current;
+    if (!el) return;
+    const chrome = document.querySelector('.chrome-top')?.getBoundingClientRect().bottom ?? 0;
+    const tr = document.querySelector('.gbar, .tabbar')?.getBoundingClientRect();
+    const tab = tr && tr.height > 0 && tr.top > 0 ? tr.top : window.innerHeight;
+    const r = el.getBoundingClientRect();
+    const dy = r.top + r.height / 2 - (chrome + tab) / 2;
+    if (Math.abs(dy) > 1) scrollBy({ top: dy, behavior: reduce() ? 'auto' : 'smooth' });
+  };
+
   const shuffle = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (rolling) return;
     const dice = e.currentTarget.querySelector('.lucide'); if (dice) animate(dice, { transform: ['rotate(0deg)', 'rotate(360deg)'] }, spring(0.2, 0.6));
     haptic();
-    // near the person: a random place open now among the nearest (10 km, widening to 25 and 50), never one of the last 5 picks.
-    // Without a position it asks, like Near you; refused or outside Egypt, the location bar's places as before.
-    let near = surprise;
-    if (!pos && (await askPosition())) near = await qc.fetchQuery(surpriseQuery(nearParam(readPosition()))).catch(() => undefined);
-    const list = near?.length ? near.map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length) : nearList ?? [];
-    // eslint-disable-next-line react-hooks/purity -- issue #34 deferred: shuffle is an event handler, not render; the rule treats the handler's closure as render
-    const next = list.length ? pickNear(list, recent.current, Math.random) : pool[Math.floor(Math.random() * pool.length)] ?? null;
-    if (!next) return;
-    recent.current = [...recent.current, next.id].slice(-5); setDeal(next);
-    const flip = card.current!.querySelector<HTMLElement>('.tm-flip')!;
-    if (!flipped) { setFlipped(true); animate(flip, { transform: ['rotateY(0deg)', 'rotateY(180deg)'] }, spring(0.12, 0.6)); card.current!.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
-    else requestAnimationFrame(() => { const d = card.current!.querySelector('.tm-deal'); if (d) animate(d, { opacity: [0, 1], transform: ['scale(.94)', 'scale(1)'] }, spring(0.3, 0.45)); });
+    setRolling(true);
+    try {
+      // near the person: a random place open now among the nearest (10 km, widening to 25 and 50), never one of the last
+      // 5 picks. EVERY tap asks the server again: the cached answer is invalidated and the query forced stale.
+      let near: unknown[] | undefined;
+      await qc.invalidateQueries({ queryKey: ['places', 'surprise'] });
+      if (pos) near = await qc.fetchQuery({ ...surpriseQuery(nearParam(pos)), staleTime: 0 }).catch(() => undefined);
+      else if (await askPosition()) near = await qc.fetchQuery({ ...surpriseQuery(nearParam(readPosition())), staleTime: 0 }).catch(() => undefined);
+      const list = near?.length ? near.map((r) => toK(r as never, { cities, categories }, lang)).filter((p) => p.photos.length) : nearList ?? [];
+      const next = list.length ? pickNear(list, recent.current, Math.random) : pool[Math.floor(Math.random() * pool.length)] ?? null;
+      if (!next) return;
+      recent.current = [...recent.current, next.id].slice(-5); setDeal(next);
+      const flip = card.current!.querySelector<HTMLElement>('.tm-flip')!;
+      if (!flipped) {
+        setFlipped(true);
+        await animate(flip, { transform: ['rotateY(0deg)', 'rotateY(180deg)'] }, spring(0.12, 0.6)).finished;
+        requestAnimationFrame(centrePick);
+      }
+    } finally {
+      setRolling(false);
+    }
   };
   const unflip = () => { setFlipped(false); animate(card.current!.querySelector<HTMLElement>('.tm-flip')!, { transform: ['rotateY(180deg)', 'rotateY(0deg)'] }, spring(0.1, 0.55)).then(() => { const f = card.current?.querySelector<HTMLElement>('.tm-flip'); if (f) f.style.transform = ''; drawRoute.current(); }); }; // no 3D layer left behind (Safari)
   // most places first (proto), each with a photo of its own: the pool's, else the one its count request brought
@@ -297,28 +327,33 @@ function TakeMe({ data, pool, totalByCategory, coverByCategory }: { data: HomeDa
       <div className="tm-flip"><div className="tm-front">
         <div className="tm-head"><div><b className="tm-q">{lang === 'ar' ? 'خرجني فين؟' : c.home.takeMe.question}</b><span className="tm-time" aria-label={`${c.home.takeMe.timeNow} ${t12(now, lang)}`} suppressHydrationWarning><L n="clock" />{t12(now, lang)}<span className="tm-nudge">{c.home.takeMe.cantPick}</span></span></div>
           <svg className="tm-route" aria-hidden="true"><path className="tm-route-base" /><path className="tm-route-line" /><circle className="tm-route-end" r="3" /></svg>
-          <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} onClick={shuffle}><L n="dices" /><span>{c.home.takeMe.surprise}</span></button></div>
+          <button className="tm-dice press" data-act="shuffle" aria-label={c.home.takeMe.surprise} aria-busy={rolling} disabled={rolling} onClick={shuffle}>{rolling ? <span className="tm-spin" aria-hidden="true" /> : <L n="dices" />}<span>{rolling ? c.home.takeMe.surpriseLoading : c.home.takeMe.surprise}</span></button></div>
         <Link className="tm-lead press" href={`${langPrefix(lang)}/explorer/?intent=${lead.key}${open ? '&when=now' : ''}${leadCity ? `&city=${leadCity.slug}` : ''}`} onClick={() => { if (leadCity) setLoc({ city: leadCity.slug, area: null }); }}><span className="tm-photos">{(leadPhotos.length ? leadPhotos : [photoFor(lead.cats)]).map((u, n) => <img decoding="async" key={String(u) + n} src={u} alt="" className={n ? '' : 'on'} loading={n === 0 ? 'eager' : 'lazy'} fetchPriority={n === 0 ? 'high' : undefined} />)}</span><span className="tm-fade" />
           <span className="tm-lead-text"><b>{c.moments[m.title]}</b>{leadCity ? <span className="tm-sub">{open ? <><i className="live" />{fill(c.home.takeMe.leadOpen, { n: open, place: leadName })}</> : <><L n="map-pin" />{leadName}</>}</span> : null}</span>
           <span className="tm-go"><L n="arrow-right" /></span></Link>
         <div className="tm-picks">{rest.map(tile)}<button className="tm-pick tm-pick-all press" data-act="all-cats" onClick={allCats}><span className="tm-pick-img">{cats.slice(0, 4).map((cat) => <img decoding="async" key={cat.id} src={photo(cat)} alt="" loading="lazy" />)}</span><span className="tm-pick-name"><L n="layout-grid" /><b>{c.home.takeMe.all}</b></span><span className="tm-pick-n">{fill(c.home.takeMe.kinds, { n: data.categories.length })}</span></button></div>
-      </div><div className="tm-back" aria-live="polite">{deal ? <DealCard p={deal} onShuffle={shuffle} onBack={unflip} /> : null}</div></div>
+      </div><div className="tm-back" aria-live="polite">{deal ? <DealCard key={deal.id} p={deal} rolling={rolling} onShuffle={shuffle} onBack={unflip} /> : null}</div></div>
     </section>
   );
 }
 
 // Surprise me: one random place that fits the city and area (variable reward)
-function DealCard({ p, onShuffle, onBack }: { p: KPlace; onShuffle: (e: React.MouseEvent<HTMLButtonElement>) => void; onBack: () => void }) {
+function DealCard({ p, rolling, onShuffle, onBack }: { p: KPlace; rolling: boolean; onShuffle: (e: React.MouseEvent<HTMLButtonElement>) => void; onBack: () => void }) {
   const { c, lang, now } = useK();
   const st = openStateOf(p, now, lang);
   const href = placeHref(p, lang);
   const ref = useRef<HTMLDivElement>(null);
   useShowing(ref, 'takeme', p.id, 1);
+  // the next pick cross-fades in: opacity + an 8 px rise, 220 ms ease-out, no bounce (a still frame under reduced motion)
+  useEffect(() => {
+    const el = ref.current; if (!el || reduce()) return;
+    animate(el, { opacity: [0, 1], transform: ['translateY(8px)', 'translateY(0)'] }, { duration: 0.22, ease: [0.23, 1, 0.32, 1] });
+  }, []);
   // the photo and the name open the place like every other card; the buttons keep their own actions
   return <div className="tm-deal" ref={ref}><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img decoding="async" src={photoMedium(p.photos[0])} alt="" /></Link><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
     <div className="tm-deal-text"><Link className="tm-deal-name press" href={href}><b dir="auto">{p.name}</b></Link><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
-      <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" onClick={onShuffle}><L n="dices" />{c.home.takeMe.shuffleAgain}</button></div></div></div>;
+      <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" disabled={rolling} aria-busy={rolling} onClick={onShuffle}>{rolling ? <span className="tm-spin" aria-hidden="true" /> : <L n="dices" />}{rolling ? c.home.takeMe.surpriseLoading : c.home.takeMe.shuffleAgain}</button></div></div></div>;
 }
 
 /* ---------- right rail: Trending with its window menu ---------- */

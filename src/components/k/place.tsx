@@ -264,7 +264,7 @@ export const Tile = memo(function Tile({ p, extra, surface, position, term }: { 
   // also asks the browser for it first (issue #39, images).
   const eager = position != null && position <= 4;
   return (
-    <Link ref={ref} className="card tile press" data-item href={href} onPointerDown={() => router.prefetch(href)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
+    <Link ref={ref} className={`card tile press ${extra ? 'with-extra' : ''}`} data-item href={href} onPointerDown={() => router.prefetch(href)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
       
       <span className="tile-media"><img decoding="async" src={p.photos[0]?.s} alt="" loading={eager ? 'eager' : 'lazy'} fetchPriority={position === 1 ? 'high' : undefined} />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
       <div className="tile-body"><b dir="auto">{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
