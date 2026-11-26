@@ -87,7 +87,7 @@ export const ar: Copy = {
   explore: {
     everything: 'كل حاجة', earned: 'اتكسب على {brand}', in: 'في', results: '{n} مكان', empty: 'لسه مفيش أماكن لـ {what} {when} في {place}',
     when: { any: 'أي وقت', now: 'مفتوح دلوقتي', tonight: 'بالليل', weekend: 'الويك إند ده' },
-    sort: { popular: 'الأشهر', near: 'الأقرب', open: 'المفتوح الأول', rising: 'صاعد' },
+    sort: { popular: 'الأشهر', near: 'الأقرب', open: 'المفتوح الأول', rising: 'صاعد' }, map: 'خريطة', list: 'قايمة',
   },
   filters: { title: 'فلاتر', sort: 'مفتوح الأول', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', showPlaces: 'اعرض الأماكن', show: 'اعرض {n} مكان', seeAllCats: 'كل الأنواع', allCats: 'كل الأنواع', findCat: 'دوّر على نوع', noCat: 'مفيش نوع اسمه “{q}”' },
   market: {

@@ -86,7 +86,7 @@ export const en = {
   explore: {
     everything: 'Everything', earned: 'Earned on {brand}', in: 'in', results: '{n} places', empty: 'No places for {what} {when} in {place} yet',
     when: { any: 'Any time', now: 'Open now', tonight: 'Tonight', weekend: 'This weekend' },
-    sort: { popular: 'Popular', near: 'Nearest', open: 'Open first', rising: 'Rising' },
+    sort: { popular: 'Popular', near: 'Nearest', open: 'Open first', rising: 'Rising' }, map: 'Map', list: 'List',
   },
   filters: { title: 'Filters', sort: 'Open first', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places', showPlaces: 'Show places', seeAllCats: 'See all categories', allCats: 'All categories', findCat: 'Find a category', noCat: 'No category called “{q}”' },
   market: {

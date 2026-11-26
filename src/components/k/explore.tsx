@@ -2,6 +2,7 @@
 // Explore from proto/app.js Explore(): the location bar with Filters, a title that names what and where, the count and
 // the sort, then the results grid. Everything comes from the URL, so the query is kept.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { useSearchParams } from 'next/navigation';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +27,12 @@ import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { useK, useKS, reduce, haptic } from './KProvider';
 import { usePosition, askPosition, askFail, nearParam, ApproxNote } from './near';
 import { EXPLORE_SEARCH_PAGE, exploreSearchKey } from '@/lib/explore-search';
+
+// The map is loaded the first time it is shown (never in a first page load): maplibre-gl rides in this chunk only.
+const MapView = dynamic(() => import('./map-view').then((m) => m.MapView), {
+  ssr: false,
+  loading: () => <div className="map-view map-view-loading" aria-busy="true"><span className="sk" aria-hidden="true">Loading the map</span></div>,
+});
 
 type Sort = 'popular' | 'near' | 'open';
 const PAGE = 24;
@@ -148,6 +155,9 @@ export function ExploreView() {
   const headText = badge ? fill(c.explore.earned, { brand: c.brand }) : String(head);
   const whenText = f.when ? c.explore.when[f.when] : '';
   const setSort = (v: Sort) => { const n = new URLSearchParams(sp); if (v === 'popular') n.delete('sort'); else n.set('sort', v); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
+  // the same list, on a map: ?view=map keeps the address (a reload, a share and Back all land on the map)
+  const mapView = sp.get('view') === 'map';
+  const setMapView = (on: boolean) => { haptic(); const n = new URLSearchParams(sp.toString()); if (on) n.set('view', 'map'); else n.delete('view'); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
   const openFilters = useOpenFilters();
   const nf = nF(f);
   // Reset clears the filters, the order, the word and the mood; the city and area stay in the bar
@@ -171,11 +181,12 @@ export function ExploreView() {
         {/* owner 2026-11-26: Popular · Nearest, then Filters with Reset beside it, on one row under the count */}
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near]] as [Sort, string][]} val={sort === 'open' ? 'popular' : sort} onPick={setSort} />
+          <Seg<'list' | 'map'> opts={[['list', c.explore.list], ['map', c.explore.map]]} val={mapView ? 'map' : 'list'} onPick={(v) => setMapView(v === 'map')} />
           <button className={`btn secondary press ${nf ? 'on' : ''}`} data-act="filters" aria-haspopup="dialog" onClick={openFilters}><L n="sliders-horizontal" />{c.location.filters}{nf ? <em className="n-badge">{nf}</em> : null}</button>
           {nf || q ? <button className="icon-btn reset-btn press" data-act="reset-filters" aria-label={c.location.reset} onClick={reset}><L n="rotate-ccw" /></button> : null}
         </span></div>
       {sort === 'near' && pos ? <ApproxNote className="page-pad" /> : null}
-      {busy ? <div className="grid" aria-busy="true">{skel(8)}</div>
+      {mapView ? <MapView /> : busy ? <div className="grid" aria-busy="true">{skel(8)}</div>
         : res0.error && !res.length ? <Failed error={res0.error} retry={res0.retry} busy={res0.retrying} />
         : res.length ? <><div className={`grid ${reveal}`}>{res.map((p, i) => <Tile key={p.id} p={p} surface={q ? 'search' : 'explore'} position={i + 1} term={q || undefined} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>
           {res0.moreError ? <div className="more-fail" role="alert">{c.states.moreFailed}<button className="btn secondary press" data-act="retry-more" onClick={res0.retryMore}><L n="rotate-ccw" />{c.states.retry}</button></div> : null}<div ref={end} aria-hidden="true" /></>

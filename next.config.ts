@@ -33,13 +33,15 @@ export function buildContentSecurityPolicy({
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    `script-src 'self' 'unsafe-inline'${production ? "" : " 'unsafe-eval'"}`,
+    // `blob:` because MapLibre's tile worker is started from a Blob URL (its own chunk runs inside it)
+    `script-src 'self' 'unsafe-inline' blob:${production ? "" : " 'unsafe-eval'"}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
+    // the map's tiles: OpenFreeMap (vector tiles, sprites, glyphs), no key and no billing
+    `img-src 'self' data: blob: https: https://tiles.openfreemap.org`,
     "media-src 'self' https:",
     "font-src 'self' data:",
     "worker-src 'self' blob:",
-    `connect-src 'self' ${connections}`,
+    `connect-src 'self' ${connections} https://tiles.openfreemap.org`,
     "frame-src 'none'",
     // The e2e stack uses HTTP; upgrading redirect targets would break localhost requests.
     ...(production && process.env.NEXT_PUBLIC_ENV !== 'e2e' ? ["upgrade-insecure-requests"] : []),
