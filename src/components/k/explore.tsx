@@ -156,6 +156,7 @@ export function ExploreView() {
   const whenText = f.when ? c.explore.when[f.when] : '';
   const setSort = (v: Sort) => { const n = new URLSearchParams(sp); if (v === 'popular') n.delete('sort'); else n.set('sort', v); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
   // the same list, on a map: ?view=map keeps the address (a reload, a share and Back all land on the map)
+  // eslint-disable-next-line react-hooks/refs -- the kept address, as above
   const mapView = sp.get('view') === 'map';
   const setMapView = (on: boolean) => { haptic(); const n = new URLSearchParams(sp.toString()); if (on) n.set('view', 'map'); else n.delete('view'); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
   const openFilters = useOpenFilters();

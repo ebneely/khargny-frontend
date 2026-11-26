@@ -18,6 +18,7 @@ import { t12, k, hypePath } from './rules';
 import { toK, placeHref, type KPlace, type KStats } from './data';
 import { Carousel, Meta, OpenPiece, Actions, Go5, Tile, placeStatsQuery, badgeIcon, useBadgeLabel, useShare, bumpView, useMyViews } from './place';
 import { useQuery } from '@tanstack/react-query';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { Shell, putOpened } from './Shell';
 import { withBrand, HomeView, type HomeData } from './home';
 import { failKind } from '@5argny/core/rules';
@@ -28,6 +29,13 @@ import { useOpenCorrection } from './settings';
 
 // The place's own map, loaded when the place is drawn and never in the page's first load (the same rule as Explore's map).
 const PlaceMapCard = dynamic(() => import('./gl-map').then((m) => m.PlaceMapCard), { ssr: false });
+/** The map library (about 800 KB) is fetched only when its box nears the screen; the empty box keeps the same size, so
+ *  nothing moves when the map arrives. */
+function LazyPlaceMap(props: { lat: number; lng: number; name: string; address: string | null; lang: 'en' | 'ar' }) {
+  const slot = useRef<HTMLDivElement>(null);
+  const { hasIntersected } = useIntersectionObserver(slot as React.RefObject<Element>, { rootMargin: '200px' });
+  return hasIntersected ? <PlaceMapCard {...props} /> : <div ref={slot} className="place-map" aria-hidden="true" />;
+}
 
 export function useKPlace(slug: string) { return useKPlaceQ(slug).p; }
 /** The place and its query, for the screens that draw its loading and failed states. */
@@ -165,7 +173,7 @@ export function usePlaceParts(p: KPlace) {
       <span><svg className="gh-share" viewBox="0 0 20 20"><circle className="tap t1" cx="10" cy="10" r="3" /><circle className="tap t2" cx="10" cy="10" r="3" /><circle className="track" cx="10" cy="10" r="7.5" /><circle className="fill" cx="10" cy="10" r="7.5" pathLength={1} /><path className="arr" d="M10 13V5.5M7 8.2 10 5.2l3 3M5.5 11.5v3h9v-3" /></svg>{c.place.shareHint}</span></span><h1 className="t-display" dir="auto">{p.name}</h1>
       <p style={{ marginTop: 6 }}><Meta p={p} extra={band ? <span className="meta-area"><L n="wallet" />{band}</span> : null} /></p><OpenPiece p={p} /></div>
     <div className="place-tools"><Actions p={p} end={<IconBtn icon="more" label={c.common.more} cls="filled" act="place-more" id={p.id} onClick={placeMore} />} /></div>
-    {p.lat != null && p.lng != null ? <PlaceMapCard lat={p.lat} lng={p.lng} name={p.name} address={p.address} lang={lang} /> : null}
+    {p.lat != null && p.lng != null ? <LazyPlaceMap lat={p.lat} lng={p.lng} name={p.name} address={p.address} lang={lang} /> : null}
     <div className="phone-only"><Badges p={p} /><OverviewSlot id={p.id} /></div>
     {/* TODO: "<Place> services" (menu items with "from N EGP") once the backend serves p.services; the prototype's offers are samples */}
     {hours}{amen}{more.length ? <Group title={c.place.contact}>{more}</Group> : null}<Similar p={p} />

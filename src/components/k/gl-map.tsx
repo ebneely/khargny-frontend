@@ -11,6 +11,13 @@ import type { Map as MlMap, Marker as MlMarker } from 'maplibre-gl';
 export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 /** Arabic labels are shaped by MapLibre's RTL plugin, vendored under public/ so the CSP keeps script-src 'self'. */
 const RTL_PLUGIN = '/maplibre/rtl-text.js';
+/** MapLibre finds its worker next to its own script, which inside a Next chunk is the wrong place: it is served from
+ *  public/ instead (a copy of the installed package's file; map-worker.test.ts fails when the versions drift). */
+export const WORKER_URL = '/maplibre/maplibre-gl-worker.mjs';
+/** MapLibre accepts the RTL plugin once per page; a second call rejects, so every map asks only while it is unset. */
+function shapeArabic(maplibre: typeof import('maplibre-gl')) {
+  if (maplibre.getRTLTextPluginStatus() === 'unavailable') void maplibre.setRTLTextPlugin(RTL_PLUGIN, true).catch(() => undefined);
+}
 /** Cairo, for the first frame before anyone's position is known. */
 const EGYPT = { lat: 30.0444, lng: 31.2357 };
 
@@ -73,7 +80,8 @@ export function NearbyMap({ pins, here, accuracy, picked, onPick, onMove, lang }
     (async () => {
       const maplibre = await import('maplibre-gl');
       if (!alive || !box.current) return;
-      if (lang === 'ar') maplibre.setRTLTextPlugin(RTL_PLUGIN, true);
+      maplibre.setWorkerUrl(WORKER_URL);
+      if (lang === 'ar') shapeArabic(maplibre);
       const m = new maplibre.Map({
         container: box.current, style: MAP_STYLE, center: [EGYPT.lng, EGYPT.lat], zoom: 11,
         attributionControl: false, // our own line, over the map (CSS), keeps the required credit visible
@@ -158,7 +166,8 @@ export function PlaceMapCard({ lat, lng, name, address, lang }: { lat: number; l
     (async () => {
       const maplibre = await import('maplibre-gl');
       if (!alive || !box.current) return;
-      if (lang === 'ar') maplibre.setRTLTextPlugin(RTL_PLUGIN, true);
+      maplibre.setWorkerUrl(WORKER_URL);
+      if (lang === 'ar') shapeArabic(maplibre);
       const m = new maplibre.Map({
         container: box.current, style: MAP_STYLE, center: [lng, lat], zoom: 15,
         attributionControl: false, interactive: false,
