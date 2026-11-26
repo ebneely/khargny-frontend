@@ -16,7 +16,7 @@ export type { RoadKm };
 /** Cards mounted in one render are collected for this long, then asked for together. */
 const COALESCE_MS = 120;
 /** The endpoint answers in ~400 ms or not at all; the browser gives it a little room, then keeps the fallback. */
-const TIMEOUT_MS = 3_000;
+const TIMEOUT_MS = 1_500;
 /** A failed engine stays quiet instead of being asked again under every card. */
 const COOLDOWN_MS = 60_000;
 
@@ -29,6 +29,8 @@ let here: Here | null = null;
 const wanted = new Set<string>();
 /** Ids already asked for at this spot: a place with no road answer is not asked again and again. */
 let asked = new Set<string>();
+/** Ids the engine gave no answer for at this spot (missing, error or timeout): they show the straight-line "~N km". */
+let failed = new Set<string>();
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
@@ -65,15 +67,16 @@ async function flush() {
         signal: AbortSignal.timeout(TIMEOUT_MS),
       }),
     );
-    if (Object.keys(answer).length) {
-      values = { ...values, ...answer };
-      notify();
-    } else {
-      // An empty answer means the feature is off for this deploy: keep "~N km" and stop asking.
-      cooldownUntil = Date.now() + COOLDOWN_MS;
-    }
+    if (Object.keys(answer).length) values = { ...values, ...answer };
+    // An empty answer means the feature is off for this deploy: keep "~N km" and stop asking.
+    else cooldownUntil = Date.now() + COOLDOWN_MS;
+    const missed = batch.filter((id) => !answer[id]);
+    if (missed.length) failed = new Set([...failed, ...missed]);
+    notify();
   } catch {
     cooldownUntil = Date.now() + COOLDOWN_MS;
+    failed = new Set([...failed, ...batch]);
+    notify();
   } finally {
     running = false;
     if ([...wanted].some((id) => !values[id] && !asked.has(id))) schedule();
@@ -96,6 +99,7 @@ export function useRoadKm(
       here = { lat, lng };
       values = {};
       asked = new Set();
+      failed = new Set();
       notify();
     }
     wanted.add(id);
@@ -109,4 +113,22 @@ export function useRoadKm(
     () => (id ? (values[id] ?? null) : null),
     () => null,
   );
+}
+
+/**
+ * The road km and whether it is still on its way. While `waiting`, a card shows no figure (a blank of the same width), so
+ * the straight line is never shown first and then replaced by a bigger road number (owner 2026-11-26). After a failure,
+ * a timeout (1.5 s) or with the engine off, `waiting` is false and the card shows its straight-line "~N km".
+ */
+export function useRoadState(
+  id: string | null,
+  pos: { lat: number; lng: number } | null,
+): { road: RoadKm | null; waiting: boolean } {
+  const road = useRoadKm(id, pos);
+  const waiting = useSyncExternalStore(
+    subscribe,
+    () => !!id && !!pos && !values[id] && !failed.has(id) && Date.now() >= cooldownUntil,
+    () => false,
+  );
+  return { road, waiting: !road && waiting };
 }
