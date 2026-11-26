@@ -22,18 +22,22 @@ import { useK, useKS, haptic, spring } from './KProvider';
 import { catTotals, catTotalsKey } from './data';
 
 export type When = '' | 'now' | 'tonight' | 'weekend';
-export type F = { intent: string; cat: string; when: When; filters: Set<string> };
+/** The list order. Popular and Nearest are on the Explore row; Open first lives inside Filters (owner 2026-11-26). */
+export type Sort = 'popular' | 'near' | 'open';
+export const SORTS: Sort[] = ['popular', 'near', 'open'];
+export type F = { intent: string; cat: string; when: When; filters: Set<string>; sort: Sort; mood: string };
 export const WHENS: When[] = ['', 'now', 'tonight', 'weekend'];
 
 export function readF(q: URLSearchParams): F {
-  const when = q.get('when') as When;
-  return { intent: q.get('intent') || '', cat: q.get('cat') || '', when: WHENS.includes(when) ? when : '', filters: new Set((q.get('f') || '').split(',').filter(Boolean)) };
+  const when = q.get('when') as When, sort = q.get('sort') as Sort;
+  return { intent: q.get('intent') || '', cat: q.get('cat') || '', when: WHENS.includes(when) ? when : '', filters: new Set((q.get('f') || '').split(',').filter(Boolean)), sort: SORTS.includes(sort) ? sort : 'popular', mood: q.get('mood') || '' };
 }
-export const nF = (f: F) => (f.intent || f.cat ? 1 : 0) + (f.when ? 1 : 0) + f.filters.size;
+export const nF = (f: F) => (f.intent || f.cat ? 1 : 0) + (f.when ? 1 : 0) + f.filters.size + (f.sort !== 'popular' ? 1 : 0);
 export function writeF(f: F, keep: URLSearchParams) {
   const q = new URLSearchParams();
   if (f.intent) q.set('intent', f.intent); if (f.cat) q.set('cat', f.cat); if (f.when) q.set('when', f.when); if (f.filters.size) q.set('f', [...f.filters].join(','));
-  ['q', 'sort', 'badge'].forEach((k) => { const v = keep.get(k); if (v) q.set(k, v); });
+  if (f.sort !== 'popular') q.set('sort', f.sort); if (f.mood) q.set('mood', f.mood);
+  ['q', 'badge'].forEach((k) => { const v = keep.get(k); if (v) q.set(k, v); });
   return q;
 }
 
@@ -127,7 +131,10 @@ function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
     {bands.length ? <><h3 className="group-title"><L n="banknote" /> {c.filters.price}</h3>
       <div className="amen" style={{ marginBottom: 16 }}>{bands.map((b) => chip('b' + b.level, f.filters.has('band:' + b.level), b.label, null, null, () => toggle('band:' + b.level)))}</div></> : null}
     {must.length ? <><h3 className="group-title"><L n="list-checks" /> {c.filters.mustHave}</h3>
-      <div className="amen">{must.map((a) => chip(a.id, f.filters.has(a.id), (lang === 'ar' ? a.name : a.nameEn) || a.name, amenityIcons[a.nameEn || ''] || amenityIconFallback, null, () => toggle(a.id)))}</div></> : null}
+      <div className="amen" style={{ marginBottom: 16 }}>{must.map((a) => chip(a.id, f.filters.has(a.id), (lang === 'ar' ? a.name : a.nameEn) || a.name, amenityIcons[a.nameEn || ''] || amenityIconFallback, null, () => toggle(a.id)))}</div></> : null}
+    {/* Open first lives inside Filters (owner 2026-11-26): the Explore row offers Popular and Nearest only */}
+    <h3 className="group-title"><L n="arrow-down-wide-narrow" /> {c.filters.sort}</h3>
+    <div style={{ marginBottom: 8 }}><Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open]] as [Sort, string][]} val={f.sort} onPick={(v) => onChange({ ...f, sort: v })} /></div>
   </>;
 }
 
@@ -143,8 +150,8 @@ export function useListQuery(f: F) {
     // categories still loading: wait, never the whole of Egypt by mistake; a category name that matches none finds nothing
     ready: !wantCats || cats.length > 0, none: wantCats && categories.length > 0 && !cats.length,
     catIds: wantCats ? cats.map((x) => x.id) : [null],
-    params: { cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, when: f.when || undefined },
-    key: [cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, f.when] as const,
+    params: { cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, when: f.when || undefined, mood: f.mood || undefined },
+    key: [cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, f.when, f.mood] as const,
   };
 }
 export const totalKey = (key: ReturnType<typeof useListQuery>['key']) => ['places', 'total', ...key] as const;
@@ -218,7 +225,7 @@ export function useOpenFilters() {
       const [, tick] = useState(0);
       const sub = useRef(false); if (!sub.current) { sub.current = true; listeners.add(() => tick((n) => n + 1)); }
       return part === 'body' ? <FiltersBody f={staged} onChange={set} />
-        : <FiltersFoot get={() => staged} onClear={() => set({ intent: '', cat: '', when: '', filters: new Set() })} onApply={() => { closeTop(); const q = writeF(staged, keep); go(`${langPrefix(lang)}/explorer/${q.toString() ? '?' + q : ''}`); }} />;
+        : <FiltersFoot get={() => staged} onClear={() => set({ intent: '', cat: '', when: '', filters: new Set(), sort: 'popular', mood: '' })} onApply={() => { closeTop(); const q = writeF(staged, keep); go(`${langPrefix(lang)}/explorer/${q.toString() ? '?' + q : ''}`); }} />;
     };
     openSheet(c.filters.title, <Live part="body" />, <Live part="foot" />);
   };

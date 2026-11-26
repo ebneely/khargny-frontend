@@ -161,7 +161,7 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 
 /* sheet: ONE component for every action (phone bottom sheet / desktop side panel) */
 .scrim{position:fixed;inset:0;z-index:60;background:rgba(20,14,10,.34);opacity:0}
-.sheet{position:fixed;z-index:61;left:0;right:0;bottom:0;max-height:90vh;max-height:90dvh;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:var(--card);box-shadow:var(--sh2);transform:translateY(100%);overflow:hidden;will-change:transform;transform-origin:50% 0}
+.sheet{position:fixed;z-index:61;left:0;right:0;bottom:0;max-height:90vh;max-height:calc(90dvh - env(safe-area-inset-top,0px));display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:var(--card);box-shadow:var(--sh2);transform:translateY(100%);overflow:hidden;will-change:transform;transform-origin:50% 0}
 .sheet.content{height:90vh;height:90dvh;max-height:90dvh}
 .sheet.behind{pointer-events:none}
 .grabber{padding:8px 0 2px;display:grid;place-items:center;cursor:grab;touch-action:none}

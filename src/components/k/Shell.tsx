@@ -28,9 +28,10 @@ import { hasLocBar, type Frame } from './frame';
 import { usePosition } from './near';
 import { useK, useKS, haptic, reduce, spring, type Tab } from './KProvider';
 import { initialScrollDirection, scrollDirection } from '@/lib/scroll-direction';
-import { useOpenFilters, readF, nF, useAreaCounts } from './filters';
+import { useAreaCounts } from './filters';
+import { useMoods } from '@/lib/api/hooks/use-moods';
 import { useMine, useSavedSections, useCollections } from './collections';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 export const NAV: [Tab, string, 'home' | 'explore' | 'market' | 'saved' | 'cog'][] = [['home', '/', 'home'], ['explore', '/explorer/', 'explore'], ['market', '/marketplace/', 'market'], ['saved', '/saved/', 'saved'], ['profile', '/settings/', 'cog']];
 let lastNavTab: Tab | null = null;
@@ -443,34 +444,52 @@ function CitySheet({ thenArea }: { thenArea: boolean }) {
   </div>;
 }
 
-/** How many filters the address asks for, read on the client (a cached page cannot read the request; see UrlQuerySync). */
-function FilterCountSync({ withFilters, onChange }: { withFilters: boolean; onChange: (n: number) => void }) {
+/** Moods are listed in the dashboard's own order (its `sort`), lowest first. */
+export const bySort = <T extends { sort: number }>(list: T[]) => [...list].sort((a, b) => Number(a.sort ?? 0) - Number(b.sort ?? 0));
+
+/** The Mood dropdown (owner 2026-11-26): a sheet of every mood with its icon and name, and "Any mood" to clear it. On
+ *  Explore the choice re-ranks the list in place (?mood=); on Home it opens Explore ranked for it (Home's feed has no
+ *  mood). */
+function MoodPill({ explore }: { explore: boolean }) {
+  const { c, lang, openSheet, go } = useK();
   const sp = useSearchParams();
-  const n = withFilters ? nF(readF(sp)) : 0;
-  useEffect(() => { onChange(n); }, [n, onChange]);
-  return null;
+  const moods = useMoods();
+  const slug = sp.get('mood') || '';
+  const mood = moods.find((m) => m.slug === slug);
+  const apply = (next: string) => {
+    if (explore) {
+      const q = new URLSearchParams(sp.toString());
+      if (next) q.set('mood', next); else q.delete('mood');
+      history.replaceState(null, '', `${location.pathname}${q.toString() ? '?' + q : ''}`);
+    } else go(`${langPrefix(lang)}/explorer/${next ? '?mood=' + encodeURIComponent(next) : ''}`);
+  };
+  const label = (m: (typeof moods)[number]) => (lang === 'ar' ? m.nameAr || m.name : m.nameEn || m.name);
+  return <button className={`loc-pill press ${mood ? 'on' : ''}`} data-act="mood" aria-haspopup="dialog" aria-label={c.location.mood}
+    onClick={() => openSheet(c.location.mood, <div role="radiogroup">
+      <LocOption on={!mood} icon={<L n="sparkles" />} label={c.location.allMoods} act="pick-mood" then={() => apply('')} />
+      {bySort(moods).map((m) => <LocOption key={m.slug} on={m.slug === slug} icon={<L n={m.icon} />} label={label(m)} act="pick-mood" then={() => apply(m.slug)} />)}
+    </div>)}>{mood ? <L n={mood.icon} /> : <L n="sparkles" />}<b>{mood ? label(mood) : c.location.mood}</b><L n="chevron-down" cls="chev" /></button>;
+}
+/** The Mood pill reads ?mood= with useSearchParams, which a kept (statically rendered) page loads inside a boundary. */
+function MoodSlot({ explore }: { explore: boolean }) {
+  return <Suspense fallback={<button className="loc-pill press" data-act="mood" aria-haspopup="dialog"><L n="sparkles" /><b>{''}</b><L n="chevron-down" cls="chev" /></button>}><MoodPill explore={explore} /></Suspense>;
 }
 
-/** ONE location bar, pinned under the top bar on Home, Explore and Marketplace; Filters joins it on Explore only.
- *  City and Area are sheets (owner 2026-11-14, "all sheets"). */
+/** ONE location bar, pinned under the top bar on Home, Explore and Marketplace: the three dropdowns City, Area, Mood
+ *  (owner 2026-11-26; the chip rail is gone and Filters/Reset live under the count on Explore). */
 function LocBar({ withFilters }: { withFilters: boolean }) {
-  const { setLoc, c, lang, toast, go, openSheet } = useK(), loc = useKS((s) => s.loc);
+  const { c, lang, openSheet } = useK(), loc = useKS((s) => s.loc);
   const { data: cities = [] } = useCities();
   const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
   const cityName = city ? cityLabel(city, lang) : null;
   useGroupViews('city', cities.map((x) => x.id)); useGroupViews('area', city?.areaKeys ?? []); useAreaCounts(city?.id); // asked now, so the sheets open with their numbers
   const openCity = (thenArea: boolean) => openSheet(c.location.citySheet, <CitySheet thenArea={thenArea} />);
   const openArea = (cty: City) => openSheet(fill(c.location.areaSheet, { city: cityLabel(cty, lang) }), <AreaSheet city={cty} />);
-  const reset = (e: React.MouseEvent<HTMLButtonElement>) => { const ic = e.currentTarget.querySelector('.lucide'); if (ic) animate(ic, { transform: ['rotate(0deg)', 'rotate(-360deg)'] }, spring(0, 0.5)); haptic(); setTimeout(() => { setLoc({ city: null, area: null }); if (n) { const keep = new URLSearchParams(location.search); ['intent', 'cat', 'when', 'f'].forEach((k) => keep.delete(k)); go(`${location.pathname}${keep.toString() ? '?' + keep : ''}`); } toast(c.location.cleared); }, 220); };
-  const openFilters = useOpenFilters();
-  const [n, setN] = useState(0);
   return (
     <div className="locbar" role="group" aria-label={c.location.aria}>
-      <Suspense fallback={null}><FilterCountSync withFilters={withFilters} onChange={setN} /></Suspense>
       <button className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" aria-haspopup="dialog" onClick={() => openCity(false)}>{loc.city ? <Gov name={loc.city} fallback={<L n="map-pin" />} /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
       <button className={`loc-pill press ${loc.area ? 'on' : ''}`} data-act="area" aria-haspopup="dialog" onClick={() => (city ? openArea(city) : openCity(true))}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
-      {withFilters ? <button className={`loc-pill filters press ${n ? 'on' : ''}`} data-act="filters" onClick={openFilters}><L n="sliders-horizontal" /><b>{c.location.filters}</b>{n ? <em className="n-badge">{n}</em> : null}</button> : null}
-      {loc.city || loc.area || n ? <button className="icon-btn reset-btn press" data-act="reset-all" aria-label={c.location.reset} onClick={reset}><L n="rotate-ccw" /></button> : null}
+      <MoodSlot explore={withFilters} />
     </div>
   );
 }

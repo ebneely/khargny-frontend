@@ -21,9 +21,9 @@ import { toK, type KPlace } from './data';
 import { Tile, TileSkel, BadgeTags } from './place';
 import { trackSearchResults } from '@/lib/analytics/track';
 import { Shell, usePlaceName } from './Shell';
-import { readF, useCatIds, useLocIds, useCounts, usePriceBands, useListQuery, useEarned, totalKey, type When } from './filters';
+import { readF, nF, useOpenFilters, useCatIds, useLocIds, useCounts, usePriceBands, useListQuery, useEarned, totalKey, type When } from './filters';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
-import { useK, useKS, reduce } from './KProvider';
+import { useK, useKS, reduce, haptic } from './KProvider';
 import { usePosition, askPosition, askFail, nearParam, ApproxNote } from './near';
 import { EXPLORE_SEARCH_PAGE, exploreSearchKey } from '@/lib/explore-search';
 
@@ -113,9 +113,9 @@ export function ExploreView() {
   const sp = kept.current;
   const f = readF(sp);
   const q = (sp.get('q') || '').trim(), badge = sp.get('badge') === '1';
-  const asked = sp.get('sort') || '';
   /* eslint-enable react-hooks/refs */
-  const sort = (['near', 'open'].includes(asked) ? asked : 'popular') as Sort;
+  // the order and the mood ride in the address with the filters (Open first is chosen inside Filters, owner 2026-11-26)
+  const sort = f.sort;
   const where = usePlaceName();
   const pos = usePosition();
   const res0 = useResults(f, q, badge, nearParam(pos), sort === 'near' && !!pos, sort === 'popular'); // list cards carry their week of hours, so Open first works on them
@@ -148,6 +148,10 @@ export function ExploreView() {
   const headText = badge ? fill(c.explore.earned, { brand: c.brand }) : String(head);
   const whenText = f.when ? c.explore.when[f.when] : '';
   const setSort = (v: Sort) => { const n = new URLSearchParams(sp); if (v === 'popular') n.delete('sort'); else n.set('sort', v); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
+  const openFilters = useOpenFilters();
+  const nf = nF(f);
+  // Reset clears the filters, the order, the word and the mood; the city and area stay in the bar
+  const reset = () => { haptic(); const n = new URLSearchParams(sp.toString()); ['intent', 'cat', 'when', 'f', 'sort', 'q', 'badge', 'mood'].forEach((key) => n.delete(key)); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
   const busy = res0.loading;
   const filtered = !!(loc.city || f.intent || f.cat || f.when || q || badge || f.filters.size);
   // the next page starts loading a screen before the end of the grid
@@ -164,7 +168,12 @@ export function ExploreView() {
     <Shell cur="explore" wide withFilters>
       <h1 className="t-display page-pad" style={{ margin: '2px 0 10px' }}>{head} <span style={{ color: 'var(--ink3)', fontWeight: 800 }}>{c.explore.in} <PlaceWord word={where} key={loc.city + '|' + loc.area} /></span></h1>
       <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{total == null ? (res0.error ? null : <span className="sk" aria-hidden="true"><b>000</b> {fill(c.explore.results, { n: '' }).trim()}</span>) : <><b style={{ color: 'var(--ink)' }}>{total}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
-        <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open]] as [Sort, string][]} val={sort} onPick={setSort} /></div>
+        {/* owner 2026-11-26: Popular · Nearest, then Filters with Reset beside it, on one row under the count */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near]] as [Sort, string][]} val={sort === 'open' ? 'popular' : sort} onPick={setSort} />
+          <button className={`btn secondary press ${nf ? 'on' : ''}`} data-act="filters" aria-haspopup="dialog" onClick={openFilters}><L n="sliders-horizontal" />{c.location.filters}{nf ? <em className="n-badge">{nf}</em> : null}</button>
+          {nf || q ? <button className="icon-btn reset-btn press" data-act="reset-filters" aria-label={c.location.reset} onClick={reset}><L n="rotate-ccw" /></button> : null}
+        </span></div>
       {sort === 'near' && pos ? <ApproxNote className="page-pad" /> : null}
       {busy ? <div className="grid" aria-busy="true">{skel(8)}</div>
         : res0.error && !res.length ? <Failed error={res0.error} retry={res0.retry} busy={res0.retrying} />

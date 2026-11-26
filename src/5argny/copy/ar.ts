@@ -21,7 +21,7 @@ export const ar: Copy = {
   intents: { eat: 'أكل', coffee: 'قهوة', fun: 'خروجة', history: 'تاريخ', stay: 'إقامة', shop: 'تسوق', outdoors: 'في الهوا' },
   moments: { morningCoffee: 'قهوة الصبح', lunch: 'غدا', goldenHour: 'قبل المغرب', dinner: 'عشا', lateNight: 'سهرة' },
   location: {
-    aria: 'فين', allEgypt: 'مصر كلها', area: 'المنطقة', allAreas: 'كل المناطق', filters: 'فلاتر', reset: 'امسح المكان والفلاتر',
+    aria: 'فين', allEgypt: 'مصر كلها', area: 'المنطقة', allAreas: 'كل المناطق', category: 'النوع', mood: 'المزاج', allMoods: 'أي مزاج', filters: 'فلاتر', reset: 'امسح المكان والفلاتر',
     citySheet: 'المحافظة', areaSheet: 'منطقة في {city}', cityPicked: '{city}. اختار منطقة عشان تضيق البحث', cleared: 'اتمسح. بنعرض مصر كلها', egypt: 'مصر',
   },
   sidebar: { shortcuts: 'عايز تعمل إيه؟', collections: 'القوايم', privacy: 'سياسة الخصوصية', getTheApp: 'نزّل التطبيق', contact: 'تواصل معانا', follow: 'تابعنا' },
@@ -89,7 +89,7 @@ export const ar: Copy = {
     when: { any: 'أي وقت', now: 'مفتوح دلوقتي', tonight: 'بالليل', weekend: 'الويك إند ده' },
     sort: { popular: 'الأشهر', near: 'الأقرب', open: 'المفتوح الأول', rising: 'صاعد' },
   },
-  filters: { title: 'فلاتر', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', showPlaces: 'اعرض الأماكن', show: 'اعرض {n} مكان', seeAllCats: 'كل الأنواع', allCats: 'كل الأنواع', findCat: 'دوّر على نوع', noCat: 'مفيش نوع اسمه “{q}”' },
+  filters: { title: 'فلاتر', sort: 'مفتوح الأول', when: 'إمتى', category: 'النوع', price: 'السعر للفرد', mustHave: 'لازم يكون فيه', clear: 'امسح', showPlaces: 'اعرض الأماكن', show: 'اعرض {n} مكان', seeAllCats: 'كل الأنواع', allCats: 'كل الأنواع', findCat: 'دوّر على نوع', noCat: 'مفيش نوع اسمه “{q}”' },
   market: {
     title: 'السوق', all: 'الكل', verifiedOnly: 'المتأكد من هويتهم بس', verified: 'الهوية متأكدة', notVerified: 'الهوية مش متأكدة', trips: '{n} رحلة', seatsLeft: 'فاضل {n} مكان',
     perPerson: 'للفرد', hostKinds: { guide: 'مرشد', individual: 'فرد', office: 'شركة سياحة' },

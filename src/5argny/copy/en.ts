@@ -20,7 +20,7 @@ export const en = {
   intents: { eat: 'Eat', coffee: 'Coffee', fun: 'Have fun', history: 'History', stay: 'Stay', shop: 'Shop', outdoors: 'Outdoors' },
   moments: { morningCoffee: 'Morning coffee', lunch: 'Lunch', goldenHour: 'Golden hour outside', dinner: 'Dinner', lateNight: 'Late night' },
   location: {
-    aria: 'Where', allEgypt: 'All Egypt', area: 'Area', allAreas: 'All areas', filters: 'Filters', reset: 'Clear location and filters',
+    aria: 'Where', allEgypt: 'All Egypt', area: 'Area', allAreas: 'All areas', category: 'Category', mood: 'Mood', allMoods: 'Any mood', filters: 'Filters', reset: 'Clear location and filters',
     citySheet: 'City', areaSheet: 'Area in {city}', cityPicked: '{city}. Pick an area to narrow it', cleared: 'Cleared. Showing all of Egypt', egypt: 'Egypt',
   },
   sidebar: { shortcuts: 'Shortcuts', collections: 'Collections', privacy: 'Privacy policy', getTheApp: 'Get the app', contact: 'Contact', follow: 'Follow us' },
@@ -88,7 +88,7 @@ export const en = {
     when: { any: 'Any time', now: 'Open now', tonight: 'Tonight', weekend: 'This weekend' },
     sort: { popular: 'Popular', near: 'Nearest', open: 'Open first', rising: 'Rising' },
   },
-  filters: { title: 'Filters', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places', showPlaces: 'Show places', seeAllCats: 'See all categories', allCats: 'All categories', findCat: 'Find a category', noCat: 'No category called “{q}”' },
+  filters: { title: 'Filters', sort: 'Open first', when: 'When', category: 'Category', price: 'Price per person', mustHave: 'Must have', clear: 'Clear', show: 'Show {n} places', showPlaces: 'Show places', seeAllCats: 'See all categories', allCats: 'All categories', findCat: 'Find a category', noCat: 'No category called “{q}”' },
   market: {
     title: 'Marketplace', all: 'All', verifiedOnly: 'ID verified only', verified: 'ID verified', notVerified: 'Not verified', trips: '{n} trips', seatsLeft: '{n} seats left',
     perPerson: 'per person', hostKinds: { guide: 'Guide', individual: 'Individual', office: 'Travel office' },
