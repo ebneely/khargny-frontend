@@ -4,7 +4,7 @@ import type { Copy } from './en.ts';
 // the rest are written here. Western digits only; no "·".
 export const ar: Copy = {
   brand: 'خرجني',
-  units: { am: 'ص', pm: 'م', hour: 'س', minute: 'د', thousand: 'k', egp: '{n} جنيه', fromEgp: 'من {n} جنيه', km: '{km} كم', kmAway: 'حوالي {km} كم' },
+  units: { am: 'ص', pm: 'م', hour: 'س', minute: 'د', thousand: 'k', egp: '{n} جنيه', fromEgp: 'من {n} جنيه', km: '{km} كم', kmAway: 'حوالي {km} كم', minByCar: '{n} دقيقة بالعربية' },
   days: {
     short: ['الحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'],
     long: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],

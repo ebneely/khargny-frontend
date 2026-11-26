@@ -2,7 +2,7 @@
 // {name} placeholders are filled by fill() in copy/index.ts. No "·" separators; 12-hour time; western digits.
 export const en = {
   brand: '5argny',
-  units: { am: 'am', pm: 'pm', hour: 'h', minute: 'min', thousand: 'k', egp: '{n} EGP', fromEgp: 'from {n} EGP', km: '{km} km', kmAway: '~{km} km away' },
+  units: { am: 'am', pm: 'pm', hour: 'h', minute: 'min', thousand: 'k', egp: '{n} EGP', fromEgp: 'from {n} EGP', km: '{km} km', kmAway: '~{km} km away', minByCar: '{n} min by car' },
   days: {
     short: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     long: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
