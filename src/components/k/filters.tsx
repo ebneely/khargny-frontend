@@ -32,7 +32,8 @@ export function readF(q: URLSearchParams): F {
   const when = q.get('when') as When, sort = q.get('sort') as Sort;
   return { intent: q.get('intent') || '', cat: q.get('cat') || '', when: WHENS.includes(when) ? when : '', filters: new Set((q.get('f') || '').split(',').filter(Boolean)), sort: SORTS.includes(sort) ? sort : 'popular' };
 }
-export const nF = (f: F) => (f.intent || f.cat ? 1 : 0) + (f.when ? 1 : 0) + f.filters.size + (f.sort !== 'popular' ? 1 : 0);
+/** The Filters badge counts only what lives inside the sheet (owner 2026-11-26, round 2): the category is the Mood pill's, never counted here. */
+export const nF = (f: F) => (f.when ? 1 : 0) + f.filters.size + (f.sort !== 'popular' ? 1 : 0);
 export function writeF(f: F, keep: URLSearchParams) {
   const q = new URLSearchParams();
   if (f.intent) q.set('intent', f.intent); if (f.cat) q.set('cat', f.cat); if (f.when) q.set('when', f.when); if (f.filters.size) q.set('f', [...f.filters].join(','));
@@ -129,10 +130,7 @@ export function CategoryPicker({ intent, cat, onPick }: { intent: string; cat: s
 }
 
 function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
-  const { c, lang, openSheet, closeTop } = useK();
-  const { data: categories = [] } = useCategories();
-  const picked = f.cat ? categories.find((x) => (x.nameEn || x.nameAr) === f.cat || x.slug === f.cat || x.id === f.cat) : null;
-  const count = useCounts(f.when);
+  const { c, lang } = useK();
   const bands = usePriceBands();
   const { data: amenities = [] } = useAmenities();
   const must = mustHaveAmenities.map((n) => amenities.find((a) => a.nameEn === n)).filter(Boolean) as typeof amenities;
@@ -142,11 +140,7 @@ function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
   return <>
     <h3 className="group-title"><L n="clock" /> {c.filters.when}</h3>
     <div style={{ marginBottom: 16 }}><Seg opts={WHENS.map((w) => [w, c.explore.when[w || 'any']] as [When, string])} val={f.when} onPick={(w) => onChange({ ...f, when: w })} /></div>
-    <h3 className="group-title"><L n="layout-grid" /> {c.filters.category}</h3>
-    <div className="amen" style={{ marginBottom: 16 }}>{INTENTS.map((x) => chip(x.key, f.intent === x.key, c.intents[x.key], x.icon, count(x.cats), () => onChange({ ...f, intent: f.intent === x.key ? '' : x.key, cat: '' })))}
-      {picked ? chip('cat', true, (lang === 'ar' ? picked.nameAr : picked.nameEn || picked.nameAr) || picked.slug, catIcon(picked.nameEn || ''), count([picked.nameEn || '']), () => onChange({ ...f, cat: '' })) : null}
-      {/* every category, in a sheet stacked over Filters; picking one comes back here with it selected (still staged) */}
-      <button className="chip press" data-act="all-cats" onClick={() => openSheet(c.filters.allCats, <AllCats when={f.when} cur={f.cat} onPick={(cat) => { onChange({ ...f, cat, intent: '' }); closeTop(); }} />)}><L n="layout-grid" />{c.filters.seeAllCats}<L n="chevron-right" /></button></div>
+    {/* the category is the Mood pill's own dropdown now (owner 2026-11-26, round 2): Filters holds no Category section */}
     {bands.length ? <><h3 className="group-title"><L n="banknote" /> {c.filters.price}</h3>
       <div className="amen" style={{ marginBottom: 16 }}>{bands.map((b) => chip('b' + b.level, f.filters.has('band:' + b.level), b.label, null, null, () => toggle('band:' + b.level)))}</div></> : null}
     {must.length ? <><h3 className="group-title"><L n="list-checks" /> {c.filters.mustHave}</h3>
