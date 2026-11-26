@@ -177,7 +177,9 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
   // animation while the page behind updates; a place opening as a sheet on a phone stays a sheet
   useEffect(() => {
     const onPick = (e: MouseEvent) => {
-      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      // a link whose own handler already took over (Suggest a correction opens its sheet) is not a picker choice:
+      // closing everything here shut the place sheet and the new sheet, and dropped the person on the page under it
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as Element).closest?.('.sheet a[href]') as HTMLAnchorElement | null; if (!a || a.target) return;
       const url = new URL(a.href, location.href); if (url.origin !== location.origin) return;
       if (!desk() && isSheetPath(url.pathname)) return;

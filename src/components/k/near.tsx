@@ -12,7 +12,7 @@ import { useCities } from '@/lib/api/hooks/use-cities';
 import { useCategories } from '@/lib/api/hooks/use-categories';
 import { Bit } from './bits';
 import { L } from './icons';
-import { useRoadKm } from './road';
+import { useRoadState } from './road';
 import { toK, type KPlace } from './data';
 import { useK, haptic } from './KProvider';
 
@@ -131,10 +131,12 @@ export function KmAway({ p, cls }: { p: Pick<KPlace, 'id' | 'distanceKm' | 'area
   const pos = usePosition();
   const rough = approx && p.distanceKm != null ? Math.round(p.distanceKm) : null;
   const km = approx ? null : p.distanceKm;
-  const road = useRoadKm(km == null ? null : p.id, pos);
+  const { road, waiting } = useRoadState(km == null ? null : p.id, pos);
   const text = rough != null ? fill(c.units.kmRough, { km: rough }) : approx ? p.area || p.city : km == null ? null : fill(road ? c.units.km : c.units.kmAway, { km: kmText(road ? road.km : km) });
   if (!text) return null;
-  return cls === 'meta-area' ? <span className="meta-area"><L n="map-pin" />{text}</span> : <Bit icon="map-pin">{text}</Bit>;
+  // while the road answer is on its way the slot keeps its width but shows nothing: one number, never a jump from ~N to N
+  const hold = waiting && !approx ? { visibility: 'hidden' as const } : undefined;
+  return cls === 'meta-area' ? <span className="meta-area" style={hold} aria-hidden={hold ? true : undefined}><L n="map-pin" />{text}</span> : hold ? <span style={hold} aria-hidden><Bit icon="map-pin">{text}</Bit></span> : <Bit icon="map-pin">{text}</Bit>;
 }
 
 /**
