@@ -94,12 +94,12 @@ function MapNear() {
 function MapChosen({ f, q: word }: { f: F; q: string }) {
   const { lang } = useK();
   const pos = usePosition();
-  const L = useListQuery(f);
+  const Lq = useListQuery(f);
   const cats = useCatIds(f);
   const { cityId } = useLocIds();
   const list = useQuery({
     // pages of 50 up to 200 pins: the same params the Explore list asks (useListQuery) plus the search's q
-    queryKey: ['map', 'chosen', ...L.key, word, lang] as const, enabled: L.ready && !L.none, staleTime: 60_000,
+    queryKey: ['map', 'chosen', ...Lq.key, word, lang] as const, enabled: Lq.ready && !Lq.none, staleTime: 60_000,
     placeholderData: (prev) => prev, // a change keeps the old pins on the map until the new answer lands
     queryFn: async () => {
       if (word) {
@@ -114,13 +114,13 @@ function MapChosen({ f, q: word }: { f: F; q: string }) {
         return items;
       }
       // the list route, one cursor per category of the chosen mood (the route takes one categoryId), merged in order
-      const cursors: Record<string, string | null> = Object.fromEntries(L.catIds.map((id) => [id ?? 'all', '']));
+      let cursors: Record<string, string | null> = Object.fromEntries(Lq.catIds.map((id) => [id ?? 'all', '']));
       const items: unknown[] = [];
       for (let round = 0; round < 4 && items.length < 200; round++) {
         const open = Object.entries(cursors).filter(([, cur]) => cur !== null);
         if (!open.length) break;
         const answers = await Promise.all(open.map(async ([id, cur]) => {
-          const raw = await apiRequest<{ meta?: { nextCursor?: string | null } }>('GET', '/v1/places', { params: { ...L.params, categoryId: id === 'all' ? undefined : id, cursor: cur || undefined, limit: 50 } });
+          const raw = await apiRequest<{ meta?: { nextCursor?: string | null } }>('GET', '/v1/places', { params: { ...Lq.params, categoryId: id === 'all' ? undefined : id, cursor: cur || undefined, limit: 50 } });
           return [id, raw.meta?.nextCursor || null, normalizePlaceList(raw).items] as const;
         }));
         for (const [id, next, page] of answers) { cursors[id] = next; items.push(...page); }
