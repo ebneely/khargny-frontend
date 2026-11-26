@@ -256,6 +256,10 @@ svg{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-widt
 .chip .lucide{width:15px;height:15px}
 /* Explore controls: What / Where · When · Filters / count + sort */
 .ctl-row{display:flex;align-items:center;gap:8px;margin:0 0 12px;flex-wrap:wrap}
+/* the controls never wrap to a second line, at any width (owner 2026-11-26, round 2) */
+.ctl-row.nowrap{flex-wrap:nowrap}
+.ctl-set{display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
+.ctl-set .seg,.ctl-set .btn{flex:none}
 .ctl-pill{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 9px;border-radius:999px;background:var(--card);box-shadow:var(--sh1);font-size:13px;font-weight:650;color:var(--ink)}
 .ctl-pill .lucide{width:16px;height:16px;color:var(--ink2)}
 .ctl-pill .chev{width:14px;height:14px;margin-inline-start:-2px}
@@ -509,9 +513,10 @@ svg.gov{width:var(--ico);height:var(--ico);fill:none;stroke:currentColor;stroke-
 .trend-main .tag{margin-top:3px}
 .rail-card .btn.plain{justify-self:start;padding:0}
 .rail-card .btn.plain .lucide{width:14px;height:14px}
-/* reset */
-.reset-btn{flex:none;width:30px;height:30px;background:var(--card);box-shadow:var(--sh1);color:var(--accent)}
+/* reset: a labelled pill beside Filters; under 420 px it shows only its icon (the aria-label keeps the words) */
+.reset-btn{flex:none;color:var(--accent)}
 .reset-btn .lucide{width:15px;height:15px}
+@media (max-width:420px){ .reset-btn{padding:0 10px} .reset-btn .reset-txt{display:none} }
 
 /* ---- post footer (critique fix): one block, one 12px edge, one row height ---- */
 .post-foot{padding:8px 12px 10px}

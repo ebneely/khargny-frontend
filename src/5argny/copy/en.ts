@@ -20,7 +20,7 @@ export const en = {
   intents: { eat: 'Eat', coffee: 'Coffee', fun: 'Have fun', history: 'History', stay: 'Stay', shop: 'Shop', outdoors: 'Outdoors' },
   moments: { morningCoffee: 'Morning coffee', lunch: 'Lunch', goldenHour: 'Golden hour outside', dinner: 'Dinner', lateNight: 'Late night' },
   location: {
-    aria: 'Where', allEgypt: 'All Egypt', area: 'Area', allAreas: 'All areas', category: 'Category', mood: 'Mood', allMoods: 'Any mood', filters: 'Filters', reset: 'Clear location and filters',
+    aria: 'Where', allEgypt: 'All Egypt', area: 'Area', allAreas: 'All areas', category: 'Category', mood: 'Mood', allMoods: 'Any mood', filters: 'Filters', reset: 'Clear location and filters', resetBtn: 'Reset',
     citySheet: 'City', areaSheet: 'Area in {city}', cityPicked: '{city}. Pick an area to narrow it', cleared: 'Cleared. Showing all of Egypt', egypt: 'Egypt',
   },
   sidebar: { shortcuts: 'Shortcuts', collections: 'Collections', privacy: 'Privacy policy', getTheApp: 'Get the app', contact: 'Contact', follow: 'Follow us' },

@@ -21,7 +21,7 @@ export const ar: Copy = {
   intents: { eat: 'أكل', coffee: 'قهوة', fun: 'خروجة', history: 'تاريخ', stay: 'إقامة', shop: 'تسوق', outdoors: 'في الهوا' },
   moments: { morningCoffee: 'قهوة الصبح', lunch: 'غدا', goldenHour: 'قبل المغرب', dinner: 'عشا', lateNight: 'سهرة' },
   location: {
-    aria: 'فين', allEgypt: 'مصر كلها', area: 'المنطقة', allAreas: 'كل المناطق', category: 'النوع', mood: 'المزاج', allMoods: 'أي مزاج', filters: 'فلاتر', reset: 'امسح المكان والفلاتر',
+    aria: 'فين', allEgypt: 'مصر كلها', area: 'المنطقة', allAreas: 'كل المناطق', category: 'النوع', mood: 'المزاج', allMoods: 'أي مزاج', filters: 'فلاتر', reset: 'امسح المكان والفلاتر', resetBtn: 'امسح',
     citySheet: 'المحافظة', areaSheet: 'منطقة في {city}', cityPicked: '{city}. اختار منطقة عشان تضيق البحث', cleared: 'اتمسح. بنعرض مصر كلها', egypt: 'مصر',
   },
   sidebar: { shortcuts: 'عايز تعمل إيه؟', collections: 'القوايم', privacy: 'سياسة الخصوصية', getTheApp: 'نزّل التطبيق', contact: 'تواصل معانا', follow: 'تابعنا' },
