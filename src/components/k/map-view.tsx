@@ -13,6 +13,7 @@ import { L } from './icons';
 import { useK, haptic } from './KProvider';
 import { usePosition, posAccuracy, askPosition, nearParam, KmAway, ApproxNote } from './near';
 import { NearbyMap, type MapPin } from './gl-map';
+import { haversineKm } from '@5argny/core/rules';
 
 /** The nearest 50 places to a point (the same /v1/places?near=&sort=distance call the lists use). */
 async function fetchNear(near: string): Promise<unknown[]> {
@@ -65,7 +66,7 @@ export function MapView() {
         <div className="map-card card">
           <Link className="map-card-main press" href={placeHref(card, lang)}>
             {card.photos[0] ? <img decoding="async" src={card.photos[0].s} alt="" /> : <span className="map-card-img" />}
-            <span className="grow"><b dir="auto">{card.name}</b><span className="t-small">{card.area || card.city}</span><KmAway p={card} /></span>
+            <span className="grow"><b dir="auto">{card.name}</b><span className="t-small">{card.area || card.city}</span>{/* the list's distanceKm is measured from the map's centre once it is panned: the card measures from the person, or shows none */}{here && card.lat != null && card.lng != null ? <KmAway p={{ ...card, distanceKm: haversineKm(here, { lat: card.lat, lng: card.lng }) }} /> : null}</span>
             <L n="chevron-right" />
           </Link>
           <button className="icon-btn press" aria-label={c.common.close} data-act="map-card-close" onClick={() => setPicked(null)}><L n="x" /></button>
