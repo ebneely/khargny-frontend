@@ -23,7 +23,7 @@ import { Shell, usePlaceName, useLocKeys } from './Shell';
 import { useK, useKS, haptic, reduce, spring } from './KProvider';
 import { ColCard, useGroupViews } from './collections';
 import { MarketCard } from './market';
-import { usePosition, askPosition, useNearPlaces, useNearQuery, readPosition, nearParam, surpriseQuery, NearAsk } from './near';
+import { usePosition, askPosition, useNearPlaces, useNearQuery, readPosition, nearParam, surpriseQuery, NearAsk, KmAway, ApproxNote } from './near';
 import { useCatTotals, useEarned } from './filters';
 import { Failed, Sk, StateBlock, useReveal } from './states';
 
@@ -180,7 +180,7 @@ function NearYou({ list, desk }: { list: KPlace[] | null; desk?: boolean }) {
   if (q.isError) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><Failed compact error={q.error} retry={q.refetch} busy={q.isFetching} /></section>;
   if (!list?.length) return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}</div><StateBlock compact icon="map-pin-off" title={c.states.near.empty} body={c.states.near.emptyBody} action={<Link className="btn secondary press" href={`${langPrefix(lang)}/explorer/`}>{c.states.near.seeEgypt}</Link>} /></section>;
   return <section className={cls} aria-label={c.home.nearYou}><div className="rail-head">{head}<Link className="btn plain press" href={`${langPrefix(lang)}/explorer/?sort=near`}>{c.common.seeAll}</Link></div>
-    {desk ? null : <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearestFirst}</p>}<div className="rail-row">{list.slice(0, desk ? 6 : 7).map((p, i) => <Tile key={p.id} p={p} surface="near" position={i + 1} />)}</div></section>;
+    {desk ? null : <p className="t-small page-pad" style={{ margin: '-4px 0 8px' }}>{c.home.nearestFirst}</p>}<ApproxNote className="page-pad" /><div className="rail-row">{list.slice(0, desk ? 6 : 7).map((p, i) => <Tile key={p.id} p={p} surface="near" position={i + 1} />)}</div></section>;
 }
 
 // Earned on 5argny: the places holding a badge in the location bar (asked of the API: they are rarely in Home's pool)
@@ -352,7 +352,7 @@ function DealCard({ p, rolling, onShuffle, onBack }: { p: KPlace; rolling: boole
   // the photo and the name open the place like every other card; the buttons keep their own actions
   return <div className="tm-deal" ref={ref}><Link className="tm-deal-photo press" href={href} tabIndex={-1} aria-hidden="true"><img decoding="async" src={photoMedium(p.photos[0])} alt="" /></Link><span className="tm-fade" />
     <div className="tm-deal-top"><span className="tm-kicker"><L n="dices" />{c.home.takeMe.yourPick}</span><button className="icon-btn press tm-x" data-act="unflip" aria-label={c.common.back} onClick={onBack}><L n="x" /></button></div>
-    <div className="tm-deal-text"><Link className="tm-deal-name press" href={href}><b dir="auto">{p.name}</b></Link><Meta p={p} extra={<>{p.distanceKm != null ? <span className="meta-area"><L n="map-pin" />{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</span> : null}{st ? <StatePill st={st} /> : null}</>} />
+    <div className="tm-deal-text"><Link className="tm-deal-name press" href={href}><b dir="auto">{p.name}</b></Link><Meta p={p} extra={<><KmAway p={p} cls="meta-area" />{st ? <StatePill st={st} /> : null}</>} />
       <div className="tm-deal-actions"><Go5 p={p} /><button className="btn secondary press" data-act="shuffle" disabled={rolling} aria-busy={rolling} onClick={onShuffle}>{rolling ? <span className="tm-spin" aria-hidden="true" /> : <L n="dices" />}{rolling ? c.home.takeMe.surpriseLoading : c.home.takeMe.shuffleAgain}</button></div></div></div>;
 }
 

@@ -4,7 +4,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fill } from '@5argny/core/copy';
-import { coarse, inEgypt, kmText } from '@5argny/core/rules';
+import { coarse, inEgypt, kmText, isApproxFix } from '@5argny/core/rules';
 import { apiRequest } from '@/lib/api/client';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { setAnalyticsGeo } from '@/lib/analytics/track';
@@ -15,8 +15,8 @@ import { L } from './icons';
 import { toK, type KPlace } from './data';
 import { useK, haptic } from './KProvider';
 
-type Pos = { lat: number; lng: number };
-const KEY = 'kh.here', listeners = new Set<() => void>();
+type Pos = { lat: number; lng: number; acc: number | null };
+const KEY = 'kh.here', APPROX_KEY = 'kh.approxSaid', listeners = new Set<() => void>();
 let cache: { raw: string | null; pos: Pos | null } = { raw: null, pos: null };
 const read = (): Pos | null => {
   let raw: string | null = null; try { raw = sessionStorage.getItem(KEY); } catch {}
@@ -33,6 +33,18 @@ export const usePosition = () => useSyncExternalStore(subscribe, read, () => nul
 export const readPosition = read;
 /** "lat,lng" for the API, or null. */
 export const nearParam = (p: Pos | null) => (p ? `${p.lat},${p.lng}` : null);
+/** The browser's own accuracy circle in metres (null when it did not say): the map draws it, nothing else prints it. */
+export const posAccuracy = (p: Pos | null) => p?.acc ?? null;
+/** The fix is coarser than 1 km (a desktop Wi-Fi or IP position): no km figure is printed from it, the area is shown. */
+export const useApproxHere = () => { const pos = usePosition(); return !!pos && isApproxFix(pos.acc); };
+
+// "Location is approximate" is said once a session: set when a coarse fix is first taken, cleared by the next page load.
+let approxNew = false;
+const markApprox = (pos: Pos) => {
+  if (!isApproxFix(pos.acc)) return;
+  try { if (sessionStorage.getItem(APPROX_KEY)) return; sessionStorage.setItem(APPROX_KEY, '1'); } catch { return; }
+  approxNew = true;
+};
 
 /** Why the last ask gave no position: refused, not found, or outside Egypt; null when it worked or was never asked. */
 export type AskFail = 'denied' | 'unavailable' | 'outside';
@@ -40,18 +52,24 @@ let fail: AskFail | null = null;
 export const askFail = () => fail;
 export const useAskFail = () => useSyncExternalStore(subscribe, askFail, () => null);
 
-/** Asks the browser once (a tap, never on load). Resolves false when denied, unavailable or outside Egypt (askFail says which). */
+/**
+ * Asks the browser once (a tap, never on load). Resolves false when denied, unavailable or outside Egypt (askFail says
+ * which). A precise fix is asked for (a 10-minute-old Wi-Fi position can be kilometres off) and up to a minute old is
+ * accepted, which is the instant first paint after a reload; the accuracy the browser reports rides along, and a fix
+ * worse than 1 km never prints a km figure (useApproxHere).
+ */
 export function askPosition(): Promise<boolean> {
   const end = (done: (ok: boolean) => void, why: AskFail | null) => { fail = why; listeners.forEach((f) => f()); done(!why); };
   return new Promise((done) => {
     if (!navigator.geolocation) return end(done, 'unavailable');
     navigator.geolocation.getCurrentPosition((g) => {
-      const pos = coarse({ lat: g.coords.latitude, lng: g.coords.longitude });
+      const pos: Pos = { ...coarse({ lat: g.coords.latitude, lng: g.coords.longitude }), acc: Number.isFinite(g.coords.accuracy) ? g.coords.accuracy : null };
       setAnalyticsGeo(pos, g.coords.accuracy); // outside Egypt too: the dashboard counts it as outside Egypt
       if (!inEgypt(pos)) return end(done, 'outside'); // outside Egypt the API has no nearest; nothing changes
+      markApprox(pos); // a Wi-Fi fix worse than 1 km: "Location is approximate" once this session, no km figures
       try { sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch {}
       end(done, null);
-    }, (e) => end(done, e.code === 1 ? 'denied' : 'unavailable'), { maximumAge: 10 * 60_000, timeout: 15_000 });
+    }, (e) => end(done, e.code === 1 ? 'denied' : 'unavailable'), { enableHighAccuracy: true, maximumAge: 60_000, timeout: 20_000 });
   });
 }
 
@@ -100,8 +118,26 @@ export function NearAsk() {
   </div>;
 }
 
-/** "N km away" on a card, only when the card came with a real distance. */
-export function KmAway({ p }: { p: Pick<KPlace, 'distanceKm'> }) {
+/**
+ * "~N km away" on a card, only when the card came with a real distance; from a fix worse than 1 km the area is shown
+ * instead (a km figure from a Wi-Fi position would be wrong, and the road distance would be 1.3-2x it anyway).
+ */
+export function KmAway({ p, cls }: { p: Pick<KPlace, 'distanceKm' | 'area' | 'city'>; cls?: 'meta-area' }) {
   const { c } = useK();
-  return p.distanceKm == null ? null : <Bit icon="map-pin">{fill(c.units.kmAway, { km: kmText(p.distanceKm) })}</Bit>;
+  const approx = useApproxHere();
+  const text = approx ? p.area || p.city : p.distanceKm == null ? null : fill(c.units.kmAway, { km: kmText(p.distanceKm) });
+  if (!text) return null;
+  return cls === 'meta-area' ? <span className="meta-area"><L n="map-pin" />{text}</span> : <Bit icon="map-pin">{text}</Bit>;
+}
+
+/**
+ * "Location is approximate", once per session, beside a list built from a coarse fix: the person can move to a window or
+ * a phone and ask again instead of reading distances that are kilometres off.
+ */
+export function ApproxNote({ className }: { className?: string }) {
+  const { c } = useK();
+  const approx = useApproxHere();
+  const fresh = useSyncExternalStore(subscribe, () => approxNew, () => false);
+  if (!approx || !fresh) return null;
+  return <p className={`t-small near-approx ${className ?? ''}`} role="status"><L n="map-pin-off" />{c.states.near.approximate}</p>;
 }

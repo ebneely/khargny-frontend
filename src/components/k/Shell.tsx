@@ -18,7 +18,7 @@ import { regionLabel } from '@/lib/egypt-regions';
 import { L, Ic, Gov } from './icons';
 import { slidePill } from './bits';
 import { INTENTS, moment, k } from './rules';
-import { intentFor, highlightRange } from '@5argny/core/rules';
+import { intentFor, highlightRange, haversineKm } from '@5argny/core/rules';
 import { toK, placeHref, type KPlace } from './data';
 import { Meta, Stats, ShowingScope, useShowing } from './place';
 import { trackSearchResults, trackSearchTap } from '@/lib/analytics/track';
@@ -338,7 +338,7 @@ function useSuggestionCity() {
   const s = useSearchSettings();
   const chosen = cities.find((x) => x.slug === loc.city);
   if (chosen) return chosen;
-  const km = (x: (typeof cities)[number]) => (x.lat != null && x.lng != null && pos ? Math.hypot((x.lat - pos.lat) * 111, (x.lng - pos.lng) * 111 * Math.cos((pos.lat * Math.PI) / 180)) : Infinity);
+  const km = (x: (typeof cities)[number]) => (x.lat != null && x.lng != null && pos ? haversineKm({ lat: x.lat, lng: x.lng }, pos) : Infinity);
   const near = pos ? [...cities].sort((a, b) => km(a) - km(b))[0] : null;
   return (near && km(near) < Infinity ? near : null) ?? cities.find((x) => x.slug === s.defaultCitySlug) ?? cities.find((x) => x.slug === 'cairo') ?? null;
 }

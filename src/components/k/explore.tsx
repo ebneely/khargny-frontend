@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { animate } from 'motion';
 import { fill } from '@5argny/core/copy';
-import { matchesWhen } from '@5argny/core/rules';
+import { matchesWhen, haversineKm } from '@5argny/core/rules';
 import { apiRequest } from '@/lib/api/client';
 import { normalizePlaceList } from '@/lib/api/normalize-place-list';
 import { useCities } from '@/lib/api/hooks/use-cities';
@@ -24,7 +24,7 @@ import { Shell, usePlaceName } from './Shell';
 import { readF, useCatIds, useLocIds, useCounts, usePriceBands, useListQuery, useEarned, totalKey, type When } from './filters';
 import { useAmenities } from '@/lib/api/hooks/use-taxonomy';
 import { useK, useKS, reduce } from './KProvider';
-import { usePosition, askPosition, askFail, nearParam } from './near';
+import { usePosition, askPosition, askFail, nearParam, ApproxNote } from './near';
 import { EXPLORE_SEARCH_PAGE, exploreSearchKey } from '@/lib/explore-search';
 
 type Sort = 'popular' | 'near' | 'open';
@@ -128,7 +128,7 @@ export function ExploreView() {
   // sheet opening no longer re-sorts every loaded page (issue #39)
   const res = useMemo(() => {
     // shortcut: search results (q) carry no distanceKm (the search route takes no near=), so Nearest orders them by the cards' own coordinates
-    const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : Infinity);
+    const km = (p: KPlace) => p.distanceKm ?? (here && p.lat != null && p.lng != null ? haversineKm(here, { lat: p.lat, lng: p.lng }) : Infinity);
     // hype position first (merged category lists keep one order); search results carry no position and keep their 30-day views
     const score = { popular: (p: KPlace) => (p.popularRank != null ? 1e9 - p.popularRank : p.d30?.views ?? 0), near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
     // the list route filters by When itself; search does not, so its pages are filtered here (and the count is what is listed)
@@ -165,6 +165,7 @@ export function ExploreView() {
       <h1 className="t-display page-pad" style={{ margin: '2px 0 10px' }}>{head} <span style={{ color: 'var(--ink3)', fontWeight: 800 }}>{c.explore.in} <PlaceWord word={where} key={loc.city + '|' + loc.area} /></span></h1>
       <div className="ctl-row page-pad" style={{ justifyContent: 'space-between' }}><span className="t-small">{total == null ? (res0.error ? null : <span className="sk" aria-hidden="true"><b>000</b> {fill(c.explore.results, { n: '' }).trim()}</span>) : <><b style={{ color: 'var(--ink)' }}>{total}</b> {fill(c.explore.results, { n: '' }).trim()}{whenText ? ` ${whenText.toLowerCase()}` : ''}</>}</span>
         <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open]] as [Sort, string][]} val={sort} onPick={setSort} /></div>
+      {sort === 'near' && pos ? <ApproxNote className="page-pad" /> : null}
       {busy ? <div className="grid" aria-busy="true">{skel(8)}</div>
         : res0.error && !res.length ? <Failed error={res0.error} retry={res0.retry} busy={res0.retrying} />
         : res.length ? <><div className={`grid ${reveal}`}>{res.map((p, i) => <Tile key={p.id} p={p} surface={q ? 'search' : 'explore'} position={i + 1} term={q || undefined} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>

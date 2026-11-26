@@ -2,7 +2,7 @@
 // {name} placeholders are filled by fill() in copy/index.ts. No "·" separators; 12-hour time; western digits.
 export const en = {
   brand: '5argny',
-  units: { am: 'am', pm: 'pm', hour: 'h', minute: 'min', thousand: 'k', egp: '{n} EGP', fromEgp: 'from {n} EGP', km: '{km} km', kmAway: '{km} km away' },
+  units: { am: 'am', pm: 'pm', hour: 'h', minute: 'min', thousand: 'k', egp: '{n} EGP', fromEgp: 'from {n} EGP', km: '{km} km', kmAway: '~{km} km away' },
   days: {
     short: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     long: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
@@ -166,6 +166,7 @@ export const en = {
     moreFailed: "The next places didn't load",
     near: {
       denied: 'Location is off for 5argny. Allow it in your browser settings, then try again', unavailable: "We couldn't find where you are. Try again in a moment",
+      approximate: 'Location is approximate, so distances are hidden',
       outside: "You're outside Egypt, so nothing is near you yet", empty: 'Nothing listed near you yet', emptyBody: 'We add places every week. See all of Egypt for now.', seeEgypt: 'See all of Egypt',
     },
     feed: { empty: 'No places in {place} yet', emptyBody: 'We add places every week. Try another area, or all of Egypt.', allEgypt: 'See all of Egypt' },

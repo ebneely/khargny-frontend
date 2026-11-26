@@ -4,7 +4,7 @@ import type { Copy } from './en.ts';
 // the rest are written here. Western digits only; no "·".
 export const ar: Copy = {
   brand: 'خرجني',
-  units: { am: 'ص', pm: 'م', hour: 'س', minute: 'د', thousand: 'k', egp: '{n} جنيه', fromEgp: 'من {n} جنيه', km: '{km} كم', kmAway: 'على بعد {km} كم' },
+  units: { am: 'ص', pm: 'م', hour: 'س', minute: 'د', thousand: 'k', egp: '{n} جنيه', fromEgp: 'من {n} جنيه', km: '{km} كم', kmAway: 'حوالي {km} كم' },
   days: {
     short: ['الحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'],
     long: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
@@ -164,6 +164,7 @@ export const ar: Copy = {
     moreFailed: 'الأماكن اللي بعدها ما ظهرتش',
     near: {
       denied: 'تحديد المكان مقفول لخرجني. افتحه من إعدادات المتصفح وجرب تاني', unavailable: 'مقدرناش نعرف إنت فين. جرب تاني كمان شوية',
+      approximate: 'مكانك تقريبي، فمش بنعرض المسافات',
       outside: 'إنت برا مصر، فلسه مفيش حاجة قريبة منك', empty: 'لسه مفيش أماكن قريبة منك', emptyBody: 'بنضيف أماكن كل أسبوع. شوف مصر كلها دلوقتي.', seeEgypt: 'شوف مصر كلها',
     },
     feed: { empty: 'لسه مفيش أماكن في {place}', emptyBody: 'بنضيف أماكن كل أسبوع. جرب منطقة تانية، أو مصر كلها.', allEgypt: 'شوف مصر كلها' },

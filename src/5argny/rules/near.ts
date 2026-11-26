@@ -6,6 +6,24 @@ export function kmText(km: number): string {
   return r < 10 ? Math.max(0.1, r).toFixed(1) : String(Math.round(km));
 }
 
+/**
+ * The straight-line distance between two points in km (haversine, mean Earth radius 6371 km). The website's one
+ * distance helper: every km figure that is not the server's `distanceKm` comes from here. A road distance is
+ * 1.3-2x this in Cairo, so a number shown from it is written "~N km", never claimed as driving distance.
+ */
+export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const r = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lng - a.lng) * r) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * A browser fix coarser than this (desktop browsers answer with Wi-Fi or IP positions, which can be kilometres off) is
+ * not good enough for a km figure: the screen shows the area name instead and says once that location is approximate.
+ */
+export const APPROX_ACCURACY_M = 1000;
+export const isApproxFix = (accuracy: number | null | undefined) => accuracy != null && accuracy > APPROX_ACCURACY_M;
+
 /** A position kept to 3 decimals (about 100 m): enough for "nearest", not a precise trace of the person. */
 export const coarse = (p: { lat: number; lng: number }) => ({ lat: Math.round(p.lat * 1000) / 1000, lng: Math.round(p.lng * 1000) / 1000 });
 
