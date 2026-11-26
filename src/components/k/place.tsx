@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // Place patterns from proto/app.js, one component each: Meta, StatePill, OpenBar, AllDay, HoursUnknown, Carousel,
 // Actions (ActBtn + Cnt), Go5 (with its flight), Stats, Tile, Post, plus the Share and Which-map sheets they open.
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent } from 'react';
+import { createContext, memo, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -19,7 +19,7 @@ import { trackPlaceAction, trackPlaceShowing, trackPlaceView, trackSearchTap, ty
 import { createShowing } from '@5argny/core/rules';
 import { sharePlace } from '@/lib/share-place';
 import { L, Ic } from './icons';
-import { Cnt, Tag, Bit } from './bits';
+import { Cnt, Tag, Bit, onScreen } from './bits';
 import { dur, openState, type OpenState } from './rules';
 import { placeHref, type KPlace, type KStats, type KBadge } from './data';
 import { useK, haptic, reduce, spring, desk } from './KProvider';
@@ -250,7 +250,7 @@ export function Stats({ p }: { p: KPlace }) {
   </span>;
 }
 
-export function Tile({ p, extra, surface, position, mark, term }: { p: KPlace; extra?: ReactNode } & CardTrack) {
+export const Tile = memo(function Tile({ p, extra, surface, position, mark, term, eager }: { p: KPlace; extra?: ReactNode; eager?: boolean } & CardTrack) {
   const { lang, now } = useK();
   const st = openState(p, now, lang);
   const ref = useRef<HTMLAnchorElement>(null);
@@ -258,11 +258,11 @@ export function Tile({ p, extra, surface, position, mark, term }: { p: KPlace; e
   return (
     <Link ref={ref} className="card tile press" data-item href={placeHref(p, lang)} onClick={term ? () => trackSearchTap(term, p.id, position ?? 1) : undefined}>
       
-      <span className="tile-media"><img decoding="async" src={p.photos[0]?.s} alt="" loading="lazy" />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
+      <span className="tile-media"><img decoding="async" src={p.photos[0]?.s} alt="" loading={eager ? 'eager' : 'lazy'} />{st ? <StatePill st={st} cls="tm-count" /> : null}</span>
       <div className="tile-body"><b dir="auto">{p.name}</b><span style={{ display: 'block', margin: '3px 0 2px' }}><Stats p={p} /></span><span className="t-small">{p.area || p.city}</span>{p.distanceKm != null ? <span className="bits" style={{ marginTop: 4 }}><KmAway p={p} /></span> : null}{extra}</div>
     </Link>
   );
-}
+});
 
 /** A Tile's skeleton: the Tile's own markup with stand-in words (five counts, as a list card carries), so nothing moves when it lands. */
 export function TileSkel() {
@@ -297,10 +297,10 @@ export function useShowing(ref: React.RefObject<HTMLElement | null>, surface: Sh
   // eslint-disable-next-line react-hooks/refs -- issue #34 deferred: the effect reads the latest position without re-subscribing; restructuring needs scroll verification
   const at = useRef(position); at.current = position;
   useEffect(() => {
-    const el = ref.current; if (!tracker || !surface || !el || !('IntersectionObserver' in window)) return;
+    const el = ref.current; if (!tracker || !surface || !el) return;
     const key = `${surface}:${id}`, fire = () => trackPlaceShowing(id, surface, at.current);
-    const io = new IntersectionObserver(([en]) => tracker.visible(key, en?.isIntersecting ? en.intersectionRatio : 0, fire), { threshold: 0.5 });
-    io.observe(el); return () => { io.disconnect(); tracker.visible(key, 0, fire); };
+    const stop = onScreen(el, (ratio) => tracker.visible(key, ratio, fire));
+    return () => { stop(); tracker.visible(key, 0, fire); };
   }, [ref, tracker, surface, id]);
 }
 
@@ -314,13 +314,15 @@ export function BadgeTags({ p }: { p: KPlace }) {
 const feedSeen = new Set<string>();
 function useFeedView(ref: React.RefObject<HTMLElement | null>, id: string) {
   useEffect(() => {
-    const el = ref.current; if (!el || feedSeen.has(id) || !('IntersectionObserver' in window)) return;
+    const el = ref.current; if (!el || feedSeen.has(id)) return;
     let t: ReturnType<typeof setTimeout> | undefined;
-    const io = new IntersectionObserver(([en]) => {
-      if (!en?.isIntersecting) { clearTimeout(t); return; }
-      t = setTimeout(() => { if (feedSeen.has(id)) return; feedSeen.add(id); io.disconnect(); bumpView(id); }, 1000);
-    }, { threshold: 0.6 });
-    io.observe(el); return () => { clearTimeout(t); io.disconnect(); };
+    let stop = () => {};
+    stop = onScreen(el, (ratio) => {
+      if (ratio < 0.6) { clearTimeout(t); return; }
+      if (feedSeen.has(id)) return;
+      t = setTimeout(() => { if (feedSeen.has(id)) return; feedSeen.add(id); stop(); bumpView(id); }, 1000);
+    });
+    return () => { clearTimeout(t); stop(); };
   }, [ref, id]);
 }
 

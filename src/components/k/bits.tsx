@@ -6,6 +6,21 @@ import { L, Ic, type StrokeName } from './icons';
 import { k } from './rules';
 import { useK, reduce, spring } from './KProvider';
 
+/**
+ * One IntersectionObserver for every element that asks "am I on screen?": a count's first reveal and a card's showing share.
+ * A card used to carry five counters, each with an observer of its own (24 cards opened 120 of them). The ratios the shared
+ * observer reports (0, 0.5, 0.6, 1) are enough for both rules; every caller reads the one it needs.
+ */
+type OnScreen = (ratio: number) => void;
+const watching = new Map<Element, OnScreen>();
+let screen: IntersectionObserver | null = null;
+export function onScreen(el: Element, cb: OnScreen) {
+  if (!('IntersectionObserver' in window)) return () => {};
+  screen ??= new IntersectionObserver((entries) => entries.forEach((en) => watching.get(en.target)?.(en.intersectionRatio)), { threshold: [0, 0.5, 0.6, 1] });
+  watching.set(el, cb); screen.observe(el);
+  return () => { watching.delete(el); screen?.unobserve(el); };
+}
+
 export function Brand() {
   const { lang } = useK();
   return <span className="brand" lang={lang}>{lang === 'ar' ? 'خرجني' : '5argny'}</span>;
@@ -59,13 +74,15 @@ export function Cnt({ base, mine = false }: { base: number | null | undefined; m
     shown.current = to;
   }, [to]);
   useEffect(() => {
-    const el = ref.current; if (!el || to == null || reduce() || to < 2 || !('IntersectionObserver' in window)) return;
-    const io = new IntersectionObserver((es) => es.forEach((en) => {
-      if (!en.isIntersecting) return; io.disconnect(); const t0 = performance.now(), D = 900, n = shown.current ?? to;
+    const el = ref.current; if (!el || to == null || reduce() || to < 2) return;
+    let stop = () => {};
+    stop = onScreen(el, (ratio) => {
+      if (ratio < 0.6) return; stop();
+      const t0 = performance.now(), D = 900, n = shown.current ?? to;
       const step = (t: number) => { const f = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - f, 3); el.textContent = k(Math.round(n * e)); if (f < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step);
-    }), { threshold: 0.6 });
-    io.observe(el); return () => io.disconnect();
+    });
+    return () => stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [to == null]);
   // not known yet: an empty line of the same height, so the count arriving never moves the row (never a fake 0)

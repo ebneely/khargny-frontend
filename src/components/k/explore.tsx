@@ -1,7 +1,7 @@
 'use client';
 // Explore from proto/app.js Explore(): the location bar with Filters, a title that names what and where, the count and
 // the sort, then the results grid. Everything comes from the URL, so the query is kept.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { useSearchParams } from 'next/navigation';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -75,9 +75,15 @@ function useResults(f: ReturnType<typeof readF>, q: string, badge: boolean, near
   // the applied filters' total also answers Filters' "Show N" (same key as useResultCount), so the sheet opens with its number
   useEffect(() => { if (!q && !badge && first) qc.setQueryData(totalKey(L.key), first.total); }, [first, q, badge]); // eslint-disable-line react-hooks/exhaustive-deps
   const k = (r: unknown) => toK(r as never, { cities, categories }, lang);
-  const pages = badge ? (earned ? [earned.map(k)] : []) : (src?.data?.pages ?? []).map((pg) => pg.items.map(k));
+  // the pages as cards: memoized on the answer itself, so a re-render from anywhere (a sheet opening, a like, a sort change
+  // that leaves the pages alone) does not run toK over every loaded page again
+  const pages = useMemo(() => {
+    const mapped = badge ? (earned ? [earned.map(k)] : []) : (src?.data?.pages ?? []).map((pg) => pg.items.map(k));
+    return mapped.map((pg) => pg.filter((p) => p.photos.length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src?.data, earned, badge, cities, categories, lang]);
   return {
-    pages: pages.map((pg) => pg.filter((p) => p.photos.length)),
+    pages,
     total: badge ? earned?.length ?? null : L.none && !q ? 0 : first?.total ?? null,
     loading: badge ? !earned : L.none && !q ? false : !!src?.isPending,
     more: !badge && !!src?.hasNextPage, fetchingMore: !!src?.isFetchingNextPage, loadMore: () => { if (src?.hasNextPage && !src.isFetchingNextPage && !src.isFetchNextPageError) void src.fetchNextPage(); },
@@ -123,8 +129,10 @@ export function ExploreView() {
   const score = { popular: (p: KPlace) => (p.popularRank != null ? 1e9 - p.popularRank : p.d30?.views ?? 0), near: (p: KPlace) => -km(p), open: (p: KPlace) => (openState(p, now, lang)?.open ? 1 : 0) }[sort];
   // the list route filters by When itself; search does not, so its pages are filtered here (and the count is what is listed)
   const fit = (pg: KPlace[]) => (q && f.when ? pg.filter((p) => matchesWhen(p.hours, f.when as When, now.date)) : pg);
+  // the shown list: filtered and ordered once per real change (the pages, the When, the sort, the position, the language), so a
+  // re-render for any other reason never re-sorts every loaded page
   // shortcut: each page is ordered on its own and appended, so loading more never reshuffles what is on screen
-  const res = res0.pages.flatMap((pg) => [...fit(pg)].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a))); // paid places first inside a match, looking like any other
+  const res = useMemo(() => res0.pages.flatMap((pg) => [...fit(pg)].sort((a, b) => Number(b.promoted) - Number(a.promoted) || score(b) - score(a))), [res0.pages, q, f.when, now, sort, pos, lang]); // eslint-disable-line react-hooks/exhaustive-deps
   const total = q && f.when ? (res0.more ? null : res.length) : res0.total;
   // a search answer is shown (its first page, in the order listed)
   const listed = q && !res0.loading ? res.slice(0, 20).map((p) => p.id).join() : '';
@@ -156,7 +164,7 @@ export function ExploreView() {
         <Seg opts={[['popular', c.explore.sort.popular], ['near', c.explore.sort.near], ['open', c.explore.sort.open]] as [Sort, string][]} val={sort} onPick={setSort} /></div>
       {busy ? <div className="grid" aria-busy="true">{skel(8)}</div>
         : res0.error && !res.length ? <Failed error={res0.error} retry={res0.retry} busy={res0.retrying} />
-        : res.length ? <><div className={`grid ${reveal}`}>{res.map((p, i) => <Tile key={p.id} p={p} surface={q ? 'search' : 'explore'} position={i + 1} term={q || undefined} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>
+        : res.length ? <><div className={`grid ${reveal}`}>{res.map((p, i) => <Tile key={p.id} p={p} surface={q ? 'search' : 'explore'} position={i + 1} eager={i < 4} term={q || undefined} extra={badge ? <span className="earned-tags"><BadgeTags p={p} /></span> : undefined} />)}{res0.fetchingMore ? skel(4) : null}</div>
           {res0.moreError ? <div className="more-fail" role="alert">{c.states.moreFailed}<button className="btn secondary press" data-act="retry-more" onClick={res0.retryMore}><L n="rotate-ccw" />{c.states.retry}</button></div> : null}<div ref={end} aria-hidden="true" /></>
         : <StateBlock icon="search" title={fill(c.explore.empty, { what: headText.toLowerCase(), when: whenText.toLowerCase(), place: where }).replace(/\s+/g, ' ')}
           action={<Btn label={filtered ? c.states.explore.clear : c.states.explore.everything} kind="primary" act="empty-reset" onClick={() => { setLoc({ city: null, area: null }); go(`${langPrefix(lang)}/explorer/`); }} />} />}
