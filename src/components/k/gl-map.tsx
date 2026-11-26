@@ -84,10 +84,13 @@ export function NearbyMap({ pins, here, accuracy, picked, onPick, onMove, lang }
       if (lang === 'ar') shapeArabic(maplibre);
       const m = new maplibre.Map({
         container: box.current, style: MAP_STYLE, center: [EGYPT.lng, EGYPT.lat], zoom: 11,
-        attributionControl: false, // our own line, over the map (CSS), keeps the required credit visible
+        attributionControl: false, // our own compact instance below, in the corner that matches the reading direction
         dragRotate: false, pitchWithRotate: false,
       });
       map.current = m;
+      // the credit OpenStreetMap's ODbL requires, quietly (owner 2026-11-26, round 2): MapLibre's own compact ⓘ,
+      // translucent, that opens the full credit on tap — bottom-left in English, bottom-right in Arabic
+      m.addControl(new maplibre.AttributionControl({ compact: true, customAttribution: '© OpenFreeMap · © OpenStreetMap' }), lang === 'ar' ? 'bottom-right' : 'bottom-left');
       m.on('load', () => { if (lang === 'ar') arabicLabels(m); });
       m.on('moveend', () => { const c = m.getCenter(); onMoveRef.current({ lat: c.lat, lng: c.lng }); });
     })();
@@ -147,7 +150,6 @@ export function NearbyMap({ pins, here, accuracy, picked, onPick, onMove, lang }
   return (
     <div className="gl-map">
       <div ref={box} className="gl-map-canvas" role="application" aria-label={lang === 'ar' ? 'خريطة الأماكن القريبة' : 'Map of nearby places'} />
-      <a className="map-attr" href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">© OpenFreeMap · OpenStreetMap</a>
     </div>
   );
 }
@@ -172,6 +174,8 @@ export function PlaceMapCard({ lat, lng, name, address, lang }: { lat: number; l
         container: box.current, style: MAP_STYLE, center: [lng, lat], zoom: 15,
         attributionControl: false, interactive: false,
       });
+      // the same compact ⓘ credit as the nearby map (OpenStreetMap's ODbL), opposite corner in Arabic
+      m.addControl(new maplibre.AttributionControl({ compact: true, customAttribution: '© OpenFreeMap · © OpenStreetMap' }), lang === 'ar' ? 'bottom-right' : 'bottom-left');
       own = m;
       const el = document.createElement('div');
       el.className = 'map-pin big';
@@ -189,7 +193,6 @@ export function PlaceMapCard({ lat, lng, name, address, lang }: { lat: number; l
         {address ? <span className="t-small grow" dir="auto">{address}</span> : <span className="grow" />}
         <a className="btn secondary press" href={href} target="_blank" rel="noopener noreferrer" data-act="open-maps">{label}</a>
       </div>
-      <a className="map-attr" href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">© OpenFreeMap · OpenStreetMap</a>
     </section>
   );
 }

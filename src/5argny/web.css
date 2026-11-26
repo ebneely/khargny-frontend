@@ -1467,7 +1467,30 @@ html.off-layer #app{will-change:auto!important}
 .map-pin.on i,.map-pin.big i{width:20px;height:20px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .map-me{width:18px;height:18px;display:grid;place-items:center}
 .map-me i{display:block;width:14px;height:14px;border-radius:999px;background:#2f7cf6;border:2px solid #fff;box-shadow:0 0 0 1px rgba(47,124,246,.4),0 1px 4px rgba(0,0,0,.3)}
-.map-attr{position:absolute;bottom:2px;inset-inline-end:6px;z-index:2;font-size:10px;line-height:1.4;color:#2b2b2b;background:rgba(255,255,255,.82);padding:1px 5px;border-radius:5px;text-decoration:none}
+/* MapLibre's own compact attribution (owner 2026-11-26, round 2): a small ⓘ in the corner that opens the credit on tap.
+   Only the rules that control needs, copied from maplibre-gl.css (which is not loaded) and styled quietly: small type,
+   translucent white, no hard box. The OpenStreetMap ODbL credit stays — collapsed, one tap away. */
+.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right,.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right{position:absolute;pointer-events:none;z-index:2}
+.maplibregl-ctrl-top-left{top:0;left:0}
+.maplibregl-ctrl-bottom-left{bottom:0;left:0}
+.maplibregl-ctrl-bottom-right{right:0;bottom:0}
+.maplibregl-ctrl{clear:both;pointer-events:auto;transform:translate(0)}
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0 0 8px 8px;float:left}
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl{margin:0 8px 8px 0;float:right}
+.maplibregl-ctrl.maplibregl-ctrl-attrib{font:600 10px/1.5 var(--text);color:#333;padding:1px 6px;background-color:rgba(255,255,255,.55);margin:0;border-radius:8px}
+.maplibregl-ctrl-attrib.maplibregl-compact{min-height:18px;padding:1px 20px 1px 0;margin:8px;position:relative;background-color:rgba(255,255,255,.55);border-radius:999px;box-sizing:content-box}
+.maplibregl-ctrl-attrib.maplibregl-compact-show{padding:1px 22px 1px 8px;visibility:visible;background-color:rgba(255,255,255,.88)}
+.maplibregl-ctrl-bottom-left>.maplibregl-ctrl-attrib.maplibregl-compact-show,.maplibregl-ctrl-top-left>.maplibregl-ctrl-attrib.maplibregl-compact-show{padding:1px 8px 1px 22px}
+.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner{display:none}
+.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner{display:block}
+.maplibregl-ctrl-attrib-button{display:none;cursor:pointer;position:absolute;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E %3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E %3C/svg%3E");background-color:rgba(255,255,255,.55);width:18px;height:18px;box-sizing:border-box;border-radius:999px;outline:none;top:0;right:0;border:0;background-size:14px 14px;background-position:center}
+.maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button{appearance:none;list-style:none}
+.maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button::-webkit-details-marker{display:none}
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib-button,.maplibregl-ctrl-top-left .maplibregl-ctrl-attrib-button{left:0}
+.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button{display:block}
+.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button{background-color:rgba(0,0,0,.05)}
+.maplibregl-ctrl-attrib a{color:rgba(0,0,0,.75);text-decoration:none}
+.maplibregl-ctrl-attrib a:hover{color:inherit;text-decoration:underline}
 .map-note{position:absolute;top:10px;inset-inline-start:10px;margin:0;padding:5px 10px;border-radius:999px;background:var(--bar);box-shadow:var(--sh1)}
 .map-fail{position:absolute;top:10px;inset-inline:10px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:14px;background:var(--card);box-shadow:var(--sh1);z-index:3}
 .map-card{position:absolute;inset-inline:10px;bottom:12px;display:flex;align-items:center;gap:8px;padding:8px;z-index:3;box-shadow:var(--sh2)}
