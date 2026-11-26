@@ -111,7 +111,18 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
     // lock first: a child's layout effect runs before SheetHost's, and the sheet needs the lock's measurements to place itself
     lockPage(true);
     const sh = ref.current!; const abs = document.documentElement.classList.contains('sheet-abs'); if (abs) sh.style.top = restTop + 'px';
-    setPos(sh, sh.offsetHeight); springTo(sh, 0, 0);
+    if (entry.kind === 'map') {
+      // the full-page map sheet grows out of the Map pill that opened it (owner 2026-11-26, round 2): the pill's centre
+      // is the transform-origin, the present is the sheet's own spring (no bounce) with a little scale, or a fade still
+      const h = sh.offsetHeight;
+      if (entry.origin) { const r = sh.getBoundingClientRect(); sh.style.transformOrigin = `${entry.origin.x - r.left}px ${entry.origin.y - r.top}px`; }
+      if (reduce()) { setPos(sh, 0); sh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' }); }
+      else {
+        const cu = springCurve(0, 0.42);
+        const a = (sh._wa = sh.animate(cu.pts.map((p) => ({ transform: `translateY(${(h * (1 - p)).toFixed(2)}px) scale(${(0.94 + 0.06 * p).toFixed(4)})` })), { duration: cu.ms }));
+        a.finished.then(() => { if (sh._wa === a) { sh._wa = null; setPos(sh, 0); } }, () => { /* a drag interrupted it: halt owns the state */ });
+      }
+    } else { setPos(sh, sh.offsetHeight); springTo(sh, 0, 0); }
     if (first) {
       let scrim = document.querySelector<HTMLElement>('.scrim');
       if (!scrim) { scrim = document.createElement('div'); scrim.className = 'scrim'; document.body.append(scrim); scrim.addEventListener('click', () => scrim && scrim.dispatchEvent(new CustomEvent('k-close-top', { bubbles: true }))); }
@@ -136,7 +147,10 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
   // dismiss
   useEffect(() => {
     if (!entry.closing) return; const sh = ref.current!;
-    springTo(sh, sh.offsetHeight + 24, entry.closing > 1 ? entry.closing : 0);
+    // the full-page map sheet fades away under reduced motion (no travel, owner 2026-11-26 round 2); every other sheet
+    // keeps its slide
+    if (entry.kind === 'map' && reduce()) sh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease-out' });
+    else springTo(sh, sh.offsetHeight + 24, entry.closing > 1 ? entry.closing : 0);
     const t = setTimeout(() => removeSheet(entry.id), 420);
     if (first) {
       const app = document.getElementById('app');
@@ -172,7 +186,9 @@ function SheetView({ entry, index, top, head, body, foot }: { entry: SheetEntry;
     };
     const pm = (e: PointerEvent) => move(e);
     handles.forEach((h) => { h.addEventListener('pointerdown', down); h.addEventListener('pointermove', pm); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up); });
-    const bodyEl = sh.querySelector<HTMLElement>('.sheet-body'); let ty0 = 0, pulling = false;
+    // a (non-map) body pulls the sheet down only from its top. The map sheet's body is the map and the search: a drag
+    // there must pan the map and move the caret, never move the sheet — its head and grabber still dismiss it.
+    const bodyEl = entry.kind === 'map' ? null : sh.querySelector<HTMLElement>('.sheet-body'); let ty0 = 0, pulling = false;
     const ts = (e: TouchEvent) => { ty0 = e.touches[0].clientY; pulling = false; };
     const tm = (e: TouchEvent) => {
       const y = e.touches[0].clientY;
@@ -217,7 +233,7 @@ export function SheetHost() {
     if (!matchMedia('(pointer: coarse)').matches) return;
     // and fetch the sheet bodies' code while idle too: sheets.tsx loads them on demand (smaller first page), so without this
     // the very first open would wait for a download, the first-open stall #38 is about
-    const warm = () => { warmSheetMetrics(); void import('./placeview'); void import('./collections'); void import('./market'); };
+    const warm = () => { warmSheetMetrics(); void import('./placeview'); void import('./collections'); void import('./market'); void import('./map-view'); };
     const idle = window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 2000 }) : window.setTimeout(warm, 800);
     const forget = () => resetSheetMetrics();
     addEventListener('resize', forget); addEventListener('orientationchange', forget);

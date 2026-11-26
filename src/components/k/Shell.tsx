@@ -2,9 +2,10 @@
 /* eslint-disable @next/next/no-img-element -- the prototype's <img> markup, ported as is (photos come from the storage CDN in their sizes) */
 // The shell from proto/app.js shell(): one top chrome (top bar with the search, the location bar folding under it),
 // the sidebar on desktop, the page, the right rail; the tab bar lives in the layout (TabNav) so it persists across pages.
-import { Suspense, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from 'react';
 import { langPrefix } from '@5argny/core/rules/locale';
 import { createPortal } from 'react-dom';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { GlassTabBar } from './GlassTabBar';
 import { animate } from 'motion';
@@ -30,11 +31,18 @@ import { useK, useKS, haptic, reduce, spring, type Tab } from './KProvider';
 import { initialScrollDirection, scrollDirection } from '@/lib/scroll-direction';
 import { useAreaCounts, CategoryPicker } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 
 export const NAV: [Tab, string, 'home' | 'explore' | 'market' | 'saved' | 'cog'][] = [['home', '/', 'home'], ['explore', '/explorer/', 'explore'], ['market', '/marketplace/', 'market'], ['saved', '/saved/', 'saved'], ['profile', '/settings/', 'cog']];
 let lastNavTab: Tab | null = null;
 const noop = () => () => {};
+
+// The full-page map sheet's body (owner 2026-11-26, round 2): fetched the first time the Map pill is tapped, never on a
+// first page load — the chunk carries map-view and gl-map, while maplibre-gl itself rides in its own, inside them.
+const MapSheet = dynamic(() => import('./map-view').then((m) => m.MapSheet), {
+  ssr: false,
+  loading: () => <div className="map-sheet-load" aria-busy="true"><span className="sk" aria-hidden="true">…</span></div>,
+});
 
 function NavItems({ cur }: { cur: Tab }) {
   const { lang, c, setTab } = useK();
@@ -146,8 +154,32 @@ export function FrameHost({ initial, children }: { initial: Frame; children: Rea
     <div className={`layout ${frame.wide ? 'wide' : ''}`}>
       <Sidebar cur={tab} />
       {children}
+      <MapFab wide={frame.wide} />
     </div>
   </ShowingScope></FrameCtx.Provider>;
+}
+
+/**
+ * The floating Map pill (owner 2026-11-26, round 2): always visible on Home and Explore, fixed at the bottom inline-end
+ * above the tab bar and the safe area; on desktop it sits at the content column's end. A translucent material per
+ * apple-design (blur, a bright top hairline), pressed on touch-down, hidden while any sheet is open. A tap opens the
+ * full-page map sheet, which grows out of the pill's own position on the screen.
+ */
+function MapFab({ wide }: { wide: boolean }) {
+  const { c, openSheet } = useK();
+  const tab = useKS((s) => s.tab), sheets = useKS((s) => s.sheets.length);
+  const path = usePathname().replace(/^\/(en|ar)(?=\/)/, '') || '/';
+  // Explore and Home only: a place, collection or settings page has no list under the pill to filter
+  if ((tab !== 'home' && tab !== 'explore') || (path !== '/' && !/^\/explorer\/?$/.test(path))) return null;
+  const open = (e: MouseEvent<HTMLButtonElement>) => {
+    haptic();
+    const r = e.currentTarget.getBoundingClientRect();
+    openSheet(c.explore.map, <MapSheet />, undefined, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  };
+  return <button className={`map-fab press ${wide ? 'wide-col' : ''} ${sheets ? 'hide' : ''}`} data-act="map-fab"
+    aria-haspopup="dialog" aria-label={c.explore.map}
+    onPointerDown={() => { void import('./map-view'); /* the sheet's chunk arrives while the finger is still down */ }}
+    onClick={open}><L n="map" /><b>{c.explore.map}</b></button>;
 }
 
 /** A page: its column and (unless wide) its right rail, set into the shared frame. */
@@ -482,7 +514,7 @@ function MoodSlot({ explore }: { explore: boolean }) {
 
 /** ONE location bar, pinned under the top bar on Home, Explore and Marketplace: the three dropdowns City, Area, Mood
  *  (owner 2026-11-26; the chip rail is gone and Filters/Reset live under the count on Explore). */
-function LocBar({ withFilters }: { withFilters: boolean }) {
+export function LocBar({ withFilters, inMap }: { withFilters: boolean; inMap?: boolean }) {
   const { c, lang, openSheet } = useK(), loc = useKS((s) => s.loc);
   const { data: cities = [] } = useCities();
   const city = cities.find((x) => x.slug === loc.city || (x.nameEn || x.name) === loc.city);
@@ -491,7 +523,7 @@ function LocBar({ withFilters }: { withFilters: boolean }) {
   const openCity = (thenArea: boolean) => openSheet(c.location.citySheet, <CitySheet thenArea={thenArea} />);
   const openArea = (cty: City) => openSheet(fill(c.location.areaSheet, { city: cityLabel(cty, lang) }), <AreaSheet city={cty} />);
   return (
-    <div className="locbar" role="group" aria-label={c.location.aria}>
+    <div className={`locbar${inMap ? ' in-map' : ''}`} role="group" aria-label={c.location.aria}>
       <button className={`loc-pill press ${loc.city ? 'on' : ''}`} data-act="city" aria-haspopup="dialog" onClick={() => openCity(false)}>{loc.city ? <Gov name={loc.city} fallback={<L n="map-pin" />} /> : <L n="map" />}<b>{cityName || c.location.allEgypt}</b><L n="chevron-down" cls="chev" /></button>
       <button className={`loc-pill press ${loc.area ? 'on' : ''}`} data-act="area" aria-haspopup="dialog" onClick={() => (city ? openArea(city) : openCity(true))}><L n="map-pin" /><b>{loc.area || (loc.city ? c.location.allAreas : c.location.area)}</b><L n="chevron-down" cls="chev" /></button>
       <MoodSlot explore={withFilters} />

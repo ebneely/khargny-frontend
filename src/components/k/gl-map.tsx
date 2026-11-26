@@ -60,9 +60,11 @@ function pinElement(name: string, picked: boolean) {
  * a tap on a pin picks it, and panning or zooming hands the new centre to `onMove` (the caller re-asks with near=,
  * debounced 400 ms).
  */
-export function NearbyMap({ pins, here, accuracy, picked, onPick, onMove, lang }: {
+export function NearbyMap({ pins, here, accuracy, picked, onPick, onMove, lang, refit }: {
   pins: MapPin[]; here: LatLng | null; accuracy: number | null; picked: string | null;
   onPick: (id: string) => void; onMove: (centre: LatLng) => void; lang: 'en' | 'ar';
+  /** chosen pins (a search or a dropdown): frame every answer, so a new ask always fits the map to what it found */
+  refit?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
@@ -113,15 +115,16 @@ export function NearbyMap({ pins, here, accuracy, picked, onPick, onMove, lang }
         markers.current.set(p.id, new maplibre.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(m));
       }
       for (const [id, marker] of markers.current) if (!seen.has(id)) { marker.remove(); markers.current.delete(id); }
-      // the first list frames the places once; panning afterwards is the person's, never fought by a re-fit
-      if (!fits.current && pins.length) {
+      // the first list frames the places once; panning afterwards is the person's, never fought by a re-fit. A refit
+      // list (the map sheet's chosen pins) frames every answer, so each ask fits the map to what it found.
+      if ((refit || !fits.current) && pins.length) {
         fits.current = true;
         const b = new maplibre.LngLatBounds();
         for (const p of pins) b.extend([p.lng, p.lat]);
         m.fitBounds(b, { padding: 48, maxZoom: 14, duration: 0 });
       }
     })();
-  }, [pins, picked]);
+  }, [pins, picked, refit]);
 
   // The person: a blue dot and the accuracy circle the browser reported (at least 100 m, the rounding of the position).
   useEffect(() => {

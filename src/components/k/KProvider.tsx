@@ -11,7 +11,7 @@ import { nowIn, type Lang, type Now } from './rules';
 import { isSheetPath } from './data';
 
 export type Tab = 'home' | 'explore' | 'market' | 'saved' | 'profile';
-export type SheetEntry = { id: number; kind: 'action' | 'content'; label: string; head?: ReactNode; body: ReactNode; foot?: ReactNode; closing?: number };
+export type SheetEntry = { id: number; kind: 'action' | 'content' | 'map'; label: string; head?: ReactNode; body: ReactNode; foot?: ReactNode; closing?: number; origin?: { x: number; y: number } };
 type Content = { keys: string[]; dir: 1 | -1; landed?: boolean } | null;
 
 type Loc = { city: string | null; area: string | null };
@@ -23,7 +23,9 @@ type Ctx = {
   setTab: (t: Tab) => void;
   setLoc: (l: Loc) => void;
   toast: (msg: string) => void;
-  openSheet: (label: string, body: ReactNode, foot?: ReactNode) => void; closeTop: (velocity?: number) => void;
+  /** openSheet: a bottom sheet over this page. `map` is the centre of the Map pill that opened the full-page map sheet:
+   *  the sheet grows out of that point (owner 2026-11-26, round 2). */
+  openSheet: (label: string, body: ReactNode, foot?: ReactNode, map?: { x: number; y: number }) => void; closeTop: (velocity?: number) => void;
   removeSheet: (id: number) => void;
   /** close every sheet, the content sheet's history steps included (proto closeContent), then run `then` on the page underneath */
   dismissAll: (then?: () => void) => void;
@@ -89,8 +91,9 @@ export function KProvider({ lang, time, initialTab, children }: { lang: Lang; ti
     toastTimer.current = setTimeout(() => el && animate(el, { opacity: [1, 0], transform: ['translate(-50%,0px)', 'translate(-50%,12px)'] }, spring(0, 0.3)), 1700);
   }, []);
 
-  const openSheet = useCallback((label: string, body: ReactNode, foot?: ReactNode) => {
-    setSheets((s) => [...s, { id: nextId++, kind: 'action', label, body, foot }]);
+  const openSheet = useCallback((label: string, body: ReactNode, foot?: ReactNode, map?: { x: number; y: number }) => {
+    // the map sheet (the floating Map pill) is its own kind: full-page, growing from the button's centre
+    setSheets((s) => [...s, map ? { id: nextId++, kind: 'map', label, body, foot, origin: map } : { id: nextId++, kind: 'action', label, body, foot }]);
   }, []);
   // closing is two steps: mark it (the sheet springs away), then the sheet removes itself when it is gone
   const dismiss = useCallback((id: number, velocity = 0) => setSheets((s) => s.map((x) => (x.id === id ? { ...x, closing: velocity || 0.0001 } : x))), []);

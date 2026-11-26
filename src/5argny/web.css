@@ -1503,3 +1503,44 @@ html.off-layer #app{will-change:auto!important}
 .place-map-foot{position:absolute;inset-inline:0;bottom:0;display:flex;align-items:center;gap:8px;padding:8px 10px;background:linear-gradient(to top,rgba(255,255,255,.94),rgba(255,255,255,0))}
 .place-map-foot .btn{flex:none}
 @media (min-width:1024px){ .map-view{margin-inline:0;height:min(70vh,620px)} .place-map{margin-inline:0} }
+
+/* ---------- the floating Map pill and its full-page sheet (owner 2026-11-26, round 2) ---------- */
+/* The pill: always on Home and Explore, fixed at the bottom inline-end above the phone tab bar (which sits at
+   max(12px, env(safe-area-inset-bottom)) and is 62px tall, web.css .gbar) plus a hand's gap; on desktop it sits at the
+   content column's end — Explore's wide column ends at (vw - 1240)/2 + 24 from the edge, Home's page column at 50% - 270.
+   A translucent material (blur + a bright top hairline, --sh2), pressed on touch-down; less transparency makes it solid.
+   It hides while any sheet is open, and the page pads its bottom so nothing important sits under it. */
+.map-fab{position:fixed;z-index:44;inset-inline-end:14px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 72px);
+  display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 16px 0 14px;border-radius:999px;border:0;cursor:pointer;
+  background:rgba(251,246,238,.62);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:var(--sh2),inset 0 1px 0 rgba(255,255,255,.55);color:var(--ink);font:750 13.5px/1 var(--text);
+  transition:transform .1s ease-out,opacity .2s ease,visibility 0s .2s}
+[data-theme=dark] .map-fab{background:rgba(30,24,20,.62);box-shadow:var(--sh2),inset 0 1px 0 rgba(255,255,255,.14)}
+.map-fab .lucide{width:17px;height:17px;color:var(--accent)}
+.map-fab.down{transform:scale(.97)}
+.map-fab.hide{opacity:0;visibility:hidden;pointer-events:none;transform:translateY(10px)}
+@media (prefers-reduced-transparency: reduce){ .map-fab{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none} }
+/* the last card is never under the pill: the page keeps its own bottom padding and adds the pill's height */
+@media (max-width:1023px){ .layout:has(> .map-fab) .page{padding-bottom:148px} }
+@media (min-width:1024px){
+  .map-fab{bottom:24px}
+  .map-fab.wide-col{inset-inline-end:max(24px,calc(50% - 596px))}
+  .layout:not(.wide) .map-fab{inset-inline-end:max(24px,calc(50% - 270px))}
+  .layout:has(> .map-fab) .page{padding-bottom:84px}
+}
+
+/* The sheet it opens: full-page (its own spring, no bounce, grows out of the pill — Sheet.tsx sets the transform-origin),
+   drag the head or the grabber to close, a fade under reduced motion. The search and the page's own City · Area · Mood
+   pills sit at the top; the map fills the rest, edge to edge. */
+.sheet.map{height:100vh;height:100dvh;max-height:none;border-radius:0;padding-top:env(safe-area-inset-top,0px)}
+.sheet.map .sheet-body{padding:0;display:flex;flex-direction:column;overflow:hidden}
+.map-sheet{display:flex;flex-direction:column;height:100%;min-height:0}
+.map-sheet-load{flex:1;display:grid;place-items:center;color:var(--ink2)}
+.map-sheet-q{margin:4px 16px 8px}
+.map-sheet .locbar{margin:0 16px 10px}
+.map-sheet-map{position:relative;flex:1;min-height:0}
+.map-sheet-map>.gl-map{position:absolute;inset:0;border-radius:0}
+/* the pin card clears MapLibre's compact credit row in the corner */
+.map-sheet .map-card{bottom:44px}
+html.sheet-abs .sheet.map{height:calc(100dvh + var(--sheet-under));max-height:none}
+@media (min-width:1024px){ .sheet.map{width:auto;max-height:none;height:100dvh} }
