@@ -140,13 +140,14 @@ function Similar({ p }: { p: KPlace }) {
   return <section className="rail"><div className="rail-head"><h2 className="t-head">{c.place.similar}</h2><Link className="btn plain press" href={`${langPrefix(lang)}/explorer/`} onClick={() => setLoc({ city: p.citySlug, area: null })}>{c.common.seeAll}</Link></div><div className="rail-row">{list.map((x, i) => <Tile key={x.id} p={x} surface="similar" position={i + 1} />)}</div></section>;
 }
 
-/** Road distance and driving time once the engine answers and the person shared a position; nothing before that. */
+/** Road distance once the engine answers and the person shared a position; nothing before that. */
 function RoadLine({ p }: { p: KPlace }) {
   const { c } = useK();
   const pos = usePosition();
   const road = useRoadKm(pos ? p.id : null, pos);
   if (!road) return null;
-  return <><span className="meta-area"><L n="route" />{fill(c.units.km, { km: kmText(road.km) })}</span><span className="meta-area"><L n="car" />{fill(c.units.minByCar, { n: road.min })}</span></>;
+  // road km only: OSRM's minutes assume empty roads ("3 min" for 2.8 km downtown), so no drive time until traffic data
+  return <span className="meta-area"><L n="route" />{fill(c.units.km, { km: kmText(road.km) })}</span>;
 }
 
 /** The place itself: body (both layouts), foot (5argny! and Call), side (desktop column). */
