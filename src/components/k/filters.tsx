@@ -25,18 +25,18 @@ export type When = '' | 'now' | 'tonight' | 'weekend';
 /** The list order. Popular and Nearest are on the Explore row; Open first lives inside Filters (owner 2026-11-26). */
 export type Sort = 'popular' | 'near' | 'open';
 export const SORTS: Sort[] = ['popular', 'near', 'open'];
-export type F = { intent: string; cat: string; when: When; filters: Set<string>; sort: Sort; mood: string };
+export type F = { intent: string; cat: string; when: When; filters: Set<string>; sort: Sort };
 export const WHENS: When[] = ['', 'now', 'tonight', 'weekend'];
 
 export function readF(q: URLSearchParams): F {
   const when = q.get('when') as When, sort = q.get('sort') as Sort;
-  return { intent: q.get('intent') || '', cat: q.get('cat') || '', when: WHENS.includes(when) ? when : '', filters: new Set((q.get('f') || '').split(',').filter(Boolean)), sort: SORTS.includes(sort) ? sort : 'popular', mood: q.get('mood') || '' };
+  return { intent: q.get('intent') || '', cat: q.get('cat') || '', when: WHENS.includes(when) ? when : '', filters: new Set((q.get('f') || '').split(',').filter(Boolean)), sort: SORTS.includes(sort) ? sort : 'popular' };
 }
 export const nF = (f: F) => (f.intent || f.cat ? 1 : 0) + (f.when ? 1 : 0) + f.filters.size + (f.sort !== 'popular' ? 1 : 0);
 export function writeF(f: F, keep: URLSearchParams) {
   const q = new URLSearchParams();
   if (f.intent) q.set('intent', f.intent); if (f.cat) q.set('cat', f.cat); if (f.when) q.set('when', f.when); if (f.filters.size) q.set('f', [...f.filters].join(','));
-  if (f.sort !== 'popular') q.set('sort', f.sort); if (f.mood) q.set('mood', f.mood);
+  if (f.sort !== 'popular') q.set('sort', f.sort);
   ['q', 'badge'].forEach((k) => { const v = keep.get(k); if (v) q.set(k, v); });
   return q;
 }
@@ -109,6 +109,25 @@ function AllCats({ when, cur, onPick }: { when: When; cur: string; onPick: (cat:
   </>;
 }
 
+/**
+ * The category picker the Mood pill opens (owner 2026-11-26, round 2): our own default category names exactly as they
+ * are — an intent or a single category — with "All categories" opening the full list stacked over this sheet. It only
+ * reports the choice; the caller applies it to the address (the same ?intent / ?cat Filters writes).
+ */
+export function CategoryPicker({ intent, cat, onPick }: { intent: string; cat: string; onPick: (next: { intent: string; cat: string }) => void }) {
+  const { c, lang, openSheet, closeTop } = useK();
+  const { data: categories = [] } = useCategories();
+  const count = useCounts('');
+  const picked = cat ? categories.find((x) => (x.nameEn || x.nameAr) === cat || x.slug === cat || x.id === cat) : null;
+  const chip = (key: string, on: boolean, label: string, icon: string | null, n: number | null | undefined, onClick: () => void) =>
+    <button key={key} className="chip press" aria-pressed={on} data-act="pick-mood" onClick={onClick}>{icon ? <L n={icon} /> : null}{label}{n != null ? <em><i className={`live ${n ? '' : 'off'}`} />{n}</em> : null}</button>;
+  return <div className="amen">
+    {INTENTS.map((x) => chip(x.key, intent === x.key, c.intents[x.key], x.icon, count(x.cats), () => onPick({ intent: intent === x.key ? '' : x.key, cat: '' })))}
+    {picked ? chip('cat', true, (lang === 'ar' ? picked.nameAr : picked.nameEn || picked.nameAr) || picked.slug, catIcon(picked.nameEn || ''), count([picked.nameEn || '']), () => onPick({ intent: '', cat: '' })) : null}
+    <button className="chip press" data-act="all-cats" onClick={() => openSheet(c.filters.allCats, <AllCats when="" cur={cat} onPick={(next) => { onPick({ intent: '', cat: next }); closeTop(); }} />)}><L n="layout-grid" />{c.filters.seeAllCats}<L n="chevron-right" /></button>
+  </div>;
+}
+
 function FiltersBody({ f, onChange }: { f: F; onChange: (f: F) => void }) {
   const { c, lang, openSheet, closeTop } = useK();
   const { data: categories = [] } = useCategories();
@@ -150,8 +169,8 @@ export function useListQuery(f: F) {
     // categories still loading: wait, never the whole of Egypt by mistake; a category name that matches none finds nothing
     ready: !wantCats || cats.length > 0, none: wantCats && categories.length > 0 && !cats.length,
     catIds: wantCats ? cats.map((x) => x.id) : [null],
-    params: { cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, when: f.when || undefined, mood: f.mood || undefined },
-    key: [cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, f.when, f.mood] as const,
+    params: { cityId: cityId ?? undefined, region: area ?? undefined, priceRange: bands || undefined, amenityIds: amen || undefined, when: f.when || undefined },
+    key: [cats.map((x) => x.id).join(','), cityId ?? '', area ?? '', bands, amen, f.when] as const,
   };
 }
 export const totalKey = (key: ReturnType<typeof useListQuery>['key']) => ['places', 'total', ...key] as const;
@@ -225,7 +244,7 @@ export function useOpenFilters() {
       const [, tick] = useState(0);
       const sub = useRef(false); if (!sub.current) { sub.current = true; listeners.add(() => tick((n) => n + 1)); }
       return part === 'body' ? <FiltersBody f={staged} onChange={set} />
-        : <FiltersFoot get={() => staged} onClear={() => set({ intent: '', cat: '', when: '', filters: new Set(), sort: 'popular', mood: '' })} onApply={() => { closeTop(); const q = writeF(staged, keep); go(`${langPrefix(lang)}/explorer/${q.toString() ? '?' + q : ''}`); }} />;
+        : <FiltersFoot get={() => staged} onClear={() => set({ intent: '', cat: '', when: '', filters: new Set(), sort: 'popular' })} onApply={() => { closeTop(); const q = writeF(staged, keep); go(`${langPrefix(lang)}/explorer/${q.toString() ? '?' + q : ''}`); }} />;
     };
     openSheet(c.filters.title, <Live part="body" />, <Live part="foot" />);
   };

@@ -20,7 +20,7 @@ import { slidePill } from './bits';
 import { INTENTS, moment, k } from './rules';
 import { intentFor, highlightRange, haversineKm } from '@5argny/core/rules';
 import { toK, placeHref, type KPlace } from './data';
-import { Meta, Stats, ShowingScope, useShowing } from './place';
+import { Meta, Stats, ShowingScope, useShowing, catIcon } from './place';
 import { trackSearchResults, trackSearchTap } from '@/lib/analytics/track';
 import { Failed, Sk } from './states';
 import { FootLinks } from './footlinks';
@@ -28,8 +28,7 @@ import { hasLocBar, type Frame } from './frame';
 import { usePosition } from './near';
 import { useK, useKS, haptic, reduce, spring, type Tab } from './KProvider';
 import { initialScrollDirection, scrollDirection } from '@/lib/scroll-direction';
-import { useAreaCounts } from './filters';
-import { useMoods } from '@/lib/api/hooks/use-moods';
+import { useAreaCounts, CategoryPicker } from './filters';
 import { useMine, useSavedSections, useCollections } from './collections';
 import { useSearchParams } from 'next/navigation';
 
@@ -444,35 +443,41 @@ function CitySheet({ thenArea }: { thenArea: boolean }) {
   </div>;
 }
 
-/** Moods are listed in the dashboard's own order (its `sort`), lowest first. */
-export const bySort = <T extends { sort: number }>(list: T[]) => [...list].sort((a, b) => Number(a.sort ?? 0) - Number(b.sort ?? 0));
-
-/** The Mood dropdown (owner 2026-11-26): a sheet of every mood with its icon and name, and "Any mood" to clear it. On
- *  Explore the choice re-ranks the list in place (?mood=); on Home it opens Explore ranked for it (Home's feed has no
- *  mood). */
+/**
+ * The Mood dropdown (owner 2026-11-26, round 2): it IS the categories picker, renamed. Its sheet lists our default
+ * category names exactly as Filters did (the intents, then "All categories"); a pick writes the same ?intent / ?cat
+ * Filters writes and closes the sheet. On Home it opens Explore with that choice; on Explore it re-ranks in place.
+ */
 function MoodPill({ explore }: { explore: boolean }) {
-  const { c, lang, openSheet, go } = useK();
+  const { c, lang, openSheet, closeTop, go, dismissAll } = useK();
   const sp = useSearchParams();
-  const moods = useMoods();
-  const slug = sp.get('mood') || '';
-  const mood = moods.find((m) => m.slug === slug);
-  const apply = (next: string) => {
+  const { data: categories = [] } = useCategories();
+  const intentKey = sp.get('intent') || '', catKey = sp.get('cat') || '';
+  const intent = INTENTS.find((x) => x.key === intentKey);
+  const cat = catKey ? categories.find((x) => (x.nameEn || x.nameAr) === catKey || x.slug === catKey || x.id === catKey) : null;
+  const catLabel = cat ? (lang === 'ar' ? cat.nameAr : cat.nameEn || cat.nameAr) || cat.slug : catKey;
+  const label = intent ? c.intents[intent.key] : cat ? catLabel : c.location.mood;
+  const icon = intent ? intent.icon : cat ? catIcon(cat.nameEn || '') : 'layout-grid';
+  const apply = (next: { intent: string; cat: string }) => {
     if (explore) {
       const q = new URLSearchParams(sp.toString());
-      if (next) q.set('mood', next); else q.delete('mood');
+      q.delete('intent'); q.delete('cat');
+      if (next.intent) q.set('intent', next.intent);
+      if (next.cat) q.set('cat', next.cat);
       history.replaceState(null, '', `${location.pathname}${q.toString() ? '?' + q : ''}`);
-    } else go(`${langPrefix(lang)}/explorer/${next ? '?mood=' + encodeURIComponent(next) : ''}`);
+    } else {
+      const qs = next.intent ? `?intent=${next.intent}` : next.cat ? `?cat=${encodeURIComponent(next.cat)}` : '';
+      dismissAll(() => go(`${langPrefix(lang)}/explorer/${qs}`));
+    }
   };
-  const label = (m: (typeof moods)[number]) => (lang === 'ar' ? m.nameAr || m.name : m.nameEn || m.name);
-  return <button className={`loc-pill press ${mood ? 'on' : ''}`} data-act="mood" aria-haspopup="dialog" aria-label={c.location.mood}
-    onClick={() => openSheet(c.location.mood, <div role="radiogroup">
-      <LocOption on={!mood} icon={<L n="sparkles" />} label={c.location.allMoods} act="pick-mood" then={() => apply('')} />
-      {bySort(moods).map((m) => <LocOption key={m.slug} on={m.slug === slug} icon={<L n={m.icon} />} label={label(m)} act="pick-mood" then={() => apply(m.slug)} />)}
-    </div>)}>{mood ? <L n={mood.icon} /> : <L n="sparkles" />}<b>{mood ? label(mood) : c.location.mood}</b><L n="chevron-down" cls="chev" /></button>;
+  return <button className={`loc-pill press ${intent || cat ? 'on' : ''}`} data-act="mood" aria-haspopup="dialog" aria-label={c.location.mood}
+    onClick={() => openSheet(c.location.mood, <CategoryPicker intent={intentKey} cat={catKey} onPick={(next) => { haptic(); apply(next); closeTop(); }} />)}>
+    <L n={icon} /><b>{label}</b><L n="chevron-down" cls="chev" /></button>;
 }
-/** The Mood pill reads ?mood= with useSearchParams, which a kept (statically rendered) page loads inside a boundary. */
+/** The Mood pill reads ?intent/?cat with useSearchParams, which a kept (statically rendered) page loads inside a boundary. */
 function MoodSlot({ explore }: { explore: boolean }) {
-  return <Suspense fallback={<button className="loc-pill press" data-act="mood" aria-haspopup="dialog"><L n="sparkles" /><b>{''}</b><L n="chevron-down" cls="chev" /></button>}><MoodPill explore={explore} /></Suspense>;
+  const { c } = useK();
+  return <Suspense fallback={<button className="loc-pill press" data-act="mood" aria-haspopup="dialog"><L n="layout-grid" /><b>{c.location.mood}</b><L n="chevron-down" cls="chev" /></button>}><MoodPill explore={explore} /></Suspense>;
 }
 
 /** ONE location bar, pinned under the top bar on Home, Explore and Marketplace: the three dropdowns City, Area, Mood

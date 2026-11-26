@@ -161,8 +161,8 @@ export function ExploreView() {
   const setMapView = (on: boolean) => { haptic(); const n = new URLSearchParams(sp.toString()); if (on) n.set('view', 'map'); else n.delete('view'); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
   const openFilters = useOpenFilters();
   const nf = nF(f);
-  // Reset clears the filters, the order, the word and the mood; the city and area stay in the bar
-  const reset = () => { haptic(); const n = new URLSearchParams(sp.toString()); ['intent', 'cat', 'when', 'f', 'sort', 'q', 'badge', 'mood'].forEach((key) => n.delete(key)); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
+  // Reset clears the filters, the order and the word; the city and area stay in the bar
+  const reset = () => { haptic(); const n = new URLSearchParams(sp.toString()); ['intent', 'cat', 'when', 'f', 'sort', 'q', 'badge'].forEach((key) => n.delete(key)); history.replaceState(null, '', `${location.pathname}${n.toString() ? '?' + n : ''}`); };
   const busy = res0.loading;
   const filtered = !!(loc.city || f.intent || f.cat || f.when || q || badge || f.filters.size);
   // the next page starts loading a screen before the end of the grid
